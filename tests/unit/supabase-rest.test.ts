@@ -8,6 +8,7 @@ import {
   rpc,
   signIn,
   signOut,
+  signUp,
 } from '../../src/integrations/supabaseRest'
 
 const projectUrl = 'https://project-ref.supabase.co'
@@ -184,5 +185,55 @@ describe('authenticated REST helpers', () => {
     const error = await request('/rest/v1/clients').catch((caught: unknown) => caught)
     expect(error).toBeInstanceOf(SupabaseRestError)
     expect(String((error as Error).message)).not.toContain('raw-secret-from-server')
+  })
+})
+
+/**
+ * ครูสมัครเองได้ — trigger ฝั่งฐานข้อมูลสร้างแถว providers ให้ต่อ
+ * กับดักที่ต้องกัน: ถ้าวันหลังมีคนเปิด "Confirm email" ใน Supabase
+ * endpoint นี้จะตอบ 200 แต่ไม่มี token กลับมา ห้ามนับว่าสมัครสำเร็จเงียบ ๆ
+ */
+describe('ครูสมัครบัญชีเอง', () => {
+  it('สมัครสำเร็จได้ session และยิงไป /auth/v1/signup', async () => {
+    configure()
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(jsonResponse(authBody()))
+    const session = await signUp(' teacher@example.com ', 'hunter2secret')
+    expect(session.access_token).toBe('access-one')
+    const [url, init] = fetchMock.mock.calls[0]
+    expect(String(url)).toBe(`${projectUrl}/auth/v1/signup`)
+    // อีเมลต้องถูกตัดช่องว่างก่อนส่ง ไม่งั้นสมัครแล้วล็อกอินไม่เข้า
+    expect(JSON.parse(String((init as RequestInit).body))).toEqual({
+      email: 'teacher@example.com', password: 'hunter2secret',
+    })
+    expect(getSession()?.user.email).toBe('teacher@example.com')
+  })
+
+  it('เปิดยืนยันอีเมลไว้ = ยังไม่ถือว่าเข้าสู่ระบบ ต้องฟ้องให้ไปกดในเมล', async () => {
+    configure()
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(jsonResponse({
+      user: { id: 'user-2', email: 'teacher@example.com' }, access_token: '', refresh_token: '',
+    }))
+    await expect(signUp('teacher@example.com', 'hunter2secret')).rejects.toMatchObject({ code: 'confirm-required' })
+    expect(getSession()).toBeNull()
+  })
+
+  it('อีเมลซ้ำบอกให้ไปเข้าสู่ระบบแทน', async () => {
+    configure()
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(jsonResponse({ error_code: 'user_already_exists' }, 422))
+    await expect(signUp('teacher@example.com', 'hunter2secret')).rejects.toMatchObject({ code: 'email-taken' })
+  })
+
+  it('รหัสผ่านสั้นเกินไปบอกตรง ๆ', async () => {
+    configure()
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(jsonResponse({ error_code: 'weak_password' }, 400))
+    await expect(signUp('teacher@example.com', '123')).rejects.toMatchObject({ code: 'weak-password' })
+  })
+
+  it('ยังไม่ได้ตั้งค่าโปรเจกต์ = สมัครไม่ได้ ไม่ยิงออกไปมั่ว', async () => {
+    vi.stubEnv('VITE_SUPABASE_URL', '')
+    vi.stubEnv('VITE_SUPABASE_PUBLISHABLE_KEY', '')
+    const fetchMock = vi.spyOn(globalThis, 'fetch')
+    await expect(signUp('teacher@example.com', 'hunter2secret')).rejects.toBeInstanceOf(SupabaseRestError)
+    expect(fetchMock).not.toHaveBeenCalled()
   })
 })

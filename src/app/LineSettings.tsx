@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { useStore } from '../core/store'
-import { getSession, getSupabaseConfig, invoke, rpc, signIn, signOut } from '../integrations/supabaseRest'
+import { getSession, getSupabaseConfig, invoke, rpc, signIn, signOut, signUp, SupabaseRestError } from '../integrations/supabaseRest'
 import { deliveryTarget, readChannel, syncClients, type LineChannel } from '../integrations/lineApi'
 import { ConfirmSheet } from './components'
 import { copyText } from './share'
@@ -22,6 +22,7 @@ export default function LineSettings() {
   const [busy, setBusy] = useState(false)
   const [notice, setNotice] = useState('')
   const [disconnect, setDisconnect] = useState(false)
+  const [mode, setMode] = useState<'signin' | 'signup'>('signin')
   const [codes, setCodes] = useState<Record<string, { code: string; expires_at: string }>>({})
   const [linked, setLinked] = useState<Record<string, boolean>>({})
   const config = getSupabaseConfig()
@@ -45,9 +46,21 @@ export default function LineSettings() {
     // Refresh on opening this screen/account changes; user can refresh after parent adds OA.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session?.user.id])
+  /** สมัครและเข้าสู่ระบบใช้ฟอร์มเดียวกัน — ข้อความผิดพลาดต้องบอกสาเหตุจริง ไม่ใช่ "ทำรายการไม่สำเร็จ" */
   const login = (e: FormEvent) => {
     e.preventDefault()
-    void run(async () => { try { setSession(await signIn(email, password)) } finally { setPassword('') } })
+    setBusy(true); setNotice('')
+    void (async () => {
+      try {
+        setSession(mode === 'signup' ? await signUp(email, password) : await signIn(email, password))
+      } catch (error) {
+        setNotice(error instanceof SupabaseRestError
+          ? error.message
+          : 'ทำรายการไม่สำเร็จ กรุณาตรวจการเชื่อมต่ออินเทอร์เน็ตแล้วลองใหม่')
+      } finally {
+        setPassword(''); setBusy(false); setSession(readSessionSafely())
+      }
+    })()
   }
   const connect = (e: FormEvent) => {
     e.preventDefault()
@@ -82,10 +95,19 @@ export default function LineSettings() {
     {state.mode !== 'real' ? <p>ใช้การเชื่อม LINE OA ในโหมดข้อมูลจริง เปิดเมนูแล้วเลือกเริ่มใช้จริงก่อน</p>
       : !config ? <div className="card"><h2 className="h2">รอตั้งค่าระบบเชื่อมต่อ</h2><p>ผู้ดูแลต้องผูกโปรเจกต์สำหรับบัญชีครูก่อน จึงจะเข้าสู่ระบบและเชื่อม OA ได้</p><p className="hint">ระหว่างนี้ยังเปิด LINE เพื่อส่งข้อความเองจากหน้าแอดมินได้</p></div>
       : !session ? <form onSubmit={login} className="card">
-        <h2 className="h2">เข้าสู่ระบบบัญชีครู</h2><p className="hint">ใช้บัญชีที่ผู้ดูแลสร้างให้สำหรับ Solo Tutor</p>
+        <h2 className="h2">{mode === 'signup' ? 'สมัครบัญชีครู' : 'เข้าสู่ระบบบัญชีครู'}</h2>
+        <p className="hint">{mode === 'signup'
+          ? 'บัญชีนี้ใช้เชื่อม LINE OA ของคุณเท่านั้น ข้อมูลนักเรียนและบิลยังอยู่ในเครื่องคุณเหมือนเดิม'
+          : 'ยังไม่มีบัญชี? กดสมัครใช้งานด้านล่างได้เลย'}</p>
         <label className="fld"><span className="fld__l">อีเมล</span><input className="inp" type="email" autoComplete="username" required value={email} onChange={e => setEmail(e.target.value)} /></label>
-        <label className="fld"><span className="fld__l">รหัสผ่าน</span><input className="inp" type="password" autoComplete="current-password" required value={password} onChange={e => setPassword(e.target.value)} /></label>
-        <button className="btn btn--primary" disabled={busy}>{busy ? 'กำลังเข้าสู่ระบบ…' : 'เข้าสู่ระบบ'}</button>
+        <label className="fld"><span className="fld__l">รหัสผ่าน</span><input className="inp" type="password" autoComplete={mode === 'signup' ? 'new-password' : 'current-password'} minLength={6} required value={password} onChange={e => setPassword(e.target.value)} /></label>
+        <button className="btn btn--primary" disabled={busy}>
+          {busy ? (mode === 'signup' ? 'กำลังสมัคร…' : 'กำลังเข้าสู่ระบบ…') : (mode === 'signup' ? 'สมัครใช้งาน' : 'เข้าสู่ระบบ')}
+        </button>
+        <button type="button" className="btn btn--ghost btn--sm" disabled={busy}
+          onClick={() => { setMode(m => (m === 'signup' ? 'signin' : 'signup')); setNotice(''); setPassword('') }}>
+          {mode === 'signup' ? 'มีบัญชีอยู่แล้ว เข้าสู่ระบบ' : 'ยังไม่มีบัญชี สมัครใช้งาน'}
+        </button>
       </form> : <>
         <div className="rowhead"><span className="dim">{session.user.email ?? 'บัญชีครู'}</span><button className="btn btn--ghost btn--sm" disabled={busy} onClick={() => { try { signOut() } catch { setNotice('ล้างสถานะเข้าสู่ระบบไม่สำเร็จ กรุณาตรวจสิทธิ์เก็บข้อมูลของเบราว์เซอร์'); return }; setSession(null); setChannel(null); setCodes({}); setLinked({}); setSecret(''); setToken('') }}>ออกจากระบบเครื่องนี้</button></div>
         {state.lineProviderId && state.lineProviderId !== session.user.id ? <p className="warnbar">ข้อมูลชุดนี้ผูกกับบัญชีอื่น กรุณาออกจากระบบแล้วเข้าสู่บัญชีเดิม</p> : <>

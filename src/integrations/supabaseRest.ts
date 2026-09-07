@@ -239,6 +239,46 @@ export const signIn = async (email: string, password: string): Promise<SupabaseS
   return session
 }
 
+/**
+ * สมัครใช้งานเอง — trigger ฝั่งฐานข้อมูลสร้างแถว providers ให้อัตโนมัติ
+ * คืน session ทันทีเฉพาะตอนปิด "Confirm email" ไว้ ถ้าเปิดไว้ Supabase จะไม่ส่ง token กลับมา
+ * กรณีนั้นต้องบอกครูตรง ๆ ว่าให้ไปยืนยันในอีเมล ไม่ใช่ปล่อยให้จอค้างเงียบ ๆ
+ */
+export const signUp = async (email: string, password: string): Promise<SupabaseSession> => {
+  const config = requireConfig()
+  const target = assertStorageWritable(config)
+  const generation = ++authGeneration
+  try { target.removeItem(storageKey(config)) } catch { throw new SupabaseRestError('storage-unavailable', 'ล้างสถานะการเข้าสู่ระบบเดิมไม่ได้') }
+
+  const response = await fetchWithTimeout(`${config.url}/auth/v1/signup`, {
+    method: 'POST',
+    headers: { apikey: config.publishableKey, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: email.trim(), password }),
+  })
+  const data = await safeJson(response)
+  if (!response.ok) {
+    const body = (data ?? {}) as { error_code?: string; msg?: string; message?: string }
+    const code = body.error_code ?? ''
+    if (response.status === 422 || code === 'user_already_exists' || code === 'email_exists') {
+      throw new SupabaseRestError('email-taken', 'อีเมลนี้สมัครไว้แล้ว ลองเข้าสู่ระบบแทน', response.status)
+    }
+    if (code === 'weak_password') {
+      throw new SupabaseRestError('weak-password', 'รหัสผ่านสั้นเกินไป ใช้อย่างน้อย 6 ตัว', response.status)
+    }
+    throw responseError(response.status)
+  }
+
+  // ตรวจจากตัว body ก่อน — sessionFromAuth จะโยน error ทั่วไปทับ ทำให้ไม่รู้ว่าติดที่ยืนยันอีเมล
+  const body = (data ?? {}) as AuthResponse
+  if (!body.access_token) {
+    throw new SupabaseRestError('confirm-required', 'สมัครแล้ว กรุณากดยืนยันในอีเมลก่อนเข้าสู่ระบบ', response.status)
+  }
+  const session = sessionFromAuth(body)
+  if (generation !== authGeneration) throw new SupabaseRestError('auth-cancelled', 'ยกเลิกการสมัครแล้ว')
+  saveSession(config, session)
+  return session
+}
+
 export const signOut = (): void => {
   const config = getSupabaseConfig()
   authGeneration += 1
