@@ -6,7 +6,7 @@ import { isParticle } from './particle'
 import { isStyle } from './style'
 import { buildReal, buildScenario, isScenario } from './scenarios'
 import { appendEvent } from './events'
-import { todayISO } from './format'
+import { periodOf, todayISO } from './format'
 import { isWellFormed } from './backup'
 import { urlParam } from './urlParams'
 import { billingChangeIssue, buildPackageInvoice, closableSubjects, isFinalizedPeriod, markOverdue, mutationTouchesFinalizedPeriod, reconcileDraftInvoices } from './billing'
@@ -394,6 +394,18 @@ export function migrate(raw: unknown): AppState | null {
   return migrateCanonical(raw)
 }
 
+/**
+ * เดโมที่ค้างอยู่ในเครื่องมีวันของวันที่เปิดครั้งแรก — กลับมาเปิดอีกทีจะเห็นวันเก่า
+ * ข้ามเดือนเมื่อไหร่ชุดข้อมูลทั้งชุด (เดือนก่อน + เดือนนี้) ก็ผิดช่วง ต้องสร้างใหม่
+ * ยังอยู่เดือนเดิมแค่เดินวันให้ทัน งานที่กดเช็คชื่อไว้ตอนสาธิตจะได้ไม่หาย
+ */
+function refreshDemoDay(saved: AppState): AppState {
+  const now = todayISO()
+  if (saved.today === now) return saved
+  if (periodOf(saved.today) !== periodOf(now)) return buildScenario(saved.scenarioId)
+  return { ...saved, today: now }
+}
+
 function hydrate(scenarioFromUrl: string | null): { state: AppState; didReset: boolean; recoveryRaw: string | null; savedRaw: string | null; applyInitialScenario: boolean } {
   let raw: string | null = null
   try {
@@ -404,7 +416,7 @@ function hydrate(scenarioFromUrl: string | null): { state: AppState; didReset: b
       // A demo query parameter must never overwrite an existing real workspace.
       const chosen = saved.mode === 'demo' && scenarioFromUrl && isScenario(scenarioFromUrl)
         ? buildScenario(scenarioFromUrl) : saved
-      const dated = chosen.mode === 'real' ? { ...chosen, today: todayISO() } : chosen
+      const dated = chosen.mode === 'real' ? { ...chosen, today: todayISO() } : refreshDemoDay(chosen)
       return { state: normalize(dated), didReset: false, recoveryRaw: null, savedRaw: raw,
         applyInitialScenario: saved.mode === 'demo' && !!scenarioFromUrl && isScenario(scenarioFromUrl) }
     }
@@ -470,7 +482,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       }
       const migrated = migrate(JSON.parse(raw))
       if (!migrated) throw new Error('invalid saved state')
-      const dated = migrated.mode === 'real' ? { ...migrated, today: todayISO() } : migrated
+      // อ่านซ้ำหลังได้สิทธิ์เขียนก็ต้องเดินวันเหมือนตอน hydrate ไม่งั้นทับวันที่รีเฟรชไปแล้ว
+      const dated = migrated.mode === 'real' ? { ...migrated, today: todayISO() } : refreshDemoDay(migrated)
       const normalized = normalize(dated)
       const canonical = JSON.stringify(normalized)
       if (canonical !== raw) localStorage.setItem(KEY, canonical)

@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { cleanup, render } from '@testing-library/react'
 import { buildScenario } from '../../src/core/scenarios'
 import { dayIn, daysInPeriod, demoToday, periodBack, thisPeriod } from '../../src/mock/seed'
 import { periodOf } from '../../src/core/format'
@@ -53,5 +54,48 @@ describe('เดโมเดินตามปฏิทินจริง', () =
   it('ไม่มีวันที่ปี 2025 หลงเหลือในชุดข้อมูลอีก', () => {
     on('2027-03-15')
     expect(JSON.stringify(buildScenario('default'))).not.toContain('2025-')
+  })
+})
+
+/**
+ * เดโมที่ค้างใน localStorage จากการเปิดครั้งก่อนเคยโชว์วันเก่าตลอดไป
+ * — คนที่เปิดดูเดือนที่แล้วแล้วกลับมาอีกทีจะเห็นชุดข้อมูลของเดือนที่แล้ว
+ */
+describe('เดโมที่ค้างในเครื่อง', () => {
+  const mount = async () => {
+    const { StoreProvider, STORAGE_KEY, useStore } = await import('../../src/core/store')
+    let seen: ReturnType<typeof useStore>
+    const Probe = () => { seen = useStore(); return null }
+    render(<StoreProvider><Probe /></StoreProvider>)
+    return { state: seen!.state, STORAGE_KEY }
+  }
+
+  afterEach(() => { cleanup(); localStorage.clear() })
+
+  it('ข้ามเดือนแล้วสร้างชุดข้อมูลใหม่ ไม่ค้างอยู่เดือนเก่า', async () => {
+    on('2027-03-15')
+    const stale = buildScenario('default')
+    const { STORAGE_KEY } = await import('../../src/core/store')
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(stale))
+    cleanup()
+
+    on('2027-04-02')
+    const { state } = await mount()
+    expect(state.today).toBe('2027-04-02')
+    for (const invoice of state.invoices) expect(invoice.period).toBe('2027-03')
+  })
+
+  it('ยังอยู่เดือนเดิม เดินวันให้ทันแต่ไม่ล้างงานที่กดไว้', async () => {
+    on('2027-03-15')
+    const saved = buildScenario('default')
+    const marker = { ...saved, clients: [...saved.clients, { id: 'kept', name: 'ลูกค้าที่เพิ่งเพิ่ม', lineId: '@kept' }] }
+    const { STORAGE_KEY } = await import('../../src/core/store')
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(marker))
+    cleanup()
+
+    on('2027-03-20')
+    const { state } = await mount()
+    expect(state.today).toBe('2027-03-20')
+    expect(state.clients.some((c) => c.id === 'kept')).toBe(true)
   })
 })
