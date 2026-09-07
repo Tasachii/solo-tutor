@@ -1,12 +1,18 @@
-import { createHash } from 'node:crypto'
 import { describe, expect, it } from 'vitest'
 import { crc16, promptpayPayload, promptpayTarget } from '../../src/core/promptpay'
 import { pickVersion, qrMatrix } from '../../src/core/qr'
 
 const rows = (matrix: boolean[][]): string[] =>
   matrix.map((row) => row.map((on) => (on ? '1' : '0')).join(''))
-const fingerprint = (matrix: boolean[][]): string =>
-  createHash('sha256').update(rows(matrix).join('\n')).digest('hex').slice(0, 16)
+/** FNV-1a — พอสำหรับจับว่าเมทริกซ์เปลี่ยน และไม่ต้องพึ่ง built-in ของ node (CI ไม่มี @types/node) */
+function fingerprint(matrix: boolean[][]): string {
+  let hash = 0x811c9dc5
+  for (const char of rows(matrix).join('\n')) {
+    hash ^= char.charCodeAt(0)
+    hash = Math.imul(hash, 0x01000193) >>> 0
+  }
+  return hash.toString(16).padStart(8, '0')
+}
 
 describe('CRC ของ payload', () => {
   it('ตรงกับค่าตรวจสอบมาตรฐานของ CRC-16/CCITT-FALSE', () => {
@@ -91,7 +97,7 @@ describe('ตัวเข้ารหัส QR', () => {
    * ถ้าค่าเปลี่ยนแปลว่าตัวเข้ารหัสเปลี่ยนพฤติกรรม ต้องเอาไปทดสอบสแกนใหม่ก่อน
    */
   it('ลายเมทริกซ์ไม่เปลี่ยนไปเงียบ ๆ', () => {
-    expect(fingerprint(qrMatrix(promptpayPayload('0812345678')!)!)).toBe('b72ac8b9c794fa92')
-    expect(fingerprint(qrMatrix(promptpayPayload('0812345678', 3000)!)!)).toBe('6e4c0c0e848f43e4')
+    expect(fingerprint(qrMatrix(promptpayPayload('0812345678')!)!)).toBe('1d1d5885')
+    expect(fingerprint(qrMatrix(promptpayPayload('0812345678', 3000)!)!)).toBe('a512ceee')
   })
 })
