@@ -25,6 +25,7 @@ const genericTemplates = (profession: ProfessionTemplate): ProfessionMessages =>
       final: 'เรียน{clientHonorific}{clientName} ขออนุญาตเรียนแจ้งเรื่องยอดค่าบริการ{subjectName} เดือน {periodThai} {total} บาท อีกครั้ง{p} หากมีเรื่องการชำระที่อยากปรึกษา ทักมาคุยได้เลยนะ{pq} ยินดีเสมอ{p} รายละเอียดที่ {invoiceUrl} 🙏',
     },
     nudge: `สวัสดี{p} {clientHonorific}{clientName} เดือน {periodThai} {subjectName}ทำไป {qty} ${v.units} ยอดคงเหลือ {total} บาท{p} สแกนโอนได้ตามสะดวกเลยนะ{pq} ขอบคุณ{p}`,
+    homework: 'สวัสดี{p} {clientHonorific}{clientName} วัน{dayThai}ที่ {dateThai} ของ{subjectName} มีสิ่งที่ฝากไว้{p}: {text} ขอบคุณ{p} 🙏',
     renewal: `เรียน{clientHonorific}{clientName} แพ็ก {packageTotal} ${v.units}ของ{subjectName} เหลือ {remaining} ${v.units}{p} ต่อแพ็กใหม่ {packageTotal} ${v.units} {packagePrice} บาท ดูรายละเอียดที่ {invoiceUrl}`,
     renewalExhausted: `เรียน{clientHonorific}{clientName} แพ็ก {packageTotal} ${v.units}ของ{subjectName} ครบแล้ว{p} รอบล่าสุดเป็นครั้งที่ {overBy} นอกแพ็ก ต่อแพ็กใหม่ {packageTotal} ${v.units} {packagePrice} บาท ดูรายละเอียดที่ {invoiceUrl}`,
     receipt: 'ได้รับยอด {total} บาทของ{subjectName} เดือน {periodThai} แล้ว{p} ขอบคุณ{p} 🙏 ใบเสร็จ: {receiptUrl}',

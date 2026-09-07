@@ -110,6 +110,13 @@ export function nudgeText(state: AppState, inv: Invoice): string {
   })
 }
 
+/** การบ้าน — ครูพิมพ์เนื้อหาสดแล้วคัดลอก ไม่มีฟิลด์ใหม่ใน ledger จึงไม่บันทึกอะไร */
+export function homeworkText(state: AppState, subject: Subject, text: string): string {
+  return render(templatesFor(state.professionId).homework, {
+    ...baseVars(state, subject), dayThai: dayThai(state.today), dateThai: dateThai(state.today), text: text.trim(),
+  })
+}
+
 /** แจ้งเลื่อนคาบ — เกิดจากการกระทำของครู ไม่ใช่ derive จึงสร้างตอนกดเลื่อน */
 export function movedText(state: AppState, subject: Subject, from: { date: string }, to: { date: string; time: string }): string {
   return render(templatesFor(state.professionId).moved, {

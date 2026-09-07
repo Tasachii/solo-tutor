@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { useStore } from '../core/store'
 import { professionById } from '../professions'
 import { copy } from '../copy'
-import { summaryText } from '../core/messages'
+import { homeworkText, summaryText } from '../core/messages'
 import { copyText, openLine } from './share'
 import { clientById, completionsIn, isCompleted, packageStatus, subjectById } from '../core/ledger'
 import { invoiceFor } from '../core/billing'
@@ -30,6 +30,7 @@ export default function SubjectDetail() {
   const v = prof.vocab
   const nav = useNavigate()
   const toast = useToast()
+  const [homework, setHomework] = useState<string | null>(null)
   const [editing, setEditing] = useState(false)
   const [buying, setBuying] = useState(false)
   const [purchaseTotal, setPurchaseTotal] = useState('')
@@ -106,6 +107,7 @@ export default function SubjectDetail() {
           track('send_summary')
         }}>{copy.detail.sendSummary}</button>
         <button className="btn btn--secondary btn--sm" onClick={() => nav(`/client/${s.clientId}`)}>{copy.detail.clientView}</button>
+        {state.mode === 'real' && <button className="btn btn--secondary btn--sm" onClick={() => setHomework('')}>{copy.detail.homework}</button>}
         <button className="btn btn--secondary btn--sm" onClick={() => nav(`/app/admin?tab=chat&chat=${s.clientId}`)}>{copy.detail.openChat}</button>
         {s.active && <button className="btn btn--ghost btn--sm" onClick={() => setStopping(true)}>{copy.subjects.stop}</button>}
         {!s.active && <button className="btn btn--primary btn--sm" onClick={() => {
@@ -188,6 +190,18 @@ export default function SubjectDetail() {
             }}>{copy.subjects.stop}</button>
           }>
           <p className="p">จะย้ายไปกลุ่ม "{copy.subjects.inactiveGroup}" ประวัติยังอยู่ครบ</p>
+        </BottomSheet>
+      )}
+      {homework !== null && (
+        <BottomSheet title={copy.detail.homework} sub={s.name} onClose={() => setHomework(null)}
+          footer={<button className="btn btn--primary btn--block" disabled={!homework.trim()} onClick={async () => {
+            const ok = await copyText(homeworkText(state, s, homework))
+            toast.push({ text: ok ? copy.toast.copied : copy.toast.copyFailed, tone: ok ? 'ok' : 'danger' })
+            if (ok) setHomework(null)
+          }}>{copy.detail.homeworkCopy}</button>}>
+          <p className="hint">{copy.detail.homeworkHint}</p>
+          <label className="fld"><span className="fld__l">{copy.detail.homeworkField}</span>
+            <textarea className="inp" rows={4} value={homework} onChange={(e) => setHomework(e.target.value)} /></label>
         </BottomSheet>
       )}
     </div>

@@ -273,7 +273,8 @@ export const copy = {
     thisMonth: 'เดือนนี้', estimate: 'ยอดประมาณการ', fromPackage: 'ตัดจากแพ็ก',
     buyPackage: 'บันทึกซื้อแพ็กใหม่', buyConfirm: 'บันทึกว่าซื้อแพ็กใหม่',
     history: 'ประวัติ', openChat: 'เปิดแชท', clientView: 'ดูมุมมองผู้จ่าย',
-    edit: 'แก้ไข', sendSummary: 'ส่งสรุปให้ผู้ปกครอง', usedOfTotal: 'ใช้ไป / ทั้งหมด', boughtAt: 'ซื้อเมื่อ', noHistory: 'ยังไม่มีประวัติ',
+    edit: 'แก้ไข', sendSummary: 'ส่งสรุปให้ผู้ปกครอง',
+    homework: 'คัดลอกข้อความการบ้าน', homeworkHint: 'พิมพ์การบ้านหรือสิ่งที่ฝากผู้ปกครอง — ไม่บันทึก คัดลอกแล้ววางในแชทได้เลย', homeworkCopy: 'คัดลอก', homeworkField: 'การบ้านวันนี้', usedOfTotal: 'ใช้ไป / ทั้งหมด', boughtAt: 'ซื้อเมื่อ', noHistory: 'ยังไม่มีประวัติ',
   },
   billing: {
     closeMonth: 'ปิดยอดเดือนนี้', closeConfirm: 'จะสร้างบิล',
