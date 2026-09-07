@@ -1,6 +1,8 @@
 // เปลือกบาง ๆ รอบ Supabase — ฟังก์ชันทุกตัวเรียกผ่านที่นี่ จะได้ mock ได้ตอนเทส
 // ตรรกะการตัดสินใจทั้งหมดอยู่ใน src/core/lineProtocol.ts และ src/core/lineDelivery.ts
-import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
+// ใช้ npm: ของ Deno เอง ไม่ผ่าน esm.sh — เคยพัง CI เพราะ CDN นั้นจ่ายไฟล์ย่อยไม่ครบ
+// (Supabase Edge Runtime รองรับ npm specifier อยู่แล้ว)
+import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2'
 
 export const requireEnv = (name: string): string => {
   const value = Deno.env.get(name)?.trim()
