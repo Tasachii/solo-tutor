@@ -12,3 +12,6 @@ dist
 # agent state (Claude / Codex)
 .omc/
 .omx/
+
+# สถานะการเชื่อมโปรเจกต์ของ Supabase CLI — ของเครื่องใครเครื่องมัน
+supabase/.temp/
