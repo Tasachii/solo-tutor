@@ -15,9 +15,32 @@ export interface SyncMeta {
   providerId: string
   /** revision บนคลาวด์ที่เครื่องนี้เห็นล่าสุด */
   cloudRevision: number
-  /** state.revision ของเครื่องนี้ ณ ตอนซิงก์ล่าสุด */
-  localRevision: number
+  /** ลายนิ้วมือของสมุดบัญชีเครื่องนี้ ณ ตอนซิงก์ล่าสุด (ไม่ใช่ state.revision — ดู ledgerFingerprint) */
+  localFingerprint: string
   at: string
+}
+
+/**
+ * "เปลี่ยน" ต้องแปลว่าสมุดบัญชีเปลี่ยน ไม่ใช่ state.revision ขยับ — track('app_open') ทุกครั้งที่เปิดแอป
+ * ก็ commit revision ใหม่ ถ้าใช้ revision สองเครื่องจะชนกันทุกครั้งที่อีกเครื่องแค่เปิดดู
+ * จึง hash เฉพาะตารางที่มีความหมาย ตัด events / today / revision / คิวส่ง ออก
+ */
+export function ledgerFingerprint(s: AppState): string {
+  const pick = {
+    mode: s.mode, professionId: s.professionId, provider: s.provider, style: s.style ?? null, onboarded: s.onboarded,
+    clients: s.clients, subjects: s.subjects, units: s.units, completions: s.completions, invoices: s.invoices,
+    payments: s.payments, receipts: s.receipts, messages: s.messages, chats: s.chats, counters: s.counters,
+    lastBackupAt: s.lastBackupAt ?? null, lineWorkspaceId: s.lineWorkspaceId ?? null, lineProviderId: s.lineProviderId ?? null,
+  }
+  const text = JSON.stringify(pick)
+  // FNV-1a 32 บิต สองรอบด้วย seed ต่างกัน — พอสำหรับ "เท่ากันไหม" ไม่ใช่ความปลอดภัย
+  let a = 0x811c9dc5, b = 0x9747b28c
+  for (let i = 0; i < text.length; i += 1) {
+    const c = text.charCodeAt(i)
+    a = Math.imul(a ^ c, 0x01000193) >>> 0
+    b = Math.imul(b ^ c, 0x01000193) >>> 0
+  }
+  return `${a.toString(16).padStart(8, '0')}${b.toString(16).padStart(8, '0')}:${text.length}`
 }
 
 export interface CloudSnapshot {
@@ -38,7 +61,7 @@ export type SyncDecision = 'push' | 'pull' | 'conflict' | 'idle'
  * - เคยซิงก์: เปลี่ยนฝั่งเดียว → ตามฝั่งนั้น · เปลี่ยนทั้งสอง → conflict · ไม่เปลี่ยน → idle
  */
 export function decideSync(
-  local: { revision: number; hasData: boolean },
+  local: { fingerprint: string; hasData: boolean },
   meta: SyncMeta | null,
   cloud: { revision: number } | null,
   providerId: string,
@@ -46,7 +69,7 @@ export function decideSync(
   if (!cloud) return 'push'
   const known = meta && meta.providerId === providerId ? meta : null
   if (!known) return local.hasData ? 'conflict' : 'pull'
-  const localChanged = local.revision !== known.localRevision
+  const localChanged = local.fingerprint !== known.localFingerprint
   const cloudChanged = cloud.revision !== known.cloudRevision
   if (localChanged && cloudChanged) return 'conflict'
   if (localChanged) return 'push'
@@ -64,7 +87,7 @@ export const readSyncMeta = (): SyncMeta | null => {
     if (!raw) return null
     const m = JSON.parse(raw) as Partial<SyncMeta>
     if (typeof m.providerId !== 'string' || typeof m.cloudRevision !== 'number'
-      || typeof m.localRevision !== 'number' || typeof m.at !== 'string') return null
+      || typeof m.localFingerprint !== 'string' || typeof m.at !== 'string') return null
     return m as SyncMeta
   } catch {
     return null

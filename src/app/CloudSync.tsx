@@ -3,7 +3,7 @@ import { SCHEMA, useStore } from '../core/store'
 import { getSession, getSupabaseConfig, signOut, SupabaseRestError, type SupabaseSession } from '../integrations/supabaseRest'
 import { deleteSnapshot, readSnapshot, saveSnapshot } from '../integrations/cloudApi'
 import {
-  decideSync, hasLedgerData, packSnapshot, readSyncMeta, unpackSnapshot, writeSyncMeta,
+  decideSync, hasLedgerData, ledgerFingerprint, packSnapshot, readSyncMeta, unpackSnapshot, writeSyncMeta,
   type CloudSnapshot, type SyncDecision,
 } from '../core/cloudSync'
 import { forgetKeys, loadKey, rememberKeyFromPassword } from '../core/cloudKey'
@@ -88,7 +88,7 @@ export function CloudSyncProvider({ children }: { children: ReactNode }) {
     const sealed = await packSnapshot(st, key, at)
     const res = await saveSnapshot({ expected, revision: expected + 1, schema: SCHEMA, ...sealed, device: deviceLabel() })
     if (!res.ok) { setCloud(await readSnapshot()); setStatus('conflict'); return }
-    writeSyncMeta({ providerId: s.user.id, cloudRevision: res.revision, localRevision: st.revision, at })
+    writeSyncMeta({ providerId: s.user.id, cloudRevision: res.revision, localFingerprint: ledgerFingerprint(st), at })
     setLastAt(at); setCloud(null); setStatus('synced')
   }, [])
 
@@ -101,11 +101,10 @@ export function CloudSyncProvider({ children }: { children: ReactNode }) {
       setCloud(head); setStatus('error'); setError(copy.menu.restoreBad[r.reason]); return
     }
     if (r.state.mode !== 'real') { setCloud(head); setStatus('error'); setError(copy.account.cloudNotReal); return }
-    const before = stateRef.current.revision
     if (!dispatch({ type: 'restore', state: r.state })) { setStatus('error'); setError(copy.account.applyFailed); return }
-    // commit ของ store ตั้ง revision = ของเดิม + 1 เสมอ (ดู dispatch ใน core/store) — จดไว้ว่ารอบนี้เท่ากับคลาวด์แล้ว
+    // ลายนิ้วมือของก้อนที่เพิ่งวาง — store อาจ normalize เพิ่มร่างข้อความให้ รอบถัดไปก็แค่ push ทับ ไม่ใช่ conflict
     const at = new Date().toISOString()
-    writeSyncMeta({ providerId: s.user.id, cloudRevision: head.revision, localRevision: before + 1, at })
+    writeSyncMeta({ providerId: s.user.id, cloudRevision: head.revision, localFingerprint: ledgerFingerprint(r.state), at })
     setLastAt(at); setCloud(null); setStatus('synced')
   }, [dispatch])
 
@@ -118,7 +117,7 @@ export function CloudSyncProvider({ children }: { children: ReactNode }) {
     try {
       const head = await readSnapshot()
       await refreshPlan()
-      const decision = force ?? decideSync({ revision: st.revision, hasData: hasLedgerData(st) }, readSyncMeta(), head, s.user.id)
+      const decision = force ?? decideSync({ fingerprint: ledgerFingerprint(st), hasData: hasLedgerData(st) }, readSyncMeta(), head, s.user.id)
       if (decision === 'push') await push(head?.revision ?? 0)
       else if (decision === 'pull') { if (head) await pull(head); else await push(0) }
       else if (decision === 'conflict') { setCloud(head); setStatus('conflict') }
