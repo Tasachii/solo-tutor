@@ -14,6 +14,8 @@ import { money, periodOf, periodThaiFull } from '../core/format'
 import { BottomSheet, EmptyState, Skeleton, StatCard } from './components'
 import { useToast } from './components/Toast'
 import SlipSheet from './SlipSheet'
+import { copyText } from './share'
+import { nudgeText } from '../core/messages'
 import ShareCard from './components/ShareCard'
 import type { Invoice } from '../core/types'
 import type { AppState } from '../core/types'
@@ -119,7 +121,16 @@ export default function Billing() {
                 <span className="srow__meta">{inv ? `${money(inv.total)} · ${copy.billing.status[inv.status]}${inv.status !== 'paid' ? ` · คงเหลือ ${money(balanceDue(state, inv.id))}` : ''}` : copy.billing.noInvoices}</span>
               </span>
               {inv?.status === 'draft' && <button className="btn btn--secondary btn--sm" onClick={() => nav('/app/admin?tab=drafts')}>{copy.billing.viewMessage}</button>}
-              {(inv?.status === 'sent' || inv?.status === 'overdue') && <button className="btn btn--primary btn--sm" onClick={() => setSlipFor(inv)}>{state.mode === 'real' ? copy.billing.attachSlipReal : copy.billing.attachSlip}</button>}
+              {(inv?.status === 'sent' || inv?.status === 'overdue') && <span className="srow__acts">
+                <button className="btn btn--primary btn--sm" onClick={() => setSlipFor(inv)}>{state.mode === 'real' ? copy.billing.attachSlipReal : copy.billing.attachSlip}</button>
+                <button className="btn btn--ghost btn--sm" onClick={() => {
+                  // คัดลอกอย่างเดียว — ไม่แตะสถานะบิลและไม่เข้าคิวส่ง ครูวางในแชทเองตามสะดวก
+                  void copyText(nudgeText(state, inv)).then((ok) => {
+                    if (ok) track('copy_nudge', { period })
+                    toast.push({ text: ok ? copy.toast.copied : copy.toast.copyFailed, tone: ok ? 'ok' : 'danger' })
+                  })
+                }}>{copy.billing.copyNudge}</button>
+              </span>}
               {inv?.status === 'paid' && rc && <button className="btn btn--ghost btn--sm" onClick={() => nav(`/receipt/${rc.id}`)}>{copy.billing.viewReceipt}</button>}
             </li>
           )

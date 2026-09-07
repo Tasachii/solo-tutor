@@ -95,6 +95,21 @@ export function reminderText(state: AppState, inv: Invoice, key: 'soft' | 'clear
   })
 }
 
+/**
+ * ข้อความสั้นสำหรับปุ่ม "คัดลอกข้อความแจ้งเตือน" บนบิลที่ยังไม่จ่าย — ครูวางในแชทเอง
+ * ไม่ผ่านคิวส่งและไม่เปลี่ยนสถานะบิล จำนวนครั้งและยอดคงเหลือมาจาก ledger ล้วน
+ */
+export function nudgeText(state: AppState, inv: Invoice): string {
+  const templates = templatesFor(state.professionId)
+  const subject = subjectById(state, inv.subjectId)!
+  return render(templates.nudge, {
+    ...baseVars(state, subject),
+    periodThai: periodThai(inv.period),
+    qty: inv.kind === 'monthly' ? completionsIn(state, inv.subjectId, inv.period).length : inv.lines.reduce((n, l) => n + l.qty, 0),
+    total: money(balanceDue(state, inv.id)),
+  })
+}
+
 /** แจ้งเลื่อนคาบ — เกิดจากการกระทำของครู ไม่ใช่ derive จึงสร้างตอนกดเลื่อน */
 export function movedText(state: AppState, subject: Subject, from: { date: string }, to: { date: string; time: string }): string {
   return render(templatesFor(state.professionId).moved, {

@@ -9,6 +9,8 @@ export const tutorTemplates = {
     clear: 'เรียน{clientHonorific}{clientName} ขออนุญาตติดตามค่าเรียน{subjectName} เดือน {periodThai} {total} บาท ซึ่งเลยกำหนดมา {daysOverdue} วัน{p} หากสะดวก รบกวนชำระภายในวันนี้หรือพรุ่งนี้ได้ไหม{pq} รายละเอียดที่ {invoiceUrl} ขอบคุณ{p} 🙏',
     final: 'เรียน{clientHonorific}{clientName} ขออนุญาตเรียนแจ้งเรื่องค่าเรียน{subjectName} เดือน {periodThai} {total} บาท อีกครั้ง{p} หากมีเรื่องการชำระที่อยากปรึกษา ทักครูมาคุยได้เลยนะ{pq} ยินดีเสมอ{p} รายละเอียดที่ {invoiceUrl} 🙏',
   },
+  nudge:
+    'สวัสดี{p} {clientHonorific}{clientName} เดือน {periodThai} {subjectName}เรียนไป {qty} ครั้ง ยอดคงเหลือ {total} บาท{p} สแกนโอนได้ตามสะดวกเลยนะ{pq} ขอบคุณ{p}',
   renewal:
     'เรียน{clientHonorific}{clientName} ขอเรียนแจ้งว่าแพ็ก {packageTotal} ครั้งของ{subjectName} เหลืออีก {remaining} ครั้ง{p} หากสนใจต่อแพ็กใหม่ {packageTotal} ครั้ง {packagePrice} บาท ดูรายละเอียดได้ที่ {invoiceUrl} {p} 🙏',
   renewalExhausted:

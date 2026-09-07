@@ -13,6 +13,8 @@ export interface ProfessionMessages {
   invoice: string
   invoiceFlat: string
   reminder: { soft: string; clear: string; final: string }
+  /** ข้อความสั้นให้ครูคัดลอกไปวางเอง — ใช้ยอดคงเหลือและจำนวนครั้งจาก ledger */
+  nudge: string
   renewal: string
   renewalExhausted: string
   receipt: string

@@ -229,7 +229,7 @@ export const copy = {
   billing: {
     closeMonth: 'ปิดยอดเดือนนี้', closeConfirm: 'จะสร้างบิล',
     groupMonthly: 'รายเดือน', groupPackage: 'แพ็ก — ต้องชวนต่อ',
-    viewMessage: 'ดูข้อความ', attachSlip: 'แนบสลิป (จำลอง)', attachSlipReal: 'รับยอดจากสลิป', viewReceipt: 'ดูใบเสร็จ',
+    viewMessage: 'ดูข้อความ', copyNudge: 'คัดลอกข้อความแจ้งเตือน', attachSlip: 'แนบสลิป (จำลอง)', attachSlipReal: 'รับยอดจากสลิป', viewReceipt: 'ดูใบเสร็จ',
     allReceipts: 'ใบเสร็จทั้งหมด', exportCsv: 'ดาวน์โหลด CSV',
     exportAttendance: 'การเข้าเรียน', exportBilling: 'บิลและการชำระ',
     backupWarn: 'ยังไม่ได้สำรองข้อมูลมา {days} วัน — ล้างแคชแล้วข้อมูลหาย',
@@ -326,6 +326,7 @@ export const copy = {
     receiptIssued: 'ออกใบเสร็จแล้ว',
     exported: 'ดาวน์โหลดแล้ว',
     copied: 'คัดลอกแล้ว',
+    copyFailed: 'คัดลอกไม่สำเร็จ กรุณาเลือกข้อความแล้วคัดลอกเอง',
     saved: 'บันทึกแล้ว',
   },
   errors: {

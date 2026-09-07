@@ -235,7 +235,7 @@ export default function Admin() {
                     onSend={() => { void openFor(m) }}
                     onSent={confirmSent}
                     onCancel={cancelSend}
-                    onCopy={() => { void copyText(m.draft).then((ok) => toast.push({ text: ok ? copy.toast.copied : 'คัดลอกไม่สำเร็จ กรุณาเลือกข้อความแล้วคัดลอกเอง', tone: ok ? 'ok' : 'danger' })) }}
+                    onCopy={() => { void copyText(m.draft).then((ok) => toast.push({ text: ok ? copy.toast.copied : copy.toast.copyFailed, tone: ok ? 'ok' : 'danger' })) }}
                     onSkip={() => { if (!commit({ type: 'skipMessage', id: m.id })) return; track('skip_message', { kind: m.kind }); toast.push({ text: copy.toast.messageSkipped }) }}
                     onEdit={(t) => { if (!commit({ type: 'editMessage', id: m.id, draft: t })) return false; track('edit_message', { kind: m.kind }); return true }} />
                 ))}
