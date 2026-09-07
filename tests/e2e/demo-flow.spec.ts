@@ -1,4 +1,5 @@
 import { expect, test, type Page } from './fixtures'
+import { copy } from '../../src/copy'
 
 /**
  * เดินเส้นทางเดโมทั้งเส้นบน build จริง
