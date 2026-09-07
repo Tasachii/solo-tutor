@@ -1,7 +1,8 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { useStore } from './core/store'
 import StorageStatus from './app/StorageStatus'
+import { sendUsage } from './core/usage'
 
 import Landing from './platform/Landing'
 import Pricing from './platform/Pricing'
@@ -20,9 +21,20 @@ import LineSettings from './app/LineSettings'
 import Legal from './platform/Legal'
 
 export default function App() {
-  const { didReset, track } = useStore()
+  const { state, didReset, track } = useStore()
 
-  useEffect(() => { track('app_open') }, [track])
+  useEffect(() => { track('app_open'); sendUsage('app_open', 1, state.mode) }, [track]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ตัวนับ 4 เหตุการณ์สำหรับทีม — ดูจากความยาวรายการที่เปลี่ยน ไม่ต้องแตะ reducer
+  const seen = useRef({ subjects: state.subjects.length, invoices: state.invoices.length, payments: state.payments.length })
+  useEffect(() => {
+    const prev = seen.current
+    const next = { subjects: state.subjects.length, invoices: state.invoices.length, payments: state.payments.length }
+    if (next.subjects !== prev.subjects) sendUsage('students_changed', next.subjects, state.mode)
+    if (next.invoices > prev.invoices) sendUsage('invoice_issued', next.invoices - prev.invoices, state.mode)
+    if (next.payments > prev.payments) sendUsage('payment_recorded', next.payments - prev.payments, state.mode)
+    seen.current = next
+  }, [state.subjects.length, state.invoices.length, state.payments.length, state.mode])
   if (didReset) return <StorageStatus />
 
   return (

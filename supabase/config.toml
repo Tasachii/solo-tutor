@@ -28,3 +28,6 @@ verify_jwt = false
 
 [functions.report-error]
 verify_jwt = false
+
+[functions.usage]
+verify_jwt = false

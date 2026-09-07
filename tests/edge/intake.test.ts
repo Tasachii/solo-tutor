@@ -34,3 +34,16 @@ Deno.test('error report clips every field and never accepts unknown ones', () =>
   equal(normalizeReport({ stack: 'no message' }), null)
   equal(normalizeReport({ message: 'x', mode: 'weird' })!.mode, null)
 })
+
+import { normalizeUsage } from '../../supabase/functions/usage/index.ts'
+
+Deno.test('usage accepts only the four agreed events with a uuid and a bounded count', () => {
+  const id = '3fef1b5f-0dfd-4beb-8f4c-c779c07a2670'
+  equal(normalizeUsage({ teacher_id: id, event: 'invoice_issued', count: 3, mode: 'real', student: 'น้องปลา' }),
+    { teacher_id: id, event: 'invoice_issued', count: 3, mode: 'real' })
+  equal(normalizeUsage({ teacher_id: id, event: 'login', count: 1 }), null)
+  equal(normalizeUsage({ teacher_id: 'not-a-uuid', event: 'app_open', count: 1 }), null)
+  equal(normalizeUsage({ teacher_id: id, event: 'app_open', count: -1 }), null)
+  equal(normalizeUsage({ teacher_id: id, event: 'app_open', count: 1.5 }), null)
+  equal(normalizeUsage({ teacher_id: id, event: 'app_open', count: 1, mode: 'weird' })!.mode, null)
+})
