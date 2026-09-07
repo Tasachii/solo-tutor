@@ -1,9 +1,9 @@
-# Solo Freelance
+# Solo Tutor
 
 แอดมินแบบ local-first สำหรับติวเตอร์ที่รับงานเอง เก็บเงินเอง และตอบแชทเอง
 เดโมเป็น static app ข้อมูลอยู่ในเบราว์เซอร์ ไม่มีบัญชีผู้ใช้หรือ cloud sync และไม่รับชำระเงินแทนผู้ให้บริการ
 
-เดโม: https://tasachii.github.io/solo-freelance/
+เดโม: https://tasachii.github.io/solo-tutor/
 
 ---
 

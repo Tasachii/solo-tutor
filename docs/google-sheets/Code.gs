@@ -1,5 +1,5 @@
 /**
- * Solo Freelance — สำรองข้อมูลลง Google Sheets ของครูเอง
+ * Solo Tutor — สำรองข้อมูลลง Google Sheets ของครูเอง
  * วางไฟล์นี้ใน Apps Script ที่ผูกกับสเปรดชีต แล้ว Deploy เป็น Web App
  * อ่านขั้นตอนแบบภาพใน docs/google-sheets/README.md
  *

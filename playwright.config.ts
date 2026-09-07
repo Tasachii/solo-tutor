@@ -1,7 +1,7 @@
 import { defineConfig, devices } from '@playwright/test'
 
 const port = Number(process.env.SOLO_QA_PORT ?? 4173)
-const baseURL = `http://localhost:${port}/solo-freelance/`
+const baseURL = `http://localhost:${port}/solo-tutor/`
 
 /** เทสวิ่งกับ build จริงเสมอ ไม่ใช่ dev server — เพราะสิ่งที่คนเห็นคือ dist */
 export default defineConfig({

@@ -50,8 +50,8 @@ test('no page calls the product plain "Solo" any more', async ({ page }) => {
   for (const hash of ['#/', '#/pricing', '#/start', '?scenario=default#/app/billing']) {
     await page.goto(hash.startsWith('?') ? hash : `?scenario=default${hash}`)
     const text = await page.locator('body').innerText()
-    // อนุญาตเฉพาะ "Solo Freelance" — คำว่า Solo โดดๆ ต้องไม่มี
-    expect(text.replace(/Solo Freelance/g, ''), hash).not.toMatch(/\bSolo\b/)
+    // อนุญาตเฉพาะ "Solo Tutor" — คำว่า Solo โดดๆ ต้องไม่มี
+    expect(text.replace(/Solo Tutor/g, ''), hash).not.toMatch(/\bSolo\b/)
   }
 })
 
@@ -71,7 +71,7 @@ test('every sub-page has a way back to where it came from', async ({ page }) => 
 
   // ใบเสร็จมีปุ่มกลับอยู่แล้ว · หน้าเลือกรูปแบบ/ราคา กลับหน้าแรกได้จากชื่อแบรนด์
   await page.goto('#/pricing')
-  await page.getByRole('link', { name: /Solo Freelance/ }).first().click()
+  await page.getByRole('link', { name: /Solo Tutor/ }).first().click()
   await expect(page).toHaveURL(/#\/$/)
 })
 

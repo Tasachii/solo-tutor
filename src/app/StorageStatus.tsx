@@ -36,7 +36,7 @@ export default function StorageStatus() {
         }
         const reason = result.reason === 'unreadable' ? 'อ่านไฟล์ไม่ได้หรือไฟล์เสียหาย'
           : result.reason === 'wrongVersion' ? 'ไฟล์มาจากเวอร์ชันที่ระบบนี้ยังไม่รองรับ'
-            : 'ไฟล์นี้ไม่ใช่ไฟล์สำรองของ Solo Freelance หรือข้อมูลไม่ครบ'
+            : 'ไฟล์นี้ไม่ใช่ไฟล์สำรองของ Solo Tutor หรือข้อมูลไม่ครบ'
         setActionError(`${reason} กรุณาเลือกไฟล์สำรอง .json ไฟล์อื่น`)
       }}>กู้คืนจากไฟล์สำรอง</button>}
       {!didReset && (writeStatus === 'conflict' || writeStatus === 'error') && (

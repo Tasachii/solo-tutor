@@ -1,13 +1,18 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
+import { professions } from '../professions'
 import { copy } from '../copy'
 import { DemoBadge, Icon, Mascot, PenguinMark } from '../app/components'
 import { AppearanceButton, ThemeToggle } from './ThemeToggle'
+import WaitlistSheet from './WaitlistSheet'
 
 /**
  * หน้าแรกเป็นของคนที่จะใช้แอปจริง ไม่ใช่ของคนที่มาตัดสิน
  * โฉม Navy: พาดหัวไล่สี + กองการ์ดตัวอย่างหลายอาชีพ — ตัวเลขในการ์ดเป็นภาพประกอบ ไม่ใช่ข้อมูลจริง
  */
 export default function Landing() {
+  const [lead, setLead] = useState<string | null>(null)
+  const soon = professions.filter((p) => p.status !== 'live')
   const h = copy.landing.hero
 
   return (
@@ -89,11 +94,28 @@ export default function Landing() {
         <Link className="btn btn--primary" to="/start">{copy.landing.tryNow}</Link>
       </section>
 
+      {/* อาชีพอื่นยังเปิดไม่ได้ จึงไม่ใช่ "ตัวเลือก" — บอกให้รู้ว่ากำลังมา ก็พอ */}
+      <p className="soonline">
+        <span className="soonline__l">{copy.landing.comingSoon}</span>
+        {soon.map((p) => (
+          <span key={p.id} className="soonline__i">
+            <span aria-hidden="true">{p.icon}</span> {p.name}
+          </span>
+        ))}
+        <button className="soonline__b" onClick={() => setLead(soon[0]?.id)}>
+          {copy.landing.notifyMe}
+        </button>
+      </p>
+
       <footer className="land__foot">
         <span>{copy.brand.name} · {copy.brand.tagline}</span>
         <span>{copy.landing.footerTeam}</span>
         <Link to="/pricing">{copy.pricing.title}</Link>
       </footer>
+
+      {lead !== null && (
+        <WaitlistSheet preselect={lead || undefined} onClose={() => setLead(null)} />
+      )}
     </div>
   )
 }

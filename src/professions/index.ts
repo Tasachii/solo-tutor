@@ -2,12 +2,13 @@ import type { ProfessionTemplate } from './types'
 import tutor from './tutor'
 import nail from './nail'
 import barber from './barber'
-import clean from './clean'
+import fortune from './fortune'
+import massage from './massage'
 import type { BillingMode } from '../core/types'
 import type { ProfessionMessages } from './types'
 
 /** อาชีพใหม่ = เพิ่มไฟล์เดียวแล้วใส่ใน list นี้ */
-export const professions: ProfessionTemplate[] = [tutor, nail, barber, clean]
+export const professions: ProfessionTemplate[] = [tutor, nail, barber, fortune, massage]
 
 export function professionById(id: string): ProfessionTemplate {
   return professions.find((p) => p.id === id) ?? professions[0]

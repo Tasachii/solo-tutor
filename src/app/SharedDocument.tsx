@@ -26,7 +26,7 @@ export default function SharedDocument() {
       <p>รับชำระแล้ว <b className="num">{money(d.paid)} บาท</b></p>
       <p>คงเหลือ <b className="num">{money(balance)} บาท</b></p>
       {balance > 0 && <div className="card"><p>โอนผ่านพร้อมเพย์</p><strong>{d.destination || 'กรุณาติดต่อผู้ส่งเพื่อขอข้อมูลชำระเงิน'}</strong><p className="hint">ตรวจชื่อผู้รับในแอปธนาคารให้ตรงกับผู้ให้บริการก่อนยืนยันโอน</p></div>}
-      <p className="paper__fine">สำเนาที่ผู้ส่งจัดทำ · Solo Freelance ไม่ได้รับรองลายเซ็นหรือยืนยันการโอนเงิน ติดต่อผู้ส่งเพื่อตรวจสอบยอดล่าสุด</p>
+      <p className="paper__fine">สำเนาที่ผู้ส่งจัดทำ · Solo Tutor ไม่ได้รับรองลายเซ็นหรือยืนยันการโอนเงิน ติดต่อผู้ส่งเพื่อตรวจสอบยอดล่าสุด</p>
     </article>
     <p className="hint no-print">ลิงก์นี้มีข้อมูลของคุณ ผู้ที่ได้รับลิงก์สามารถเปิดอ่านได้</p>
     <button className="btn btn--primary no-print" onClick={() => window.print()}>พิมพ์ / บันทึก PDF</button>

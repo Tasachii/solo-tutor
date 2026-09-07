@@ -22,10 +22,11 @@ test('หน้าแรกมีทางเข้าเดียว ไม่�
     expect(href).toContain('/start')
   }
 
-  // หน้าแรกพูดกับฟรีแลนซ์ทุกอาชีพ — ไม่มีรายการอาชีพให้เลือกหรือรอ
-  await expect(page.locator('.soonline')).toHaveCount(0)
+  // อาชีพที่ยังไม่เปิดบอกให้รู้ได้ แต่ต้องไม่ทำเป็นตัวเลือกให้กด
+  await expect(page.locator('.soonline')).toContainText('ช่างทำเล็บ')
+  await expect(page.locator('.soonline')).toContainText('หมอดู')
+  await expect(page.locator('.soonline')).toContainText('หมอนวด')
   await expect(page.locator('.picker__i')).toHaveCount(0)
-  await expect(page.getByText('เร็วๆ นี้')).toHaveCount(0)
 
   // ของสำหรับนำเสนอไม่ควรอยู่หน้าที่ผู้ใช้เข้ามาใช้งาน
   await expect(page.locator('.engine')).toHaveCount(0)

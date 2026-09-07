@@ -426,6 +426,14 @@ body:has(.land){background:radial-gradient(45% 45% at 8% 0%,var(--glow-a),transp
   background:var(--warn-soft);color:var(--warn);font-size:var(--fs-small);font-weight:600}
 .urow__move{flex:none}
 
+/* อาชีพที่ยังไม่เปิด — บรรทัดเดียว ไม่ใช่เมนูให้เลือก */
+.soonline{display:flex;flex-wrap:wrap;align-items:center;gap:var(--space-2) var(--space-3);
+  margin:0;padding:var(--space-3) 0 var(--space-6);font-size:var(--fs-small);color:var(--muted)}
+.soonline__l{font-weight:600;color:var(--faint,var(--muted))}
+.soonline__i{white-space:nowrap;display:inline-flex;align-items:center;gap:5px}
+.soonline__b{min-height:var(--tap);padding:0 var(--space-2);color:var(--brand);
+  font-size:var(--fs-small);font-weight:600;text-decoration:underline;text-underline-offset:3px}
+
 /* ปุ่มลบ — เป็นข้อความสีเตือน ไม่ใช่ปุ่มทึบ จะได้ไม่เด่นเท่าปุ่มหลัก */
 .btn--danger-text{color:var(--danger)}
 

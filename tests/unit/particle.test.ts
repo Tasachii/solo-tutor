@@ -22,7 +22,7 @@ const withInvoice = (particle?: AppState['provider']['particle']): { s: AppState
 
 describe('คำลงท้าย ครับ/ค่ะ', () => {
   it('ไม่มีเทมเพลตไหนฝัง ครับ/ค่ะ ไว้ตายตัว — ทุกอาชีพ', () => {
-    const all = [...strings(tutorTemplates), ...['barber', 'nail', 'clean'].flatMap((id) => strings(templatesFor(id)))]
+    const all = [...strings(tutorTemplates), ...['barber', 'nail', 'fortune', 'massage'].flatMap((id) => strings(templatesFor(id)))]
     expect(all.length).toBeGreaterThan(20)
     for (const t of all) {
       expect(t, t).not.toMatch(/ครับ|ค่ะ|คะ(?![฀-๿])/)

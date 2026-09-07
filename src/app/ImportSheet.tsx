@@ -15,7 +15,7 @@ import { useToast } from './components/Toast'
 const FIELDS: Field[] = ['name', 'payer', 'line', 'price']
 
 /**
- * นำเข้ารายชื่อจากไฟล์ที่ฟรีแลนซ์มีอยู่แล้ว
+ * นำเข้ารายชื่อจากไฟล์ที่ติวเตอร์มีอยู่แล้ว
  * เดาคอลัมน์ให้ก่อน แล้วให้แก้เอง — เดาผิดแล้วนำเข้าเงียบ ๆ แย่กว่าให้กดยืนยันหนึ่งครั้ง
  */
 export function ImportSheet({ onClose }: { onClose: () => void }) {

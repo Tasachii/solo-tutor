@@ -10,7 +10,7 @@ describe('profession-owned copy contract', () => {
   })
 
   it('generic service professions do not inherit tutor-specific words', () => {
-    for (const professionId of ['barber', 'nail', 'clean']) {
+    for (const professionId of ['barber', 'nail', 'fortune', 'massage']) {
       const copy = JSON.stringify(templatesFor(professionId))
       expect(copy).not.toContain('ค่าเรียน')
       expect(copy).not.toContain('คาบ')

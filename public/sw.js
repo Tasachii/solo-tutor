@@ -2,7 +2,7 @@
    หลักการ: หน้าเว็บเอาของใหม่ก่อนเสมอ (กันเดโมค้างเวอร์ชันเก่าตอน pitch)
    ส่วนไฟล์ asset มี hash ในชื่ออยู่แล้ว จึง cache ได้ยาวอย่างปลอดภัย */
 
-const VERSION = 'solo-freelance-v2' // บัมป์ = แอปที่ติดตั้งไว้ทิ้งแคชเก่าและโหลดโฉมใหม่
+const VERSION = 'solo-tutor-v3' // บัมป์ = แอปที่ติดตั้งไว้ทิ้งแคชเก่าและโหลดโฉมใหม่
 
 self.addEventListener('install', () => self.skipWaiting())
 

@@ -1,17 +1,17 @@
-# Prompt: Remodel แอป Solo Freelance ทั้งระบบ
+# Prompt: Remodel แอป Solo Tutor ทั้งระบบ
 
-> วิธีใช้: เปิด Claude Code ที่ `~/Documents/solo-freelance` แล้ววางทั้งไฟล์นี้เป็น prompt เดียว
+> วิธีใช้: เปิด Claude Code ที่ `~/Documents/solo-tutor` แล้ววางทั้งไฟล์นี้เป็น prompt เดียว
 > ขอบเขต: **แก้บนของเดิม ไม่รื้อ repo** — เก็บ `core/` (ledger, billing, messages) ที่ทำงานได้แล้วไว้ แล้ว remodel ชั้น data / UI / feature รอบมัน
 
 ---
 
 ## 0 · บริบทและกติกา
 
-Solo Freelance = แอดมิน AI สำหรับคนทำงานคนเดียว · ไม่มีชื่อย่อยรายอาชีพ อาชีพเป็นแค่ vocab ใน `src/professions/` (มติ 6 ก.ย.)
-Stack: Vite + React 18 + TypeScript + react-router (HashRouter) · static deploy บน GitHub Pages · repo `solo-freelance` (base `/solo-freelance/` — ห้ามเปลี่ยน ลิงก์ถูกแชร์แล้ว)
+Solo Tutor = แอดมิน AI สำหรับติวเตอร์ · ไม่มีชื่อย่อยรายอาชีพ อาชีพเป็นแค่ vocab ใน `src/professions/` (มติ 6 ก.ย.)
+Stack: Vite + React 18 + TypeScript + react-router (HashRouter) · static deploy บน GitHub Pages · repo `solo-tutor` (base `/solo-tutor/` — ห้ามเปลี่ยน ลิงก์ถูกแชร์แล้ว)
 
 **หลักการที่ห้ามละเมิด (เดิม — ยังใช้ทั้งหมด)**
-1. Solo Freelance ไม่ถือเงินของใคร — QR เป็นของผู้ให้บริการ เงินเข้าบัญชีเขาตรง
+1. Solo Tutor ไม่ถือเงินของใคร — QR เป็นของผู้ให้บริการ เงินเข้าบัญชีเขาตรง
 2. ตัวเลขทุกตัวมาจาก ledger — ไม่มีค่าคงที่ ไม่มี AI คำนวณเงิน
 3. AI ร่าง คนกดส่ง — ไม่มีข้อความไหนออกโดยผู้ใช้ไม่ได้กดส่ง
 4. `core/` กับ `app/` ไม่รู้จักอาชีพ — คำเฉพาะอาชีพอยู่ใน `professions/` และ `copy/` เท่านั้น

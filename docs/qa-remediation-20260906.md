@@ -1,4 +1,4 @@
-# ผลแก้ไข Solo Freelance จาก QA — 6 กันยายน 2026
+# ผลแก้ไข Solo Tutor จาก QA — 6 กันยายน 2026
 
 แก้ในโค้ดแล้ว **45 จาก 48 รายการ**; อีก **3 รายการแก้บางส่วน** และมีขอบเขตที่ยังต้องทำชัดเจนด้านล่าง ตัวเลขนี้หมายถึงรายการจาก audit เดิม ไม่ใช่การรับประกันว่าไม่มีบั๊กอื่น
 
@@ -83,4 +83,4 @@
 
 เอกสารแยกตามส่วน: [core](qa-core-fixes.md), [UI](qa-ui-fixes.md), [backend](qa-backend-fixes.md), [Supabase setup](../supabase/README.md)
 
-หลักฐาน audit และ logs: `/Users/tasachi/Documents/solo-freelance-qa-20260906/` — `fix-final-unit.log`, `fix-final-e2e.log`, `fix-db-integration.log`, `fix-edge-integration.log`, `fix-dependency-audit.json`, `fix-smoke.log`, `remediation.json` และภาพ `fix-*.png`
+หลักฐาน audit และ logs: `/Users/tasachi/Documents/solo-tutor-qa-20260906/` — `fix-final-unit.log`, `fix-final-e2e.log`, `fix-db-integration.log`, `fix-edge-integration.log`, `fix-dependency-audit.json`, `fix-smoke.log`, `remediation.json` และภาพ `fix-*.png`
