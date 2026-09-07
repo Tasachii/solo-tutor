@@ -37,7 +37,7 @@ test('หน้าราคามีปุ่มกลับหน้าแร�
   const back = page.locator('.backlink')
   await expect(back).toBeVisible()
   await back.click()
-  await expect(page.locator('.land__h1')).toContainText('แอดมิน')
+  await expect(page.locator('.land__h1')).toContainText(copy.landing.h1a) // ผูกกับ copy ไม่ใช่คำที่พิมพ์ค้าง
   await expect(page.locator('.plans')).toHaveCount(0)
 })
 
