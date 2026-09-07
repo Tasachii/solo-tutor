@@ -3,7 +3,7 @@ import { useStore } from '../core/store'
 import { professionById, professions } from '../professions'
 import { copy } from '../copy'
 import { BottomSheet } from '../app/components'
-import { WAITLIST_ENDPOINT, WAITLIST_FIELDS } from './config'
+import { getSupabaseConfig } from '../integrations/supabaseRest'
 import type { WaitlistEntry } from '../core/types'
 
 const MODES = ['per_unit', 'flat_monthly', 'package'] as const
@@ -17,6 +17,12 @@ export const waitlistDate = (date = new Date()): string => {
 
 export function waitlistDeliveryResult(endpoint: string, response: Pick<Response, 'ok' | 'type'> | null): 'local' | 'remote' {
   return endpoint && response?.ok && response.type !== 'opaque' ? 'remote' : 'local'
+}
+
+/** ปลายทางคือ Edge Function ของโปรเจกต์เดียวกับบัญชีครู — ไม่มีโปรเจกต์ = เก็บในเครื่องอย่างเดียว */
+export const waitlistEndpoint = (): string => {
+  const config = getSupabaseConfig()
+  return config ? `${config.url}/functions/v1/waitlist` : ''
 }
 
 export default function WaitlistSheet({ preselect, onClose }: { preselect?: string; onClose: () => void }) {
@@ -58,15 +64,17 @@ export default function WaitlistSheet({ preselect, onClose }: { preselect?: stri
     track('waitlist_submit', { professionId })
 
     let delivery: 'local' | 'remote' = 'local'
-    if (WAITLIST_ENDPOINT) {
+    const endpoint = waitlistEndpoint()
+    if (endpoint) {
       try {
-        const body = new FormData()
-        for (const [k, field] of Object.entries(WAITLIST_FIELDS)) {
-          const v = (entry as unknown as Record<string, unknown>)[k]
-          if (v !== undefined && v !== null && v !== '') body.append(field, Array.isArray(v) ? v.join(', ') : String(v))
-        }
-        const response = await fetch(WAITLIST_ENDPOINT, { method: 'POST', body })
-        delivery = waitlistDeliveryResult(WAITLIST_ENDPOINT, response)
+        // ส่งเฉพาะสิ่งที่ฟอร์มถาม — ไม่มีอะไรจาก state ของแอปติดไป
+        const response = await fetch(endpoint, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ professionId: entry.professionId, name: entry.name, contact: entry.contact,
+            size: entry.size, modes: entry.modes, concierge: entry.concierge }),
+          signal: AbortSignal.timeout(10_000),
+        })
+        delivery = waitlistDeliveryResult(endpoint, response)
       } catch (error) {
         console.warn('[solo] waitlist post failed, kept locally', error)
       }
@@ -149,7 +157,7 @@ export default function WaitlistSheet({ preselect, onClose }: { preselect?: stri
       )}
 
       <p className="hint">
-        {copy.waitlist.privacy}{!WAITLIST_ENDPOINT && ' · ข้อมูลจะบันทึกในเครื่องนี้เท่านั้น ทีมยังไม่ได้รับข้อมูล'}
+        {copy.waitlist.privacy}{!waitlistEndpoint() && ' · ข้อมูลจะบันทึกในเครื่องนี้เท่านั้น ทีมยังไม่ได้รับข้อมูล'}
       </p>
     </BottomSheet>
   )

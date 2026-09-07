@@ -1,0 +1,37 @@
+# ปลุกหลังบ้านให้ไม่หลับ + ตรวจว่ายังตอบอยู่ — ล้มเมื่อไหร่ GitHub ส่งอีเมลหาเจ้าของ repo เอง
+# Supabase แพลนฟรีหยุดโปรเจกต์ที่ไม่มีกิจกรรม 7 วัน การเรียก ping() แตะ Postgres จริงจึงนับเป็นกิจกรรม
+name: Uptime and keep-alive
+on:
+  schedule:
+    - cron: '17 */6 * * *'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    env:
+      SITE: https://tasachii.github.io/solo-tutor/
+      SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
+      PUBLISHABLE_KEY: ${{ vars.VITE_SUPABASE_PUBLISHABLE_KEY }}
+    steps:
+      - name: หน้าเว็บตอบ 200
+        run: |
+          code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 "$SITE")
+          echo "site $code"; test "$code" = "200"
+      - name: ฐานข้อมูลตื่นและตอบ pong
+        run: |
+          body=$(curl -s --max-time 30 -X POST "$SUPABASE_URL/rest/v1/rpc/ping" \
+            -H "apikey: $PUBLISHABLE_KEY" -H "Authorization: Bearer $PUBLISHABLE_KEY" \
+            -H 'content-type: application/json' -d '{}')
+          echo "rpc ping -> $body"; test "$body" = '"pong"'
+      - name: Edge Functions ยังอยู่ (preflight จาก origin จริง)
+        run: |
+          for fn in line-connect line-send waitlist report-error; do
+            code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 30 -X OPTIONS \
+              "$SUPABASE_URL/functions/v1/$fn" -H "Origin: https://tasachii.github.io" \
+              -H 'Access-Control-Request-Method: POST')
+            echo "$fn preflight $code"; test "$code" = "204"
+          done
+          code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 30 -X OPTIONS "$SUPABASE_URL/functions/v1/line-webhook")
+          echo "line-webhook $code (405 = มีชีวิต ปฏิเสธ method ตามที่ควร)"; test "$code" = "405"

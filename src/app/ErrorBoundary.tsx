@@ -2,6 +2,7 @@ import { Component, type ErrorInfo, type ReactNode } from 'react'
 import { copy } from '../copy'
 import { STORAGE_KEY } from '../core/store'
 import { download } from '../core/export'
+import { buildErrorReport, bundleVersion, reportError } from '../core/errorReport'
 
 interface State { failed: boolean }
 
@@ -18,6 +19,11 @@ export default class ErrorBoundary extends Component<{ children: ReactNode }, St
 
   componentDidCatch(err: Error, info: ErrorInfo): void {
     console.error('[solo] render failed', err, info.componentStack)
+    // แจ้งหลังบ้านว่าพังที่ไหน — ไม่งั้นครูเจอจอนี้แล้วเราไม่มีทางรู้
+    reportError(buildErrorReport(err, {
+      route: location.hash, mode: this.isReal() ? 'real' : 'demo',
+      userAgent: navigator.userAgent, appVersion: bundleVersion(),
+    }))
   }
 
   /** อ่าน state ดิบจาก storage — ตอนพัง React tree ใช้ไม่ได้ ต้องไปเอาเอง */

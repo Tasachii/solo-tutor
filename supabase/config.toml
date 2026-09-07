@@ -21,3 +21,10 @@ enable_signup = true
 # อีเมลในตัวของ Supabase ส่งได้ 2 ฉบับ/ชม. — เปิดยืนยันไว้ = ครูคนที่ 3 สมัครไม่ได้
 # เปิดกลับเมื่อต่อ SMTP จริงแล้ว (เฟส 3 ในแผน)
 enable_confirmations = false
+
+# สองตัวนี้รับจากคนที่ยังไม่มีบัญชี (จองสิทธิ์ · รายงาน error) — CORS จำกัด origin ใน handler แล้ว
+[functions.waitlist]
+verify_jwt = false
+
+[functions.report-error]
+verify_jwt = false
