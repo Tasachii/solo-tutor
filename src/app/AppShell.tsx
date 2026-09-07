@@ -20,6 +20,7 @@ import { THEMES, applyTheme, readTheme, type Theme } from '../core/theme'
 import { applySize, readSize, type DisplaySize } from '../core/display'
 import { ACCENTS, applyAccent, readAccent, type Accent } from '../core/accent'
 import { applyFrame, isFullscreen, readFrame, toggleFullscreen, type Frame } from '../core/present'
+import { useCloudSync } from './CloudSync'
 
 type MenuTab = 'general' | 'display' | 'demo'
 
@@ -51,6 +52,12 @@ export default function AppShell() {
   const real = state.mode === 'real'
   const toast = useToast()
   const drafts = draftCount(state)
+  const cloud = useCloudSync()
+  // สองเครื่องแก้พร้อมกัน — บอกครูทันทีทุกหน้า ไม่รอให้เปิดหน้าบัญชีเอง
+  useEffect(() => {
+    if (cloud.status !== 'conflict' || loc.pathname.endsWith('/settings/account')) return
+    toast.push({ text: copy.account.conflictToast, tone: 'warn', action: { label: copy.account.conflictCta, run: () => nav('/app/settings/account') } })
+  }, [cloud.status]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ยังไม่มีข้อมูลเลย = พาไป onboarding ก่อน
   useEffect(() => {
@@ -185,6 +192,7 @@ export default function AppShell() {
                 }}>{copy.menu.restore}</button>
                 <button className="row" onClick={() => { setMenu(false); setImportOpen(true) }}>{copy.importer.menu}</button>
                 <button className="row" onClick={() => { setMenu(false); download(rosterCsv(state), `รายชื่อ-${state.today}.csv`, 'text/csv;charset=utf-8') }}>{copy.importer.exportMenu}</button>
+                <button className="row" onClick={() => { setMenu(false); nav('/app/settings/account') }}>{copy.account.menu}{real && cloud.session ? ` · ${copy.account.status[cloud.status]}` : ''}</button>
                 <button className="row" onClick={() => { setMenu(false); nav('/app/settings/line') }}>เชื่อม LINE OA</button>
                 <button className="row" onClick={() => { setMenu(false); setSheetsOpen(true) }}>{copy.sheets.menu}</button>
                 {!real && <button className="row" onClick={() => { resetDemo(); setMenu(false) }}>{copy.menu.reset}</button>}

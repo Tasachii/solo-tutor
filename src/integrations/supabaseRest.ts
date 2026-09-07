@@ -95,12 +95,16 @@ const requireConfig = (): SupabaseConfig => {
 
 const storageKey = (config: SupabaseConfig): string => `${SESSION_PREFIX}${encodeURIComponent(config.url)}`
 
+/**
+ * localStorage ไม่ใช่ sessionStorage — แอปที่ติดตั้งลงจอเปิดใหม่ทุกวัน ถ้าต้องเข้าสู่ระบบทุกครั้ง
+ * ครูจะเลิกใช้ซิงก์ · ledger เองก็อยู่ใน localStorage อยู่แล้ว การเก็บ refresh token ที่นี่ไม่ได้เพิ่มความเสี่ยงของเครื่อง
+ */
 const storage = (): Storage => {
   try {
-    if (typeof sessionStorage === 'undefined') throw new Error('missing')
+    if (typeof localStorage === 'undefined') throw new Error('missing')
     // Access itself can throw when storage is disabled by the browser.
-    void sessionStorage.length
-    return sessionStorage
+    void localStorage.length
+    return localStorage
   } catch {
     throw new SupabaseRestError('storage-unavailable', 'เบราว์เซอร์ไม่อนุญาตให้เก็บสถานะการเข้าสู่ระบบ')
   }

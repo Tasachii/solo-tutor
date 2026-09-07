@@ -35,7 +35,7 @@ const jsonResponse = (body: unknown, status = 200) => new Response(JSON.stringif
 
 afterEach(() => {
   vi.restoreAllMocks()
-  sessionStorage.clear()
+  localStorage.clear()
   signOut()
   vi.unstubAllEnvs()
 })
@@ -81,7 +81,7 @@ describe('Supabase password session', () => {
     expect(new Headers(init?.headers).get('apikey')).toBe(publicKey)
     expect(new Headers(init?.headers).has('Authorization')).toBe(false)
     expect(JSON.parse(String(init?.body))).toEqual({ email: 'teacher@example.com', password: 'password-value' })
-    expect(Object.values(sessionStorage).join('')).not.toContain('password-value')
+    expect(Object.values(localStorage).join('')).not.toContain('password-value')
   })
 
   it('serializes replacement-token refresh across concurrent expired requests', async () => {
@@ -170,7 +170,7 @@ describe('authenticated REST helpers', () => {
       expect(headers.get('apikey')).toBe(publicKey)
       expect(headers.get('Authorization')).toBe('Bearer access-one')
     }
-    expect(Object.values(sessionStorage).join('')).not.toContain('not-stored-by-transport')
+    expect(Object.values(localStorage).join('')).not.toContain('not-stored-by-transport')
   })
 
   it('rejects external paths and never exposes a remote response body in errors', async () => {

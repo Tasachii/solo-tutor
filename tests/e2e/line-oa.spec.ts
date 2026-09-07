@@ -20,6 +20,7 @@ const installMockBackend = async (page: Page, options: MockOptions = {}) => {
     outboxStatus: '' as '' | 'queued' | 'processing' | 'sent',
     enqueueCount: 0,
     lineSendCount: 0,
+    snapshotSaves: 0,
     handled: [] as string[],
     escaped: [] as string[],
   }
@@ -48,6 +49,14 @@ const installMockBackend = async (page: Page, options: MockOptions = {}) => {
         access_token: 'qa-user-jwt', refresh_token: 'qa-refresh-token', expires_in: 3600,
         user: { id: providerId, email: 'teacher@example.com' },
       })
+    }
+    // ซิงก์คลาวด์ทำงานเบื้องหลังหลังเข้าสู่ระบบ — เทสนี้สนใจ LINE จึงตอบว่าว่างและรับ push ไว้เฉย ๆ
+    // ตัวนับการใช้งานและรายงานข้อผิดพลาดยิงจากทุกหน้า — รับไว้เฉย ๆ ไม่ใช่เรื่องของเทสนี้
+    if (url.pathname === '/functions/v1/usage' || url.pathname === '/functions/v1/report-error') return json({ ok: true })
+    if (url.pathname === '/rest/v1/ledger_snapshots' && request.method() === 'GET') return json([])
+    if (url.pathname === '/rest/v1/rpc/save_ledger_snapshot') {
+      state.snapshotSaves += 1
+      return json([{ ok: true, revision: state.snapshotSaves, updated_at: '2026-09-07T00:00:00Z' }])
     }
     if (url.pathname === '/rest/v1/line_channel_public' && request.method() === 'GET') {
       return json(state.connected ? [{

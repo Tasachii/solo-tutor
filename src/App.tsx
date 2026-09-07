@@ -18,6 +18,8 @@ import Onboarding from './app/Onboarding'
 import Receipt from './app/Receipt'
 import ClientPreview from './app/ClientPreview'
 import LineSettings from './app/LineSettings'
+import Account from './app/Account'
+import { CloudSyncProvider } from './app/CloudSync'
 import Legal from './platform/Legal'
 
 export default function App() {
@@ -46,7 +48,7 @@ export default function App() {
       <Route path="/start" element={<StylePicker />} />
       <Route path="/receipt/:id" element={<Receipt />} />
       <Route path="/client/:clientId" element={<ClientPreview />} />
-      <Route path="/app" element={<AppShell />}>
+      <Route path="/app" element={<CloudSyncProvider><AppShell /></CloudSyncProvider>}>
         <Route index element={<Navigate to="/app/today" replace />} />
         <Route path="today" element={<Today />} />
         <Route path="subjects" element={<Subjects />} />
@@ -54,6 +56,7 @@ export default function App() {
         <Route path="billing" element={<Billing />} />
         <Route path="admin" element={<Admin />} />
         <Route path="settings/line" element={<LineSettings />} />
+        <Route path="settings/account" element={<Account />} />
         <Route path="receipts" element={<ReceiptList />} />
         <Route path="onboarding" element={<Onboarding />} />
       </Route>
