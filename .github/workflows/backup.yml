@@ -1,5 +1,6 @@
 # Backup ฐานข้อมูลบนแพลนฟรี (Supabase ฟรีไม่มี backup ให้) — dump ทุกสัปดาห์ เข้ารหัส แล้วเก็บเป็น artifact 90 วัน
-# ต้องมี 2 secrets: SUPABASE_ACCESS_TOKEN (สร้างที่ supabase.com/dashboard/account/tokens) และ BACKUP_PASSPHRASE
+# ต้องมี 2 secrets: SUPABASE_DB_PASSWORD (รหัสฐานข้อมูลที่ตั้งตอนสร้างโปรเจกต์) และ BACKUP_PASSPHRASE
+# ต่อตรงผ่าน pooler (IPv4) ไม่ผ่าน Management API — token แบบจำกัดสิทธิ์ของ Supabase ทำ `link` ไม่ผ่านโดยไม่บอกว่าขาดอะไร
 # repo เป็นสาธารณะ ใครล็อกอิน GitHub ก็โหลด artifact ได้ จึงเข้ารหัสเสมอ ไม่มีข้อยกเว้น
 # ซ้อม restore แล้ว 8 ก.ย. 2569: schema+data ลง Postgres 16 ได้ครบ 14 ตาราง
 name: Weekly database backup
@@ -13,24 +14,27 @@ jobs:
   dump:
     runs-on: ubuntu-latest
     env:
-      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
       BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
       PROJECT_REF: qbuafdbmpkffzbkqoysb
+      POOLER_HOST: aws-0-ap-southeast-1.pooler.supabase.com
     steps:
       - name: ตรวจว่ามี secrets ครบ
         run: |
-          test -n "$SUPABASE_ACCESS_TOKEN" || { echo "::error::ยังไม่ได้ตั้ง secret SUPABASE_ACCESS_TOKEN — gh secret set SUPABASE_ACCESS_TOKEN"; exit 1; }
+          test -n "$SUPABASE_DB_PASSWORD" || { echo "::error::ยังไม่ได้ตั้ง secret SUPABASE_DB_PASSWORD — gh secret set SUPABASE_DB_PASSWORD -R Tasachii/solo-tutor"; exit 1; }
           test "${#BACKUP_PASSPHRASE}" -ge 24 || { echo "::error::BACKUP_PASSPHRASE ต้องยาวอย่างน้อย 24 ตัว — gh secret set BACKUP_PASSPHRASE"; exit 1; }
       - uses: actions/checkout@v7
       - uses: supabase/setup-cli@v1
         with:
           version: latest
-      - name: dump schema + data ผ่าน login role (ไม่ต้องรหัสฐานข้อมูล)
+      - name: dump schema + data ตรงจากฐานข้อมูล (ผ่าน session pooler ที่รองรับ IPv4)
         run: |
-          echo "" | supabase link --project-ref "$PROJECT_REF"
+          ENC=$(python3 -c 'import os,urllib.parse; print(urllib.parse.quote(os.environ["SUPABASE_DB_PASSWORD"], safe=""))')
+          echo "::add-mask::$ENC"
+          DB_URL="postgresql://postgres.${PROJECT_REF}:${ENC}@${POOLER_HOST}:5432/postgres"
           mkdir -p dump
-          supabase db dump --linked -f dump/schema.sql
-          supabase db dump --linked --data-only -f dump/data.sql
+          supabase db dump --db-url "$DB_URL" -f dump/schema.sql
+          supabase db dump --db-url "$DB_URL" --data-only -f dump/data.sql
           ls -la dump
       - name: เข้ารหัสก่อนออกจาก runner
         run: |
