@@ -93,6 +93,8 @@ export default function Pricing() {
       <footer className="land__foot">
         <Link to="/">{copy.brand.name}</Link>
         <span>{copy.landing.footerTeam}</span>
+        <Link to="/privacy">{copy.legal.footerPrivacy}</Link>
+        <Link to="/terms">{copy.legal.footerTerms}</Link>
       </footer>
 
       {lead && <WaitlistSheet onClose={() => setLead(false)} />}

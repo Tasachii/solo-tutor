@@ -644,3 +644,10 @@ body:has(.land){background:radial-gradient(45% 45% at 8% 0%,var(--glow-a),transp
 .line-parent > div { flex-basis: 100%; }
 .line-delivery { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
 .line-delivery > p { flex-basis: 100%; }
+
+/* หน้านโยบาย/ข้อกำหนด — อ่านยาว ๆ ให้สบายตา */
+.legal{max-width:680px;margin:0 auto}
+.legal__sec{margin:0 0 var(--space-5)}
+.legal__sec .land__h2{margin:0 0 var(--space-2);font-size:var(--fs-h2)}
+.legal__sec p{margin:0;color:var(--ink);line-height:1.75}
+.legal__x{margin-top:var(--space-6);color:var(--muted)}

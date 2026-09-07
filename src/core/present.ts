@@ -26,6 +26,16 @@ export function applyFrame(f: Frame): void {
 
 export const isFullscreen = (): boolean => !!document.fullscreenElement
 
+/** เปิดจากไอคอนบนโฮมสกรีน (PWA ที่ติดตั้งแล้ว) — ไม่ใช่แท็บเบราว์เซอร์ */
+export const isStandalone = (): boolean => {
+  try {
+    return window.matchMedia?.('(display-mode: standalone)').matches
+      || (navigator as Navigator & { standalone?: boolean }).standalone === true
+  } catch {
+    return false
+  }
+}
+
 export async function toggleFullscreen(): Promise<void> {
   try {
     if (document.fullscreenElement) await document.exitFullscreen()

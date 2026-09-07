@@ -17,6 +17,7 @@ import Onboarding from './app/Onboarding'
 import Receipt from './app/Receipt'
 import ClientPreview from './app/ClientPreview'
 import LineSettings from './app/LineSettings'
+import Legal from './platform/Legal'
 
 export default function App() {
   const { didReset, track } = useStore()
@@ -28,6 +29,8 @@ export default function App() {
     <><StorageStatus /><Routes>
       <Route path="/" element={<Landing />} />
       <Route path="/pricing" element={<Pricing />} />
+      <Route path="/privacy" element={<Legal kind="privacy" />} />
+      <Route path="/terms" element={<Legal kind="terms" />} />
       <Route path="/start" element={<StylePicker />} />
       <Route path="/receipt/:id" element={<Receipt />} />
       <Route path="/client/:clientId" element={<ClientPreview />} />

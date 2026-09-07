@@ -4,7 +4,7 @@
   "description": "ยืนยันงานเสร็จแตะเดียว สิ้นเดือนคิดเงิน ร่างบิลและใบเสร็จให้ พร้อมส่งใน LINE",
   "lang": "th",
   "dir": "ltr",
-  "start_url": "./",
+  "start_url": "./#/app/today",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",

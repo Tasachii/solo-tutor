@@ -86,7 +86,7 @@ export default function LineSettings() {
     const rows = await rpc<{ code: string; expires_at: string }[]>('issue_line_link_code', { p_client_id: client.client_id })
     if (!rows[0]) throw new Error('code')
     setCodes(prev => ({ ...prev, [clientId]: rows[0] }))
-    setNotice('ส่งรหัสนี้ให้ผู้ปกครองของรายชื่อนี้โดยตรง แล้วให้พิมพ์รหัสในแชท OA')
+    setNotice('ส่งรหัสนี้ให้ผู้ปกครองของรายชื่อนี้โดยตรง แล้วให้พิมพ์รหัสในแชท OA — การพิมพ์รหัสถือเป็นการยินยอมให้เก็บ LINE id เพื่อรับบิล (ดูหน้านโยบายข้อมูล)')
   })
   return <div className="pane line-settings">
     <div className="rowhead"><h1 className="h1">เชื่อม LINE OA</h1><Link to="/app/admin">กลับหน้าแอดมิน</Link></div>

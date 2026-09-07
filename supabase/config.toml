@@ -10,3 +10,14 @@ verify_jwt = false
 # resolves the bearer token with auth.getUser(), so invalid tokens still fail closed.
 [functions.line-connect]
 verify_jwt = false
+
+# Auth ที่ push ขึ้นโปรเจกต์จริงด้วย `supabase config push` — ประกาศเฉพาะที่ตั้งใจ ค่าที่ไม่ประกาศจะไม่ถูกแตะ
+[auth]
+site_url = "https://tasachii.github.io/solo-tutor/"
+additional_redirect_urls = ["https://tasachii.github.io/solo-tutor/*"]
+
+[auth.email]
+enable_signup = true
+# อีเมลในตัวของ Supabase ส่งได้ 2 ฉบับ/ชม. — เปิดยืนยันไว้ = ครูคนที่ 3 สมัครไม่ได้
+# เปิดกลับเมื่อต่อ SMTP จริงแล้ว (เฟส 3 ในแผน)
+enable_confirmations = false

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, Navigate } from 'react-router-dom'
 import { professions } from '../professions'
 import { copy } from '../copy'
 import { DemoBadge, Icon, Mascot, PenguinMark } from '../app/components'
@@ -7,6 +7,7 @@ import { AppearanceButton, ThemeToggle } from './ThemeToggle'
 import WaitlistSheet from './WaitlistSheet'
 import { dateThai, dayThai, periodThai, todayISO } from '../core/format'
 import { periodBack } from '../mock/seed'
+import { isStandalone } from '../core/present'
 
 /**
  * หน้าแรกเป็นของคนที่จะใช้แอปจริง ไม่ใช่ของคนที่มาตัดสิน
@@ -14,6 +15,8 @@ import { periodBack } from '../mock/seed'
  */
 export default function Landing() {
   const [lead, setLead] = useState<string | null>(null)
+  // ครูที่ติดตั้งเป็นแอปแล้วไม่ควรเจอหน้าขายทุกเช้า — เข้าหน้าวันนี้ตรง ๆ (สลับผ่านเมนู "มุมมอง" ได้เสมอ)
+  if (isStandalone()) return <Navigate to="/app/today" replace />
   const soon = professions.filter((p) => p.status !== 'live')
   const h = copy.landing.hero
   // การ์ดตัวอย่างเดินตามปฏิทินเหมือนตัวแอป ไม่งั้นหน้าแรกจะโชว์วันของปีที่แล้ว
@@ -120,6 +123,8 @@ export default function Landing() {
         <span>{copy.brand.name} · {copy.brand.tagline}</span>
         <span>{copy.landing.footerTeam}</span>
         <Link to="/pricing">{copy.pricing.title}</Link>
+        <Link to="/privacy">{copy.legal.footerPrivacy}</Link>
+        <Link to="/terms">{copy.legal.footerTerms}</Link>
       </footer>
 
       {lead !== null && (
