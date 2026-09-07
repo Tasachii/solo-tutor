@@ -1,4 +1,13 @@
-import { afterEach } from 'vitest'
+import { afterEach, vi } from 'vitest'
+
+/**
+ * ชุดข้อมูลเดโมเดินตามนาฬิกาเครื่องแล้ว (src/mock/seed.ts)
+ * เทสจึงตรึงวันไว้ที่วันที่ชุดข้อมูลถูกเขียนขึ้น ตัวเลขและวันที่ในเทสจะได้ไม่ขยับตามปฏิทินจริง
+ */
+export const FROZEN_TODAY = '2025-09-02'
+// ต้องตรึงตั้งแต่ตอนโหลด setup — ไฟล์เทสหลายไฟล์สร้างชุดข้อมูลไว้ที่ระดับโมดูล
+vi.useFakeTimers({ toFake: ['Date'], shouldAdvanceTime: true })
+vi.setSystemTime(new Date(`${FROZEN_TODAY}T09:00:00+07:00`))
 
 type Waiting = { callback: (lock: object) => Promise<unknown> | unknown }
 const queues = new Map<string, Waiting[]>()

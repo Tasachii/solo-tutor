@@ -3,7 +3,14 @@ export { expect }
 export type { Page } from '@playwright/test'
 
 /** Every flow checks app failures; remote font availability is not an app API failure. */
-export const test = base.extend<{ appErrors: void }>({
+/** เดโมเดินตามปฏิทินจริง — ตรึงวันไว้ให้ตรงกับวันที่ชุดข้อมูลถูกเขียน (ดู tests/setup.ts) */
+export const FROZEN_TODAY = '2025-09-02'
+
+export const test = base.extend<{ frozenClock: void; appErrors: void }>({
+  frozenClock: [async ({ page }, use) => {
+    await page.clock.setFixedTime(new Date(`${FROZEN_TODAY}T09:00:00+07:00`))
+    await use()
+  }, { auto: true }],
   appErrors: [async ({ page, context, baseURL }, use) => {
     const errors: string[] = []
     const appOrigin = new URL(baseURL!).origin

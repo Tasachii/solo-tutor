@@ -1,25 +1,45 @@
 import type { AppState, Client, ServiceUnit, Subject } from '../core/types'
 import { PROMPTPAY_DISPLAY, PROVIDER_NAME } from '../platform/config'
-import { addDays, iso, parseISO, weekday } from '../core/format'
+import { addDays, iso, parseISO, periodOf, todayISO, weekday } from '../core/format'
 
-export const TODAY = '2025-09-02' // อังคาร — เดโมล็อกวันไว้
-const START = '2025-08-01'
-const END = '2025-09-30'
+/**
+ * เดโมเดินตามนาฬิกาเครื่อง — กรรมการเปิดดูวันไหนก็เห็นเดือนนั้น
+ * เคยล็อกไว้ที่ 2 ก.ย. 2568 แล้วปีถัดมาข้อมูลกลายเป็นของปีที่แล้วทั้งจอ
+ * เทสตรึงนาฬิกาแทน (unit: tests/setup.ts · e2e: page.clock) ตัวเลขในเทสจึงไม่ต้องขยับ
+ */
+export const demoToday = (): string => todayISO()
+
+/** เดือนนี้และเดือนก่อน — ขอบเขตที่ชุดข้อมูลเดโมครอบคลุม */
+export const thisPeriod = (): string => periodOf(demoToday())
+export function periodBack(n: number, from: string = thisPeriod()): string {
+  const [y, m] = from.split('-').map(Number)
+  const total = y * 12 + (m - 1) - n
+  return `${Math.floor(total / 12)}-${String((total % 12) + 1).padStart(2, '0')}`
+}
+
+/** วันสุดท้ายของเดือน — กันวันที่ 31 หล่นไปเดือนถัดไปตอนเดือนนั้นมี 30 วัน */
+export const daysInPeriod = (period: string): number => {
+  const [y, m] = period.split('-').map(Number)
+  return new Date(Date.UTC(y, m, 0)).getUTCDate()
+}
+/** วันที่ `day` ของ period นั้น — เกินสิ้นเดือนให้ยึดสิ้นเดือน */
+export const dayIn = (period: string, day: number): string =>
+  `${period}-${String(Math.min(day, daysInPeriod(period))).padStart(2, '0')}`
 
 export const emptyBase = (): AppState => ({
   schemaVersion: 5, revision: 0, mode: 'demo', professionId: 'tutor', scenarioId: 'empty',
   provider: { name: PROVIDER_NAME, promptpayId: PROMPTPAY_DISPLAY },
-  today: TODAY,
+  today: demoToday(),
   clients: [], subjects: [], units: [], completions: [],
   invoices: [], payments: [], receipts: [], messages: [], chats: [],
   waitlist: [], events: [], counters: { receipt: 0, invoice: 0 }, onboarded: true,
 })
 
 /** ทุกวันที่ระหว่าง START..END ที่ตรงกับวันในสัปดาห์ */
-function datesOn(days: number[]): string[] {
+function datesOn(days: number[], start: string, end: string): string[] {
   const out: string[] = []
-  let d = START
-  while (d <= END) {
+  let d = start
+  while (d <= end) {
     if (days.includes(weekday(d))) out.push(d)
     d = addDays(d, 1)
   }
@@ -37,6 +57,11 @@ export interface SubjectPlan {
 }
 
 export function buildFromPlans(plans: SubjectPlan[], scenarioId: string): AppState {
+  const today = demoToday()
+  const period = periodOf(today)
+  const prev = periodBack(1, period)
+  const START = dayIn(prev, 1)
+  const END = dayIn(period, daysInPeriod(period))
   const s = emptyBase()
   s.scenarioId = scenarioId
   const clients = new Map<string, Client>()
@@ -51,26 +76,26 @@ export function buildFromPlans(plans: SubjectPlan[], scenarioId: string): AppSta
       label: p.label, active: true, createdAt: START,
     })
 
-    const dates = datesOn(p.days)
+    const dates = datesOn(p.days, START, END)
     const mine: ServiceUnit[] = dates.map((d, i) => ({
       id: `u-${p.id}-${i}`, subjectId: p.id, scheduledAt: d, time: p.time, durationMin: 60, label: p.label,
     }))
     // คาบวันนี้ที่ spec บังคับว่าต้องมี แม้ pattern ไม่ตรงวัน
-    if (p.todayUnit && !mine.some((u) => u.scheduledAt === TODAY)) {
-      mine.push({ id: `u-${p.id}-today`, subjectId: p.id, scheduledAt: TODAY, time: p.todayUnit.time, durationMin: 60, label: p.label })
+    if (p.todayUnit && !mine.some((u) => u.scheduledAt === today)) {
+      mine.push({ id: `u-${p.id}-today`, subjectId: p.id, scheduledAt: today, time: p.todayUnit.time, durationMin: 60, label: p.label })
     }
     units.push(...mine)
 
-    const aug = mine.filter((u) => u.scheduledAt.startsWith('2025-08')).sort((a, b) => a.scheduledAt.localeCompare(b.scheduledAt))
+    const aug = mine.filter((u) => u.scheduledAt.startsWith(prev)).sort((a, b) => a.scheduledAt.localeCompare(b.scheduledAt))
     for (const u of aug.slice(0, p.augDone)) completions.push({ unitId: u.id, completedAt: u.scheduledAt })
 
-    const sepBefore = mine.filter((u) => u.scheduledAt.startsWith('2025-09') && u.scheduledAt < TODAY)
+    const sepBefore = mine.filter((u) => u.scheduledAt.startsWith(period) && u.scheduledAt < today)
       .sort((a, b) => a.scheduledAt.localeCompare(b.scheduledAt))
     for (const u of sepBefore.slice(0, p.sepDoneBeforeToday)) completions.push({ unitId: u.id, completedAt: u.scheduledAt })
 
     if (p.todayUnit?.done) {
-      const t = mine.find((u) => u.scheduledAt === TODAY)
-      if (t) completions.push({ unitId: t.id, completedAt: TODAY })
+      const t = mine.find((u) => u.scheduledAt === today)
+      if (t) completions.push({ unitId: t.id, completedAt: today })
     }
   }
 

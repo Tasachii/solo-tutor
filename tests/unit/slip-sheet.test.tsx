@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import SlipSheet from '../../src/app/SlipSheet'
 import { buildScenario } from '../../src/core/scenarios'
 import { seedOf } from '../../src/core/share'
+import { FROZEN_TODAY } from '../setup'
 
 const mocks = vi.hoisted(() => ({
   state: null as unknown as ReturnType<typeof buildScenario>,
@@ -29,7 +30,10 @@ beforeEach(() => {
 
 describe('demo slip fallback', () => {
   it('can confirm the remaining balance when the simulated slip is unreadable', async () => {
+    // เทสนี้ขอคุมทุก timer เอง — ต้องตรึงวันกลับ ไม่งั้นชุดข้อมูลเดโมเลื่อนตามปฏิทินจริง
+    vi.useRealTimers()
     vi.useFakeTimers()
+    vi.setSystemTime(new Date(`${FROZEN_TODAY}T09:00:00+07:00`))
     const state = buildScenario('default')
     const original = state.invoices.find((invoice) => invoice.status !== 'paid')!
     let id = 'unreadable-0'

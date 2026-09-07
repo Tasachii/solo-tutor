@@ -214,7 +214,7 @@ export const copy = {
     slipMatch: 'ยอดตรงกับใบแจ้ง', slipConfirm: 'ยืนยันรับยอด',
     slipMismatch: 'ยอดไม่ตรง', slipAcceptAs: 'รับยอดตามสลิป (บันทึกส่วนต่าง)', slipAskAgain: 'ขอสลิปใหม่',
     slipUnreadable: 'อ่านสลิปไม่ออก', slipRetry: 'ลองใหม่', slipManual: 'ยืนยันเอง',
-    emptyTitle: 'เดือนนี้ยังไม่มีอะไรให้ปิดยอด', noInvoices: 'ยังไม่มีบิล',
+    emptyTitle: 'เดือนนี้ยังไม่มีอะไรให้ปิดยอด', noInvoices: 'รอปิดยอดสิ้นเดือน',
     slipAmount: 'ยอดในสลิป', invoiceAmount: 'ยอดในใบแจ้ง', slipSim: 'จำลองการแนบสลิปจากผู้จ่าย',
     firstMonthHint: 'เริ่มใช้เดือนแรก ตัวเลขจะชัดสิ้นเดือน',
     share: 'แชร์การ์ด',

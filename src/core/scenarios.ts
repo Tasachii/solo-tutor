@@ -1,10 +1,10 @@
 import type { AppState, Invoice, Message, Payment, Particle, WorkStyle } from './types'
 import { styleOfScenario } from './style'
-import { buildFromPlans, emptyBase, TODAY, type SubjectPlan } from '../mock/seed'
+import { buildFromPlans, dayIn, demoToday, emptyBase, periodBack, thisPeriod, type SubjectPlan } from '../mock/seed'
 import { receiptNumber, receiptSnapshot } from './receipts'
 import { receiptText } from './messages'
 import { markOverdue } from './billing'
-import { todayISO } from './format'
+import { periodThai, todayISO } from './format'
 import { snapshotLegacyPrices } from './ledger'
 
 export const SCENARIOS = ['default', 'per-unit', 'flat-heavy', 'package-heavy', 'monthly-heavy', 'empty'] as const
@@ -16,7 +16,7 @@ export const SCENARIO_LABEL: Record<ScenarioId, string> = {
 const PKG = (total: number, price: number, purchasedAt: string) =>
   ({ mode: 'package' as const, total, price, purchasedAt })
 
-const DEFAULT_PLANS: SubjectPlan[] = [
+const defaultPlans = (): SubjectPlan[] => [
   { id: 's1', name: 'น้องแพรว', clientId: 'c1', clientName: 'คุณแม่แพรว', billing: { mode: 'per_unit', rate: 400 },
     label: 'คณิต', days: [2, 5], time: '16:00', augDone: 8, sepDoneBeforeToday: 0, todayUnit: { time: '16:00', done: true } },
   { id: 's2', name: 'น้องภูมิ', clientId: 'c2', clientName: 'คุณพ่อภูมิ', billing: { mode: 'per_unit', rate: 500 },
@@ -27,11 +27,11 @@ const DEFAULT_PLANS: SubjectPlan[] = [
     label: 'อังกฤษ', days: [3, 6], time: '10:00', augDone: 8, sepDoneBeforeToday: 0 },
   { id: 's5', name: 'น้องฟ้า', clientId: 'c4', clientName: 'คุณแม่ต้น', billing: { mode: 'flat_monthly', amount: 2800 },
     label: 'อังกฤษ', days: [3, 6], time: '11:00', augDone: 7, sepDoneBeforeToday: 0 },
-  { id: 's6', name: 'น้องเจ', clientId: 'c5', clientName: 'คุณพ่อเจ', billing: PKG(10, 3500, '2025-08-10'),
+  { id: 's6', name: 'น้องเจ', clientId: 'c5', clientName: 'คุณพ่อเจ', billing: PKG(10, 3500, dayIn(periodBack(1), 10)),
     label: 'เคมี', days: [4, 0], time: '14:00', augDone: 5, sepDoneBeforeToday: 0 },
-  { id: 's7', name: 'น้องเนย', clientId: 'c6', clientName: 'คุณแม่เนย', billing: PKG(10, 3500, '2025-07-20'),
+  { id: 's7', name: 'น้องเนย', clientId: 'c6', clientName: 'คุณแม่เนย', billing: PKG(10, 3500, dayIn(periodBack(2), 20)),
     label: 'คณิต', days: [1, 5], time: '18:00', augDone: 8, sepDoneBeforeToday: 0, todayUnit: { time: '18:00', done: false } },
-  { id: 's8', name: 'น้องกัน', clientId: 'c7', clientName: 'คุณแม่กัน', billing: PKG(10, 3500, '2025-07-01'),
+  { id: 's8', name: 'น้องกัน', clientId: 'c7', clientName: 'คุณแม่กัน', billing: PKG(10, 3500, dayIn(periodBack(2), 1)),
     label: 'ชีวะ', days: [5, 6], time: '19:00', augDone: 10, sepDoneBeforeToday: 0, todayUnit: { time: '19:00', done: false } },
 ]
 
@@ -93,20 +93,20 @@ function applySeedInvoices(state: AppState, seeds: SeedInvoice[]): AppState {
 }
 
 function scenarioDefault(): AppState {
-  let s = buildFromPlans(DEFAULT_PLANS, 'default')
+  let s = buildFromPlans(defaultPlans(), 'default')
   s = applySeedInvoices(s, [
-    { subjectId: 's1', period: '2025-08', total: 3200, qty: 8, unitPrice: 400, desc: 'คณิต ส.ค. 2568 — 8 × 400', status: 'paid', sentAt: '2025-08-31', paidAt: '2025-08-31' },
-    { subjectId: 's2', period: '2025-08', total: 3000, qty: 6, unitPrice: 500, desc: 'ฟิสิกส์ ส.ค. 2568 — 6 × 500', status: 'sent', sentAt: '2025-08-25', dueAt: '2025-08-28' },
-    { subjectId: 's3', period: '2025-08', total: 1600, qty: 4, unitPrice: 400, desc: 'คณิต ส.ค. 2568 — 4 × 400', status: 'sent', sentAt: '2025-09-01', dueAt: '2025-09-04' },
-    { subjectId: 's4', period: '2025-08', total: 3200, qty: 8, unitPrice: 3200, desc: 'อังกฤษ ส.ค. 2568 (เหมา)', status: 'paid', sentAt: '2025-08-31', paidAt: '2025-08-31' },
-    { subjectId: 's5', period: '2025-08', total: 2800, qty: 7, unitPrice: 2800, desc: 'อังกฤษ ส.ค. 2568 (เหมา)', status: 'sent', sentAt: '2025-08-18', dueAt: '2025-08-21' },
+    { subjectId: 's1', period: periodBack(1), total: 3200, qty: 8, unitPrice: 400, desc: `คณิต ${periodThai(periodBack(1))} — 8 × 400`, status: 'paid', sentAt: dayIn(periodBack(1), 31), paidAt: dayIn(periodBack(1), 31) },
+    { subjectId: 's2', period: periodBack(1), total: 3000, qty: 6, unitPrice: 500, desc: `ฟิสิกส์ ${periodThai(periodBack(1))} — 6 × 500`, status: 'sent', sentAt: dayIn(periodBack(1), 25), dueAt: dayIn(periodBack(1), 28) },
+    { subjectId: 's3', period: periodBack(1), total: 1600, qty: 4, unitPrice: 400, desc: `คณิต ${periodThai(periodBack(1))} — 4 × 400`, status: 'sent', sentAt: dayIn(thisPeriod(), 1), dueAt: dayIn(thisPeriod(), 4) },
+    { subjectId: 's4', period: periodBack(1), total: 3200, qty: 8, unitPrice: 3200, desc: `อังกฤษ ${periodThai(periodBack(1))} (เหมา)`, status: 'paid', sentAt: dayIn(periodBack(1), 31), paidAt: dayIn(periodBack(1), 31) },
+    { subjectId: 's5', period: periodBack(1), total: 2800, qty: 7, unitPrice: 2800, desc: `อังกฤษ ${periodThai(periodBack(1))} (เหมา)`, status: 'sent', sentAt: dayIn(periodBack(1), 18), dueAt: dayIn(periodBack(1), 21) },
   ])
   s = {
     ...s,
     chats: [
-      { id: 'ch1', clientId: 'c1', from: 'client', text: 'ขอบคุณครับครู เดี๋ยวโอนให้เย็นนี้นะครับ', at: '2025-08-30' },
-      { id: 'ch2', clientId: 'c1', from: 'provider', text: 'ได้เลยครับ ขอบคุณมากครับ 🙏', at: '2025-08-30' },
-      { id: 'ch3', clientId: 'c2', from: 'client', text: 'ขอโทษนะคะครู เดือนนี้ช้าหน่อย', at: '2025-08-31' },
+      { id: 'ch1', clientId: 'c1', from: 'client', text: 'ขอบคุณครับครู เดี๋ยวโอนให้เย็นนี้นะครับ', at: dayIn(periodBack(1), 30) },
+      { id: 'ch2', clientId: 'c1', from: 'provider', text: 'ได้เลยครับ ขอบคุณมากครับ 🙏', at: dayIn(periodBack(1), 30) },
+      { id: 'ch3', clientId: 'c2', from: 'client', text: 'ขอโทษนะคะครู เดือนนี้ช้าหน่อย', at: dayIn(periodBack(1), 31) },
     ],
   }
   return markOverdue(s)
@@ -114,19 +114,19 @@ function scenarioDefault(): AppState {
 
 function scenarioPackageHeavy(): AppState {
   const plans: SubjectPlan[] = [
-    { id: 'p1', name: 'น้องอิง', clientId: 'k1', clientName: 'คุณแม่อิง', billing: PKG(10, 3500, '2025-08-15'), label: 'คณิต', days: [1, 4], time: '16:00', augDone: 2, sepDoneBeforeToday: 0 },
-    { id: 'p2', name: 'น้องโบว์', clientId: 'k2', clientName: 'คุณแม่โบว์', billing: PKG(20, 6500, '2025-08-01'), label: 'อังกฤษ', days: [2, 5], time: '17:00', augDone: 5, sepDoneBeforeToday: 0, todayUnit: { time: '17:00', done: false } },
-    { id: 'p3', name: 'น้องปอ', clientId: 'k3', clientName: 'คุณพ่อปอ', billing: PKG(10, 3500, '2025-07-10'), label: 'ฟิสิกส์', days: [3, 6], time: '15:00', augDone: 9, sepDoneBeforeToday: 0 },
-    { id: 'p4', name: 'น้องข้าว', clientId: 'k4', clientName: 'คุณแม่ข้าว', billing: PKG(10, 3500, '2025-07-05'), label: 'เคมี', days: [1, 5], time: '18:00', augDone: 8, sepDoneBeforeToday: 0, todayUnit: { time: '18:00', done: false } },
-    { id: 'p5', name: 'น้องมาย', clientId: 'k5', clientName: 'คุณแม่มาย', billing: PKG(10, 3500, '2025-07-01'), label: 'ชีวะ', days: [5, 6], time: '19:00', augDone: 10, sepDoneBeforeToday: 0, todayUnit: { time: '19:00', done: false } },
-    { id: 'p6', name: 'น้องเต้', clientId: 'k6', clientName: 'คุณพ่อเต้', billing: PKG(10, 3500, '2025-07-02'), label: 'คณิต', days: [4, 0], time: '14:00', augDone: 9, sepDoneBeforeToday: 0 },
+    { id: 'p1', name: 'น้องอิง', clientId: 'k1', clientName: 'คุณแม่อิง', billing: PKG(10, 3500, dayIn(periodBack(1), 15)), label: 'คณิต', days: [1, 4], time: '16:00', augDone: 2, sepDoneBeforeToday: 0 },
+    { id: 'p2', name: 'น้องโบว์', clientId: 'k2', clientName: 'คุณแม่โบว์', billing: PKG(20, 6500, dayIn(periodBack(1), 1)), label: 'อังกฤษ', days: [2, 5], time: '17:00', augDone: 5, sepDoneBeforeToday: 0, todayUnit: { time: '17:00', done: false } },
+    { id: 'p3', name: 'น้องปอ', clientId: 'k3', clientName: 'คุณพ่อปอ', billing: PKG(10, 3500, dayIn(periodBack(2), 10)), label: 'ฟิสิกส์', days: [3, 6], time: '15:00', augDone: 9, sepDoneBeforeToday: 0 },
+    { id: 'p4', name: 'น้องข้าว', clientId: 'k4', clientName: 'คุณแม่ข้าว', billing: PKG(10, 3500, dayIn(periodBack(2), 5)), label: 'เคมี', days: [1, 5], time: '18:00', augDone: 8, sepDoneBeforeToday: 0, todayUnit: { time: '18:00', done: false } },
+    { id: 'p5', name: 'น้องมาย', clientId: 'k5', clientName: 'คุณแม่มาย', billing: PKG(10, 3500, dayIn(periodBack(2), 1)), label: 'ชีวะ', days: [5, 6], time: '19:00', augDone: 10, sepDoneBeforeToday: 0, todayUnit: { time: '19:00', done: false } },
+    { id: 'p6', name: 'น้องเต้', clientId: 'k6', clientName: 'คุณพ่อเต้', billing: PKG(10, 3500, dayIn(periodBack(2), 2)), label: 'คณิต', days: [4, 0], time: '14:00', augDone: 9, sepDoneBeforeToday: 0 },
     { id: 'p7', name: 'น้องนัท', clientId: 'k7', clientName: 'คุณแม่นัท', billing: { mode: 'per_unit', rate: 450 }, label: 'คณิต', days: [1, 3], time: '13:00', augDone: 5, sepDoneBeforeToday: 1 },
     { id: 'p8', name: 'น้องอาย', clientId: 'k8', clientName: 'คุณแม่อาย', billing: { mode: 'per_unit', rate: 400 }, label: 'อังกฤษ', days: [2, 4], time: '12:00', augDone: 4, sepDoneBeforeToday: 0, todayUnit: { time: '12:00', done: true } },
   ]
   let s = buildFromPlans(plans, 'package-heavy')
   s = applySeedInvoices(s, [
-    { subjectId: 'p7', period: '2025-08', total: 2250, qty: 5, unitPrice: 450, desc: 'คณิต ส.ค. 2568 — 5 × 450', status: 'sent', sentAt: '2025-08-26', dueAt: '2025-08-29' },
-    { subjectId: 'p8', period: '2025-08', total: 1600, qty: 4, unitPrice: 400, desc: 'อังกฤษ ส.ค. 2568 — 4 × 400', status: 'paid', sentAt: '2025-08-31', paidAt: '2025-08-31' },
+    { subjectId: 'p7', period: periodBack(1), total: 2250, qty: 5, unitPrice: 450, desc: `คณิต ${periodThai(periodBack(1))} — 5 × 450`, status: 'sent', sentAt: dayIn(periodBack(1), 26), dueAt: dayIn(periodBack(1), 29) },
+    { subjectId: 'p8', period: periodBack(1), total: 1600, qty: 4, unitPrice: 400, desc: `อังกฤษ ${periodThai(periodBack(1))} — 4 × 400`, status: 'paid', sentAt: dayIn(periodBack(1), 31), paidAt: dayIn(periodBack(1), 31) },
   ])
   return markOverdue(s)
 }
@@ -144,11 +144,11 @@ function scenarioMonthlyHeavy(): AppState {
   ]
   let s = buildFromPlans(plans, 'monthly-heavy')
   s = applySeedInvoices(s, [
-    { subjectId: 'm1', period: '2025-08', total: 3200, qty: 8, unitPrice: 400, desc: 'คณิต ส.ค. 2568 — 8 × 400', status: 'paid', sentAt: '2025-08-31', paidAt: '2025-08-31' },
-    { subjectId: 'm2', period: '2025-08', total: 3000, qty: 6, unitPrice: 500, desc: 'ฟิสิกส์ ส.ค. 2568 — 6 × 500', status: 'sent', sentAt: '2025-08-29', dueAt: '2025-09-01' },
-    { subjectId: 'm3', period: '2025-08', total: 3150, qty: 7, unitPrice: 450, desc: 'เคมี ส.ค. 2568 — 7 × 450', status: 'sent', sentAt: '2025-08-25', dueAt: '2025-08-28' },
-    { subjectId: 'm4', period: '2025-08', total: 2000, qty: 5, unitPrice: 400, desc: 'อังกฤษ ส.ค. 2568 — 5 × 400', status: 'sent', sentAt: '2025-08-18', dueAt: '2025-08-21' },
-    { subjectId: 'm7', period: '2025-08', total: 3000, qty: 8, unitPrice: 3000, desc: 'อังกฤษ ส.ค. 2568 (เหมา)', status: 'paid', sentAt: '2025-08-31', paidAt: '2025-08-31' },
+    { subjectId: 'm1', period: periodBack(1), total: 3200, qty: 8, unitPrice: 400, desc: `คณิต ${periodThai(periodBack(1))} — 8 × 400`, status: 'paid', sentAt: dayIn(periodBack(1), 31), paidAt: dayIn(periodBack(1), 31) },
+    { subjectId: 'm2', period: periodBack(1), total: 3000, qty: 6, unitPrice: 500, desc: `ฟิสิกส์ ${periodThai(periodBack(1))} — 6 × 500`, status: 'sent', sentAt: dayIn(periodBack(1), 29), dueAt: dayIn(thisPeriod(), 1) },
+    { subjectId: 'm3', period: periodBack(1), total: 3150, qty: 7, unitPrice: 450, desc: `เคมี ${periodThai(periodBack(1))} — 7 × 450`, status: 'sent', sentAt: dayIn(periodBack(1), 25), dueAt: dayIn(periodBack(1), 28) },
+    { subjectId: 'm4', period: periodBack(1), total: 2000, qty: 5, unitPrice: 400, desc: `อังกฤษ ${periodThai(periodBack(1))} — 5 × 400`, status: 'sent', sentAt: dayIn(periodBack(1), 18), dueAt: dayIn(periodBack(1), 21) },
+    { subjectId: 'm7', period: periodBack(1), total: 3000, qty: 8, unitPrice: 3000, desc: `อังกฤษ ${periodThai(periodBack(1))} (เหมา)`, status: 'paid', sentAt: dayIn(periodBack(1), 31), paidAt: dayIn(periodBack(1), 31) },
   ])
   return markOverdue(s)
 }
@@ -164,10 +164,10 @@ function scenarioPerUnit(): AppState {
   ]
   let s = buildFromPlans(plans, 'per-unit')
   s = applySeedInvoices(s, [
-    { subjectId: 'u1', period: '2025-08', total: 3200, qty: 8, unitPrice: 400, desc: 'คณิต ส.ค. 2568 — 8 × 400', status: 'paid', sentAt: '2025-08-31', paidAt: '2025-08-31' },
-    { subjectId: 'u2', period: '2025-08', total: 3000, qty: 6, unitPrice: 500, desc: 'ฟิสิกส์ ส.ค. 2568 — 6 × 500', status: 'sent', sentAt: '2025-08-29', dueAt: '2025-09-01' },
-    { subjectId: 'u3', period: '2025-08', total: 3150, qty: 7, unitPrice: 450, desc: 'เคมี ส.ค. 2568 — 7 × 450', status: 'sent', sentAt: '2025-08-25', dueAt: '2025-08-28' },
-    { subjectId: 'u4', period: '2025-08', total: 2000, qty: 5, unitPrice: 400, desc: 'อังกฤษ ส.ค. 2568 — 5 × 400', status: 'paid', sentAt: '2025-08-31', paidAt: '2025-08-31' },
+    { subjectId: 'u1', period: periodBack(1), total: 3200, qty: 8, unitPrice: 400, desc: `คณิต ${periodThai(periodBack(1))} — 8 × 400`, status: 'paid', sentAt: dayIn(periodBack(1), 31), paidAt: dayIn(periodBack(1), 31) },
+    { subjectId: 'u2', period: periodBack(1), total: 3000, qty: 6, unitPrice: 500, desc: `ฟิสิกส์ ${periodThai(periodBack(1))} — 6 × 500`, status: 'sent', sentAt: dayIn(periodBack(1), 29), dueAt: dayIn(thisPeriod(), 1) },
+    { subjectId: 'u3', period: periodBack(1), total: 3150, qty: 7, unitPrice: 450, desc: `เคมี ${periodThai(periodBack(1))} — 7 × 450`, status: 'sent', sentAt: dayIn(periodBack(1), 25), dueAt: dayIn(periodBack(1), 28) },
+    { subjectId: 'u4', period: periodBack(1), total: 2000, qty: 5, unitPrice: 400, desc: `อังกฤษ ${periodThai(periodBack(1))} — 5 × 400`, status: 'paid', sentAt: dayIn(periodBack(1), 31), paidAt: dayIn(periodBack(1), 31) },
   ])
   return markOverdue(s)
 }
@@ -183,16 +183,16 @@ function scenarioFlatHeavy(): AppState {
   ]
   let s = buildFromPlans(plans, 'flat-heavy')
   s = applySeedInvoices(s, [
-    { subjectId: 'f1', period: '2025-08', total: 3000, qty: 8, unitPrice: 3000, desc: 'อังกฤษ ส.ค. 2568 (เหมา)', status: 'paid', sentAt: '2025-08-31', paidAt: '2025-08-31' },
-    { subjectId: 'f2', period: '2025-08', total: 2600, qty: 7, unitPrice: 2600, desc: 'คณิต ส.ค. 2568 (เหมา)', status: 'sent', sentAt: '2025-08-29', dueAt: '2025-09-01' },
-    { subjectId: 'f3', period: '2025-08', total: 3200, qty: 8, unitPrice: 3200, desc: 'ฟิสิกส์ ส.ค. 2568 (เหมา)', status: 'sent', sentAt: '2025-08-25', dueAt: '2025-08-28' },
-    { subjectId: 'f4', period: '2025-08', total: 2800, qty: 6, unitPrice: 2800, desc: 'เคมี ส.ค. 2568 (เหมา)', status: 'paid', sentAt: '2025-08-31', paidAt: '2025-08-31' },
+    { subjectId: 'f1', period: periodBack(1), total: 3000, qty: 8, unitPrice: 3000, desc: `อังกฤษ ${periodThai(periodBack(1))} (เหมา)`, status: 'paid', sentAt: dayIn(periodBack(1), 31), paidAt: dayIn(periodBack(1), 31) },
+    { subjectId: 'f2', period: periodBack(1), total: 2600, qty: 7, unitPrice: 2600, desc: `คณิต ${periodThai(periodBack(1))} (เหมา)`, status: 'sent', sentAt: dayIn(periodBack(1), 29), dueAt: dayIn(thisPeriod(), 1) },
+    { subjectId: 'f3', period: periodBack(1), total: 3200, qty: 8, unitPrice: 3200, desc: `ฟิสิกส์ ${periodThai(periodBack(1))} (เหมา)`, status: 'sent', sentAt: dayIn(periodBack(1), 25), dueAt: dayIn(periodBack(1), 28) },
+    { subjectId: 'f4', period: periodBack(1), total: 2800, qty: 6, unitPrice: 2800, desc: `เคมี ${periodThai(periodBack(1))} (เหมา)`, status: 'paid', sentAt: dayIn(periodBack(1), 31), paidAt: dayIn(periodBack(1), 31) },
   ])
   return markOverdue(s)
 }
 
 function scenarioEmpty(): AppState {
-  return { ...emptyBase(), scenarioId: 'empty', onboarded: false, today: TODAY }
+  return { ...emptyBase(), scenarioId: 'empty', onboarded: false, today: demoToday() }
 }
 
 const BUILDERS: Record<ScenarioId, () => AppState> = {
