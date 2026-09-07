@@ -55,3 +55,34 @@ describe('demo slip fallback', () => {
     }))
   })
 })
+
+describe('demo slip mismatch', () => {
+  it('สลิปเกินยอดบิล: รับได้ทันทีเท่ายอดบิล และจดยอดในสลิปไว้ — ไม่ใช่ปุ่มปิดให้ครูค้าง', async () => {
+    vi.useRealTimers()
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date(`${FROZEN_TODAY}T09:00:00+07:00`))
+    const state = buildScenario('default')
+    const original = state.invoices.find((invoice) => invoice.status !== 'paid')!
+    // เลือก id ที่สุ่มแล้วตกช่วง "ยอดเกิน" (0.875 ≤ seed < 0.95) — ผลผูกกับเลขที่ใบแจ้ง
+    let id = 'over-0'
+    for (let index = 1; !(seedOf(id) >= 0.875 && seedOf(id) < 0.95); index += 1) id = `over-${index}`
+    const invoice = { ...original, id }
+    mocks.state = {
+      ...state,
+      invoices: [...state.invoices.filter((row) => row.id !== original.id), invoice],
+      payments: state.payments.filter((payment) => payment.invoiceId !== original.id),
+    }
+
+    render(<SlipSheet invoice={invoice} onClose={vi.fn()} />)
+    fireEvent.click(screen.getByRole('button', { name: 'เลือกรูปสลิป' }))
+    await act(async () => { vi.advanceTimersByTime(1500) })
+    expect(screen.getByText(/สลิปเกินยอดบิล 500 บาท/)).toBeTruthy()
+    const accept = screen.getByRole('button', { name: /รับยอดตามสลิป/ }) as HTMLButtonElement
+    expect(accept.disabled).toBe(false)
+    fireEvent.click(accept)
+
+    expect(mocks.dispatch).toHaveBeenCalledWith(expect.objectContaining({
+      type: 'recordPayment', invoiceId: id, amount: invoice.total, slipAmount: invoice.total + 500, slipVerified: true,
+    }))
+  })
+})

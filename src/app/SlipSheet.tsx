@@ -89,8 +89,9 @@ export default function SlipSheet(
             ? <button className="btn btn--primary btn--block" onClick={() => pay(due, true)}>{copy.billing.slipConfirm}</button>
             : phase === 'mismatch'
               ? <div className="btnrow">
-                  <button className="btn btn--primary" disabled={!isMoney(slipAmount) || slipAmount > due}
-                    onClick={() => pay(slipAmount!, true)}>{copy.billing.slipAcceptAs}</button>
+                  {/* สลิปเกินยอด: รับเท่ายอดบิล จดยอดในสลิปไว้ในประวัติ — เดิมปุ่มถูกปิดเฉย ๆ ครูค้างอยู่หน้านี้ */}
+                  <button className="btn btn--primary" disabled={!isMoney(slipAmount)}
+                    onClick={() => pay(Math.min(slipAmount!, due), true)}>{copy.billing.slipAcceptAs}</button>
                   <button className="btn btn--secondary" onClick={askAgain}>{copy.billing.slipAskAgain}</button>
                 </div>
               : phase === 'unreadable'
@@ -108,6 +109,7 @@ export default function SlipSheet(
           <p className="p">{copy.billing.slipMismatch}</p>
           <div className="kv"><span>{copy.billing.slipAmount}</span><b className="num">{money(slipAmount ?? 0)}</b></div>
           <div className="kv"><span>{copy.billing.invoiceAmount}</span><b className="num">{money(due)}</b></div>
+          {isMoney(slipAmount) && slipAmount > due && <p className="hint">{copy.billing.slipOver.replace('{diff}', money(slipAmount - due))}</p>}
         </>
       )}
       {phase === 'unreadable' && <p className="p">{copy.billing.slipUnreadable}</p>}

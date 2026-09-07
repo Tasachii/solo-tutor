@@ -290,6 +290,7 @@ export const copy = {
     slipRealOk: 'ยอดตรง รับเงินแล้ว', slipRealOther: 'ยอดไม่ตรง ใส่ยอดเอง',
     slipMatch: 'ยอดตรงกับใบแจ้ง', slipConfirm: 'ยืนยันรับยอด',
     slipMismatch: 'ยอดไม่ตรง', slipAcceptAs: 'รับยอดตามสลิป (บันทึกส่วนต่าง)', slipAskAgain: 'ขอสลิปใหม่',
+    slipOver: 'สลิปเกินยอดบิล {diff} บาท — รับยอดตามบิล และจดยอดในสลิปไว้ในประวัติ',
     slipUnreadable: 'อ่านสลิปไม่ออก', slipRetry: 'ลองใหม่', slipManual: 'ยืนยันเอง',
     emptyTitle: 'เดือนนี้ยังไม่มีอะไรให้ปิดยอด', noInvoices: 'รอปิดยอดสิ้นเดือน',
     slipAmount: 'ยอดในสลิป', invoiceAmount: 'ยอดในใบแจ้ง', slipSim: 'จำลองการแนบสลิปจากผู้จ่าย',
