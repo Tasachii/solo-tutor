@@ -171,6 +171,7 @@ export const copy = {
     preview: 'ตรวจก่อนนำเข้า · ทั้งหมด', andMore: 'และอีก', skipped: 'ข้ามแถวที่ไม่มีชื่อ',
     priceHint: 'ใช้กับคนที่ไม่มีราคาในไฟล์ — คนที่มีราคาจะใช้ของตัวเอง',
     confirm: 'นำเข้า', done: 'นำเข้าแล้ว', pickAnother: 'เลือกไฟล์อื่น',
+    dupInList: 'ตัดชื่อซ้ำในลิสต์ออก {n} รายการ ·', dupExisting: 'ข้าม {n} คนที่มีอยู่แล้ว ({names})',
     empty: 'ไม่พบข้อมูลในไฟล์', unreadable: 'อ่านไฟล์นี้ไม่ได้ — ลองบันทึกเป็น CSV แล้วนำเข้าใหม่',
   },
   sheets: {
@@ -205,7 +206,7 @@ export const copy = {
     cancelHint: 'เอากลับมาได้ที่หน้าวันนี้ ถ้ากดผิด',
   },
   subjects: {
-    search: 'ค้นหาชื่อ', add: 'เพิ่ม', inactiveGroup: 'หยุดเรียนแล้ว',
+    search: 'ค้นหาชื่อ', add: 'เพิ่ม', addMany: 'เพิ่มหลายคน', inactiveGroup: 'หยุดเรียนแล้ว',
     unitPer: '/ครั้ง', unitMonth: '/เดือน', unitPack: '/แพ็ก', unitEst: 'ประมาณ',
     filters: { all: 'ทั้งหมด', per_unit: 'รายครั้ง', flat_monthly: 'เหมาเดือน', package: 'แพ็ก', lowpack: 'ใกล้หมดแพ็ก', overdue: 'ค้างจ่าย' },
     emptyTitle: 'ยังไม่มีรายชื่อ', noneInFilter: 'ไม่พบรายชื่อในกลุ่มนี้', addOneByOne: 'เพิ่มทีละคน', pasteExcel: 'วางรายชื่อจาก Excel',

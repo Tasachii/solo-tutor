@@ -5,6 +5,7 @@ import { professionById } from '../professions'
 import { copy } from '../copy'
 import type { BillingMode, Subject } from '../core/types'
 import {
+  dedupeRows,
   detectMapping, parseDelimited, parseXlsx, toRows,
   type Field, type Grid, type Mapping,
 } from '../core/importTable'
@@ -47,8 +48,14 @@ export function ImportSheet({ onClose }: { onClose: () => void }) {
     }
   }
 
-  const rows = useMemo(() => (grid && map ? toRows(grid, map) : []), [grid, map])
+  const parsed = useMemo(() => (grid && map ? toRows(grid, map) : []), [grid, map])
+  // ตัดซ้ำในลิสต์และข้ามคนที่มีอยู่แล้ว — สร้าง "น้องปลา" ซ้ำสองคนแทบไม่เคยเป็นสิ่งที่ครูตั้งใจ
+  const deduped = useMemo(() => dedupeRows(parsed, state.subjects.map((s) => s.name)), [parsed, state.subjects])
+  const rows = deduped.rows
   const good = rows.filter((r) => !r.error)
+  const [packTotal, setPackTotal] = useState('10')
+  const packNum = Math.round(Number(packTotal))
+  const packOk = Number.isInteger(packNum) && packNum > 0
   const bad = rows.length - good.length
   const priceNum = Math.round(Number(price))
   const priceOk = Number.isFinite(priceNum) && priceNum > 0
@@ -57,11 +64,12 @@ export function ImportSheet({ onClose }: { onClose: () => void }) {
     const amount = rowPrice ?? priceNum
     if (mode === 'per_unit') return { mode, rate: amount }
     if (mode === 'flat_monthly') return { mode, amount }
-    return undefined // แพ็กต้องรู้จำนวนครั้งด้วย ตั้งรายคนทีหลัง
+    // แพ็ก: ราคาเป็นราคาต่อแพ็ก จำนวนครั้งใช้ค่าเริ่มต้นเดียวกันทุกคน ซื้อวันนี้
+    return { mode: 'package', total: packNum, price: amount, purchasedAt: state.today }
   }
 
   const confirm = () => {
-    if (!good.length || !priceOk) return
+    if (!good.length || !priceOk || (mode === 'package' && !packOk)) return
     if (bad > 0 && !confirmSkipped) { setConfirmSkipped(true); return }
     const ok = dispatch({
       type: 'bulkAddSubjects',
@@ -80,7 +88,7 @@ export function ImportSheet({ onClose }: { onClose: () => void }) {
   return (
     <BottomSheet title={c.title} sub={c.sub} onClose={onClose}
       footer={grid
-        ? <button className="btn btn--primary btn--block" disabled={!good.length || !priceOk} onClick={confirm}>
+        ? <button className="btn btn--primary btn--block" disabled={!good.length || !priceOk || (mode === 'package' && !packOk)} onClick={confirm}>
             {confirmSkipped && bad > 0 ? `ยืนยันข้าม ${bad} แถว` : c.confirm} ({good.length})
           </button>
         : undefined}>
@@ -129,7 +137,7 @@ export function ImportSheet({ onClose }: { onClose: () => void }) {
           <div className="fld">
             <span className="fld__l">{copy.onboarding.defaultMode}</span>
             <div className="chips">
-              {(['per_unit', 'flat_monthly'] as BillingMode['mode'][]).map((m) => (
+              {(['per_unit', 'flat_monthly', 'package'] as BillingMode['mode'][]).map((m) => (
                 <button key={m} type="button" className={`chip${mode === m ? ' chip--on' : ''}`} aria-pressed={mode === m}
                   onClick={() => setMode(m)}>{copy.waitlist.modeLabels[m]}</button>
               ))}
@@ -138,6 +146,18 @@ export function ImportSheet({ onClose }: { onClose: () => void }) {
             <span className="hint">{c.priceHint}</span>
             {!priceOk && <span className="fld__err">{copy.common.numberPositive}</span>}
           </div>
+          {mode === 'package' && (
+              <label className="fld" data-testid="pack-total"><span className="fld__l">{copy.subjects.fieldPackTotal}</span>
+                <input className="inp" inputMode="numeric" value={packTotal} onChange={(e) => setPackTotal(e.target.value)} />
+                {!packOk && <span className="fld__err">{copy.common.numberPositive}</span>}
+              </label>
+            )}
+            {(deduped.duplicatesInList > 0 || deduped.existing.length > 0) && (
+              <p className="warnbar" role="status">
+                {deduped.duplicatesInList > 0 && `${c.dupInList.replace('{n}', String(deduped.duplicatesInList))} `}
+                {deduped.existing.length > 0 && c.dupExisting.replace('{n}', String(deduped.existing.length)).replace('{names}', deduped.existing.slice(0, 3).join(', '))}
+              </p>
+            )}
 
           <div className="fld">
             <span className="fld__l">{c.preview} {rows.length}</span>

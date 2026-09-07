@@ -182,7 +182,11 @@ const norm = (s: string): string => s.toLowerCase().replace(/\s+/g, '')
  */
 export function detectMapping(grid: Grid): Mapping {
   const first = grid[0] ?? []
-  const looksLikeHeader = first.some((c) => Object.values(HINTS).flat().some((h) => norm(c).includes(norm(h))))
+  // แถวแรกเป็นหัวตารางเมื่อช่องแรกคือคำว่า "ชื่อ/นักเรียน" หรือมีอย่างน้อย 2 ช่องที่เป็นคำหัวตาราง
+  // — เคยกินนักเรียนคนแรกทิ้งเพราะผู้จ่ายชื่อ "ผู้ปกครอง1" ไปตรงกับคำใบ้ช่องผู้จ่าย
+  const hintCells = first.filter((c) => Object.values(HINTS).flat().some((h) => norm(c).includes(norm(h)))).length
+  const firstIsNameHint = HINTS.name.some((h) => norm(first[0] ?? '').includes(norm(h)))
+  const looksLikeHeader = firstIsNameHint || hintCells >= 2
   if (!looksLikeHeader) return { header: false, name: 0, payer: first.length > 1 ? 1 : -1, line: first.length > 2 ? 2 : -1, price: -1 }
   const find = (f: Field): number =>
     first.findIndex((c) => HINTS[f].some((h) => norm(c).includes(norm(h))))
@@ -201,6 +205,36 @@ export function parsePrice(raw: string): number | undefined {
   if (!digits) return undefined
   const n = Math.round(Number(digits))
   return Number.isFinite(n) && n > 0 ? n : undefined
+}
+
+/** ชื่อเทียบกันแบบไม่สนช่องว่างซ้อนและตัวพิมพ์ — "น้องปลา " กับ "น้องปลา" คือคนเดียวกัน */
+export const nameKey = (name: string): string => name.trim().replace(/\s+/g, ' ').toLowerCase()
+
+export interface DedupeResult {
+  /** แถวที่จะสร้างจริง — ชื่อแรกที่เจอในลิสต์เท่านั้น และไม่ซ้ำกับที่มีอยู่ */
+  rows: ImportRow[]
+  /** จำนวนที่ตัดเพราะซ้ำกันเองในลิสต์ */
+  duplicatesInList: number
+  /** ชื่อที่ซ้ำกับรายชื่อที่มีอยู่แล้ว (ข้ามให้ ไม่สร้างคนเดิมซ้ำ) */
+  existing: string[]
+}
+
+/** วาง 25 ชื่อจาก LINE มักมีซ้ำและมีคนที่เพิ่มไปแล้ว — ตัดให้ก่อน แล้วบอกว่าตัดอะไรไป */
+export function dedupeRows(rows: ImportRow[], existingNames: Iterable<string>): DedupeResult {
+  const taken = new Set(Array.from(existingNames, nameKey))
+  const seen = new Set<string>()
+  const out: ImportRow[] = []
+  const existing: string[] = []
+  let duplicatesInList = 0
+  for (const row of rows) {
+    if (row.error) { out.push(row); continue }
+    const key = nameKey(row.name)
+    if (seen.has(key)) { duplicatesInList += 1; continue }
+    seen.add(key)
+    if (taken.has(key)) { existing.push(row.name.trim()); continue }
+    out.push({ ...row, name: row.name.trim(), clientName: row.clientName.trim() })
+  }
+  return { rows: out, duplicatesInList, existing }
 }
 
 export function toRows(grid: Grid, map: Mapping): ImportRow[] {

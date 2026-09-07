@@ -10,6 +10,7 @@ import { money, periodOf } from '../core/format'
 import { modeThai } from '../copy/tutor'
 import { Chip, EmptyState, ProgressBar, Skeleton } from './components'
 import SubjectSheet from './SubjectSheet'
+import { ImportSheet } from './ImportSheet'
 import { modesFor } from '../core/style'
 import type { BillingMode } from '../core/types'
 
@@ -23,6 +24,7 @@ export default function Subjects() {
   const [filter, setFilter] = useState<Filter>('all')
   const [q, setQ] = useState('')
   const [adding, setAdding] = useState(false)
+  const [addingMany, setAddingMany] = useState(false)
   const period = periodOf(state.today)
 
   const active = state.subjects.filter((s) => s.active)
@@ -61,10 +63,11 @@ export default function Subjects() {
           action={
             <div className="btnrow">
               <button className="btn btn--primary" onClick={() => setAdding(true)}>{copy.subjects.addOneByOne}</button>
-              <button className="btn btn--secondary" onClick={() => nav('/app/onboarding')}>{copy.subjects.pasteExcel}</button>
+              <button className="btn btn--secondary" onClick={() => setAddingMany(true)}>{copy.subjects.addMany}</button>
             </div>
           } />
         {adding && <SubjectSheet onClose={() => setAdding(false)} />}
+        {addingMany && <ImportSheet onClose={() => setAddingMany(false)} />}
       </div>
     )
   }
@@ -86,7 +89,10 @@ export default function Subjects() {
     <div className="pane">
       <div className="rowhead">
         <h1 className="h1">{v.subjects} {active.length}</h1>
-        <button className="btn btn--primary btn--sm" onClick={() => setAdding(true)}>+ {copy.subjects.add}</button>
+        <span className="btnrow btnrow--tight">
+          <button className="btn btn--secondary btn--sm" onClick={() => setAddingMany(true)}>{copy.subjects.addMany}</button>
+          <button className="btn btn--primary btn--sm" onClick={() => setAdding(true)}>+ {copy.subjects.add}</button>
+        </span>
       </div>
 
       <div className="chips">
@@ -148,6 +154,7 @@ export default function Subjects() {
       )}
 
       {adding && <SubjectSheet onClose={() => setAdding(false)} />}
+      {addingMany && <ImportSheet onClose={() => setAddingMany(false)} />}
     </div>
   )
 }

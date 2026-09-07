@@ -651,3 +651,5 @@ body:has(.land){background:radial-gradient(45% 45% at 8% 0%,var(--glow-a),transp
 .legal__sec .land__h2{margin:0 0 var(--space-2);font-size:var(--fs-h2)}
 .legal__sec p{margin:0;color:var(--ink);line-height:1.75}
 .legal__x{margin-top:var(--space-6);color:var(--muted)}
+
+.btnrow--tight{display:inline-flex;gap:var(--space-2);align-items:center}
