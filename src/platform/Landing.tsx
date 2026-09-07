@@ -5,6 +5,8 @@ import { copy } from '../copy'
 import { DemoBadge, Icon, Mascot, PenguinMark } from '../app/components'
 import { AppearanceButton, ThemeToggle } from './ThemeToggle'
 import WaitlistSheet from './WaitlistSheet'
+import { dateThai, dayThai, periodThai, todayISO } from '../core/format'
+import { periodBack } from '../mock/seed'
 
 /**
  * หน้าแรกเป็นของคนที่จะใช้แอปจริง ไม่ใช่ของคนที่มาตัดสิน
@@ -14,6 +16,13 @@ export default function Landing() {
   const [lead, setLead] = useState<string | null>(null)
   const soon = professions.filter((p) => p.status !== 'live')
   const h = copy.landing.hero
+  // การ์ดตัวอย่างเดินตามปฏิทินเหมือนตัวแอป ไม่งั้นหน้าแรกจะโชว์วันของปีที่แล้ว
+  const today = todayISO()
+  const fill = (text: string): string => text
+    .replace('{day}', dayThai(today))
+    .replace('{date}', dateThai(today))
+    .replace('{month}', dateThai(today).split(' ')[1])
+    .replace('{lastMonth}', periodThai(periodBack(1)).split(' ')[0])
 
   return (
     <div className="land">
@@ -37,7 +46,7 @@ export default function Landing() {
 
         <div className="hero__stack" aria-hidden="true">
           <div className="hcard hcard--today">
-            <div className="hcard__hd"><b>{h.todayTitle}</b><span>{h.todayDate}</span></div>
+            <div className="hcard__hd"><b>{h.todayTitle}</b><span>{fill(h.todayDate)}</span></div>
             <div className="hcard__stats">
               <div className="stat stat--brand"><span className="stat__l">วันนี้</span><b className="stat__v num">4</b></div>
               <div className="stat stat--ok"><span className="stat__l">เสร็จ</span><b className="stat__v num">1</b></div>
@@ -62,13 +71,13 @@ export default function Landing() {
             <span className="gauge__t">{h.gaugeT}</span><span className="gauge__s">{h.gaugeS}</span>
           </div>
           <div className="hcard hcard--bill">
-            <div className="hcard__hd"><span>{h.billTitle}</span><span>{h.billWho}</span></div>
+            <div className="hcard__hd"><span>{fill(h.billTitle)}</span><span>{h.billWho}</span></div>
             <div className="hcard__amt num">{h.billAmt} <small>{copy.common.baht}</small></div>
             <div className="hcard__pills"><span>{h.billLine}</span><span className="on-ink">{h.billOk}</span></div>
           </div>
           <div className="hcard hcard--msg">
             <div className="hcard__hd"><span className="tagk tagk--reminder">{h.msgTag}</span><span>{h.msgHint}</span></div>
-            <p className="hcard__msg">{h.msg}</p>
+            <p className="hcard__msg">{fill(h.msg)}</p>
             <div className="hcard__acts">
               <span className="btn btn--primary"><Icon name="send" size={16} />{h.msgSend}</span>
               <span className="btn btn--secondary">{h.msgEdit}</span>

@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, render } from '@testing-library/react'
+import { MemoryRouter } from 'react-router-dom'
 import { buildScenario } from '../../src/core/scenarios'
 import { dayIn, daysInPeriod, demoToday, periodBack, thisPeriod } from '../../src/mock/seed'
 import { periodOf } from '../../src/core/format'
@@ -97,5 +98,28 @@ describe('เดโมที่ค้างในเครื่อง', () => {
     const { state } = await mount()
     expect(state.today).toBe('2027-03-20')
     expect(state.clients.some((c) => c.id === 'kept')).toBe(true)
+  })
+})
+
+/** การ์ดตัวอย่างบนหน้าแรกคือสิ่งแรกที่กรรมการเห็น ต้องไม่ค้างวันเหมือนที่เดโมเคยเป็น */
+describe('การ์ดตัวอย่างบนหน้าแรก', () => {
+  const renderLanding = async () => {
+    const { default: Landing } = await import('../../src/platform/Landing')
+    render(<MemoryRouter><Landing /></MemoryRouter>)
+    return document.body.innerText || document.body.textContent || ''
+  }
+
+  it('วันบนการ์ดเดินตามปฏิทินจริง และเดือนในบิลตรงกับเดือนนี้', async () => {
+    on('2027-03-15')
+    const text = await renderLanding()
+    expect(text).toContain('จันทร์ 15 มี.ค.')
+    expect(text).toContain('บิล มี.ค.')
+    expect(text).not.toContain('2 ก.ย.')
+  })
+
+  it('ข้อความตัวอย่างอ้างเดือนก่อนหน้า ไม่ใช่เดือนที่พิมพ์ค้างไว้', async () => {
+    on('2027-01-20')
+    const text = await renderLanding()
+    expect(text).toContain('เดือน ธ.ค.')
   })
 })
