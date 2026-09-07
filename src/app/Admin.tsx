@@ -11,10 +11,14 @@ import { useToast } from './components/Toast'
 import { copyText, openLine } from './share'
 import type { Message } from '../core/types'
 import { messageSendIssue } from '../core/messageDelivery'
+import { getSession } from '../integrations/supabaseRest'
+import { lineShareUrl } from '../core/share'
+import { findDelivery } from '../integrations/lineApi'
+import LineMessageAction from './LineMessageAction'
 import { isPaymentDestination } from '../core/paymentDestination'
 
-function MessageCard({ m, awaiting, left, onSend, onSent, onCancel, onSkipQueue, onCopy, onSkip, onEdit }: {
-  m: Message; awaiting: boolean; left: number
+function MessageCard({ m, awaiting, queueActive, left, onSend, onSent, onCancel, onSkipQueue, onCopy, onSkip, onEdit }: {
+  m: Message; awaiting: boolean; left: number; queueActive: boolean
   onSend: () => void; onSent: () => void; onCancel: () => void; onSkipQueue: () => void; onCopy: () => void
   onSkip: () => void; onEdit: (t: string) => boolean
 }) {
@@ -46,10 +50,10 @@ function MessageCard({ m, awaiting, left, onSend, onSent, onCancel, onSkipQueue,
         <p className="p msg__body">{m.draft}</p>
       )}
       {issue && <p className="hint" role="status">{issue}</p>}
-      {m.edited && issue && <button className="btn btn--secondary btn--sm" onClick={() => {
+      {m.edited && issue && !m.oaDelivery && <button className="btn btn--secondary btn--sm" onClick={() => {
         if (dispatch({ type: 'refreshMessage', id: m.id })) setEditing(false)
       }}>ใช้ร่างยอดล่าสุดแทนข้อความที่แก้</button>}
-      {awaiting ? (
+      {m.oaDelivery ? null : awaiting ? (
         // เปิด LINE ไปแล้ว — ยังไม่นับว่าส่งจนกว่าครูจะยืนยัน
         // การ์ดถามค้างไว้ ไม่ใช้ toast เพราะครูสลับไป LINE แล้ว toast หายไปก่อนกลับมา
         <div className="confirm">
@@ -79,6 +83,7 @@ function MessageCard({ m, awaiting, left, onSend, onSent, onCancel, onSkipQueue,
           <button className="btn btn--ghost btn--sm" onClick={onSkip}>{copy.common.skip}</button>
         </div>
       )}
+      <LineMessageAction message={m} disabled={queueActive} />
     </li>
   )
 }
@@ -112,11 +117,32 @@ export default function Admin() {
     ids.map(byId).find((m): m is Message => m?.status === 'draft')
 
   const openFor = async (m: Message, rest: string[] = queue) => {
+    if (m.oaDelivery) { toast.push({ text: 'กรุณาตรวจสอบผลส่ง LINE OA ก่อน ห้ามแชร์ซ้ำ', tone: 'warn' }); return }
     const issue = messageSendIssue(state, m)
     if (issue) { toast.push({ text: issue, tone: 'warn' }); return }
+    let popup: Window | null = null
+    if (state.lineWorkspaceId) {
+      let signedIn = false
+      try { signedIn = getSession()?.user.id === state.lineProviderId } catch { /* refuse without verified local session */ }
+      if (!signedIn) {
+        toast.push({ text: 'เข้าสู่บัญชี LINE OA เดิมเพื่อตรวจว่าเคยส่งรายการนี้แล้วหรือยัง', tone: 'warn' }); return
+      }
+      // Reserve a window in the original click, before network awaits lose user activation on Safari.
+      popup = window.open('about:blank', '_blank')
+      if (!popup) { toast.push({ text: 'กรุณาอนุญาตการเปิดหน้าต่าง LINE แล้วกดอีกครั้ง', tone: 'warn' }); return }
+      popup.opener = null
+      try {
+        const prior = await findDelivery(`${state.lineWorkspaceId}:${m.dedupeKey}`)
+        if (prior && !(prior.status === 'skipped' && prior.last_error === 'user-cancelled')) {
+          popup.close()
+          toast.push({ text: 'มีรายการนี้ใน LINE OA แล้ว กดตรวจสอบผ่านปุ่มส่งด้วย LINE OA เพื่อป้องกันการส่งซ้ำ', tone: 'warn' }); return
+        }
+      } catch { popup.close(); toast.push({ text: 'ตรวจผลส่ง LINE OA ไม่สำเร็จ กรุณาลองใหม่ก่อนแชร์ซ้ำ', tone: 'warn' }); return }
+    }
     // Commit the queue while the tab is still active, before LINE can suspend it.
-    if (!dispatch({ type: 'sendingStart', awaiting: m.id, queue: rest })) return
-    if (!openLine(m.draft)) {
+    if (!dispatch({ type: 'sendingStart', awaiting: m.id, queue: rest })) { popup?.close(); return }
+    if (popup) popup.location.replace(lineShareUrl(m.draft))
+    else if (!openLine(m.draft)) {
       // popup โดนบล็อก (มักบนเดสก์ท็อป) — คัดลอกให้แทน ครูวางเองได้
       const copied = await copyText(m.draft)
       toast.push({
@@ -170,6 +196,7 @@ export default function Admin() {
   return (
     <div className="pane">
       {actionError && <p className="fld__err" role="alert">{actionError}</p>}
+      {state.mode === 'real' && <p><Link to="/app/settings/line">ตั้งค่า LINE OA และเชื่อมผู้ปกครอง</Link></p>}
       {state.mode === 'real' && <p className="hint">ลิงก์เอกสารเป็นสำเนาตามวันที่ ผู้ที่ได้รับลิงก์อ่านข้อมูลได้ กรุณาตรวจผู้รับก่อนส่ง</p>}
       {state.mode === 'real' && !isPaymentDestination(state.provider.promptpayId) && <p className="warnbar">ยังไม่ได้ตั้งค่าพร้อมเพย์ที่ถูกต้อง <Link to="/app/onboarding">ตั้งค่าข้อมูลรับเงิน</Link></p>}
       <div className="chips">
@@ -193,7 +220,7 @@ export default function Admin() {
           ) : (
             <>
               {/* ส่งทีละคนเป็นคิว — LINE เปิดได้ทีละแชท จะกดรวดเดียวแล้วนับว่าส่งหมดไม่ได้ */}
-              <button className="btn btn--primary btn--block" disabled={awaiting !== null} onClick={() => {
+              <button className="btn btn--primary btn--block" disabled={awaiting !== null || drafts.some(m => !!m.oaDelivery)} onClick={() => {
                 const [first, ...rest] = drafts
                 if (!first) return
                 void openFor(first, rest.map((m) => m.id))
@@ -202,6 +229,7 @@ export default function Admin() {
                 {drafts.map((m) => (
                   <MessageCard key={m.id} m={m}
                     awaiting={awaiting === m.id}
+                    queueActive={!!awaiting}
                     left={queue.filter((id) => byId(id)?.status === 'draft').length}
                     onSkipQueue={skipInQueue}
                     onSend={() => { void openFor(m) }}
@@ -264,7 +292,7 @@ export default function Admin() {
             <div className="draftcard" key={m.id}>
               <span className="dim">{copy.admin.draftedTag} · {m.meta?.answerFrom ? `${copy.admin.answeredFrom}: ${String(m.meta.answerFrom)}` : copy.admin.answerManual}</span>
               <p className="p">{m.draft}</p>
-              {awaiting === m.id ? (
+              {m.oaDelivery ? null : awaiting === m.id ? (
                 <div className="confirm">
                   <span className="confirm__q">{copy.admin.sentAsk}</span>
                   <div className="btnrow">
@@ -274,10 +302,11 @@ export default function Admin() {
                 </div>
               ) : (
                 <div className="btnrow">
-                  <button className="btn btn--primary btn--sm" onClick={() => { void openFor(m) }}>{copy.admin.sendLine}</button>
+                          <button className="btn btn--primary btn--sm" onClick={() => { void openFor(m) }}>{copy.admin.sendLine}</button>
                   <button className="btn btn--ghost btn--sm" onClick={() => commit({ type: 'skipMessage', id: m.id })}>{copy.common.close}</button>
                 </div>
               )}
+              <LineMessageAction message={m} disabled={!!awaiting} />
             </div>
           ))}
 

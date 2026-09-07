@@ -24,6 +24,7 @@ fi
 docker exec "$container_name" psql -v ON_ERROR_STOP=1 -U postgres \
   -f /work/tests/sql/bootstrap_supabase.sql \
   -f /work/supabase/migrations/0001_line.sql \
+  -f /work/supabase/migrations/0002_line_app_bridge.sql \
   -f /work/tests/sql/line_backend.sql
 
 redeem_sql="set role service_role; select ok from public.redeem_line_link_code(

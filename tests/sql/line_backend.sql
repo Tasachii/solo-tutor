@@ -62,7 +62,293 @@ begin
     raise exception 'enqueue did not preserve server-owned defaults';
   end if;
 end $$;
+
 reset role;
+insert into public.message_outbox(
+  provider_id, recipient_id, message_id, body, dedupe_key, status, attempts,
+  first_attempt_at, error
+) values
+  ('10000000-0000-0000-0000-000000000001',
+   '11100000-0000-0000-0000-000000000001', 'definitive-unsent', 'definitive',
+   'definitive-unsent', 'skipped', 1, now(), 'invalid-token'),
+  ('10000000-0000-0000-0000-000000000001',
+   '11100000-0000-0000-0000-000000000001', 'ambiguous-before-invalid', 'ambiguous',
+   'ambiguous-before-invalid', 'skipped', 2, now() - interval '1 minute', 'invalid-token');
+set role authenticated;
+select set_config('request.jwt.claim.sub', '10000000-0000-0000-0000-000000000001', false);
+do $$
+begin
+  if not public.cancel_line_message('definitive-unsent') then
+    raise exception 'definitive first-attempt failure could not be cancelled';
+  end if;
+  if public.cancel_line_message('ambiguous-before-invalid') then
+    raise exception 'prior ambiguous attempt was incorrectly declared safe to share';
+  end if;
+end $$;
+reset role;
+
+-- Local app workspace mappings are stable and cannot cross tenant boundaries.
+set role authenticated;
+select set_config('request.jwt.claim.sub', '10000000-0000-0000-0000-000000000001', false);
+select * from public.sync_line_workspace_clients(
+  'aaaaaaaa-0000-4000-8000-000000000001',
+  '[{"id":"local-c1","name":"Student One"},{"id":"local-c2","name":"Student Two"}]'::jsonb
+) where local_client_key = 'local-c1' \gset mapped_
+select set_config('test.mapped_client', :'mapped_client_id', false);
+select * from public.sync_line_workspace_clients(
+  'aaaaaaaa-0000-4000-8000-000000000001',
+  '[{"id":"local-c1","name":"Student Renamed"}]'::jsonb
+) where local_client_key = 'local-c1' \gset remapped_
+select set_config('test.remapped_client', :'remapped_client_id', false);
+do $$
+begin
+  if current_setting('test.mapped_client')::uuid <> current_setting('test.remapped_client')::uuid then
+    raise exception 'workspace sync changed a stable client UUID';
+  end if;
+  if (select name from public.clients where provider_id = auth.uid()
+      and id = current_setting('test.mapped_client')::uuid) <> 'Student Renamed' then
+    raise exception 'workspace sync did not update the remote client name';
+  end if;
+end $$;
+reset role;
+
+set role authenticated;
+select set_config('request.jwt.claim.sub', '20000000-0000-0000-0000-000000000002', false);
+do $$
+begin
+  if exists (select 1 from public.line_delivery_target(
+    'aaaaaaaa-0000-4000-8000-000000000001', 'local-c1'
+  )) then raise exception 'delivery target crossed tenant boundary'; end if;
+  if exists (select 1 from public.line_workspace_clients
+    where workspace_key = 'aaaaaaaa-0000-4000-8000-000000000001') then
+    raise exception 'workspace mapping RLS crossed tenant boundary';
+  end if;
+end $$;
+reset role;
+
+-- Replacing an OA invalidates recipient identifiers scoped to the old bot.
+set role service_role;
+select public.replace_line_channel(
+  '20000000-0000-0000-0000-000000000002', 'bot-other-new', '@othernew',
+  'sealed-secret', 'sealed-token', 'Other New OA'
+);
+reset role;
+do $$
+begin
+  if (select client_id is not null or linked_at is not null or unfollowed_at is null
+      from public.line_recipients
+      where provider_id = '20000000-0000-0000-0000-000000000002') then
+    raise exception 'bot replacement retained an old bot-scoped recipient link';
+  end if;
+  if has_function_privilege('authenticated',
+      'public.replace_line_channel(uuid,text,text,text,text,text)', 'execute') then
+    raise exception 'authenticated users can call the service credential replacement RPC';
+  end if;
+end $$;
+
+update public.line_recipients set client_id = current_setting('test.mapped_client')::uuid,
+  linked_at = now(), unfollowed_at = null
+where provider_id = '10000000-0000-0000-0000-000000000001'
+  and id = '11100000-0000-0000-0000-000000000001';
+set role authenticated;
+select set_config('request.jwt.claim.sub', '10000000-0000-0000-0000-000000000001', false);
+do $$
+declare v_target record;
+begin
+  select * into v_target from public.line_delivery_target(
+    'aaaaaaaa-0000-4000-8000-000000000001', 'local-c1'
+  );
+  if not v_target.eligible or v_target.reason <> 'ok' or v_target.link_count <> 1
+     or v_target.client_id <> current_setting('test.mapped_client')::uuid then
+    raise exception 'eligible delivery target contract is incorrect';
+  end if;
+end $$;
+reset role;
+
+-- A full prior month must read as reset, while current in-flight work still consumes capacity.
+update public.line_channels set quota_month = date_trunc('month', now() - interval '1 month')::date,
+  quota_used = quota_limit, quota_reserved = 1
+where provider_id = '10000000-0000-0000-0000-000000000001';
+insert into public.message_outbox(
+  provider_id, recipient_id, message_id, body, dedupe_key, status,
+  first_attempt_at, quota_month, claimed_at, claim_token
+) values (
+  '10000000-0000-0000-0000-000000000001',
+  '11100000-0000-0000-0000-000000000001', 'target-month-rollover', 'in flight',
+  'target-month-rollover', 'processing', now(),
+  date_trunc('month', now() - interval '1 month')::date, now(),
+  'cccccccc-cccc-4ccc-8ccc-cccccccccccc'
+);
+set role authenticated;
+select set_config('request.jwt.claim.sub', '10000000-0000-0000-0000-000000000001', false);
+do $$
+declare v_target record;
+begin
+  select * into v_target from public.line_delivery_target(
+    'aaaaaaaa-0000-4000-8000-000000000001', 'local-c1'
+  );
+  if not v_target.eligible or v_target.reason <> 'ok' or v_target.quota_used <> 0 then
+    raise exception 'prior-month quota did not reset in delivery target';
+  end if;
+end $$;
+reset role;
+update public.message_outbox set status = 'failed', error = 'test-cleanup',
+  claim_token = null, claimed_at = null where dedupe_key = 'target-month-rollover';
+update public.line_channels set quota_month = date_trunc('month', now() at time zone 'Asia/Bangkok')::date,
+  quota_used = 0, quota_reserved = 0
+where provider_id = '10000000-0000-0000-0000-000000000001';
+
+-- Enqueue retries are idempotent only for byte-for-byte equivalent payload fields.
+set role authenticated;
+select set_config('request.jwt.claim.sub', '10000000-0000-0000-0000-000000000001', false);
+select public.enqueue_line_message(
+  '11100000-0000-0000-0000-000000000001', 'idem-message', 'same body', 'idem-key',
+  '2030-01-01T00:00:00Z'
+) as idem_id \gset
+select set_config('test.idem_id', :'idem_id', false);
+select public.enqueue_line_message(
+  '11100000-0000-0000-0000-000000000001', 'idem-default', 'same default body',
+  'idem-default-key'
+) as idem_default_id \gset
+select set_config('test.idem_default_id', :'idem_default_id', false);
+do $$
+begin
+  if public.enqueue_line_message(
+    '11100000-0000-0000-0000-000000000001', 'idem-default', 'same default body',
+    'idem-default-key'
+  ) <> current_setting('test.idem_default_id')::uuid then
+    raise exception 'omitted schedule made an identical enqueue conflict';
+  end if;
+  if public.enqueue_line_message(
+    '11100000-0000-0000-0000-000000000001', 'idem-message', 'same body', 'idem-key',
+    '2030-01-01T00:00:00Z'
+  ) <> current_setting('test.idem_id')::uuid then
+    raise exception 'identical enqueue did not return existing ID';
+  end if;
+  begin
+    perform public.enqueue_line_message(
+      '11100000-0000-0000-0000-000000000001', 'idem-message', 'changed', 'idem-key',
+      '2030-01-01T00:00:00Z'
+    );
+    raise exception 'changed payload reused a dedupe key';
+  exception when unique_violation then null;
+  end;
+  begin
+    perform public.enqueue_line_message(
+      '11100000-0000-0000-0000-000000000001', 'oversized', repeat('ก', 5001),
+      'oversized-key'
+    );
+    raise exception 'oversized body was accepted';
+  exception when invalid_parameter_value then null;
+  end;
+  begin
+    perform public.enqueue_line_message(
+      '11100000-0000-0000-0000-000000000001', '   ', 'body', 'bounded-id-key'
+    );
+    raise exception 'blank message identity was accepted';
+  exception when invalid_parameter_value then null;
+  end;
+  begin
+    perform public.enqueue_line_message(
+      '11100000-0000-0000-0000-000000000001', 'bounded-id', 'body', repeat('d', 1001)
+    );
+    raise exception 'oversized dedupe key was accepted';
+  exception when invalid_parameter_value then null;
+  end;
+end $$;
+
+-- A queued, never-attempted row can be cancelled for safe personal sharing.
+select public.enqueue_line_message(
+  '11100000-0000-0000-0000-000000000001', 'cancel-me', 'cancel body', 'cancel-key', now()
+) as cancel_id \gset
+select set_config('test.cancel_id', :'cancel_id', false);
+do $$
+begin
+  if not public.cancel_line_message('cancel-key') or not public.cancel_line_message('cancel-key') then
+    raise exception 'safe cancellation was not idempotent';
+  end if;
+  if (select status <> 'skipped' or error <> 'user-cancelled'
+      from public.message_outbox where id = current_setting('test.cancel_id')::uuid) then
+    raise exception 'safe cancellation did not mark the queued row';
+  end if;
+  if (select last_error from public.message_outbox
+      where id = current_setting('test.cancel_id')::uuid) <> 'user-cancelled' then
+    raise exception 'public outbox error alias is stale';
+  end if;
+end $$;
+reset role;
+
+-- Exact claiming never drains a neighboring queued message.
+update public.line_channels set status = 'active', quota_used = 0, quota_reserved = 0
+where provider_id = '10000000-0000-0000-0000-000000000001';
+insert into public.message_outbox(provider_id, recipient_id, message_id, body, dedupe_key)
+values
+  ('10000000-0000-0000-0000-000000000001','11100000-0000-0000-0000-000000000001',
+   'exact-a','a','exact-a'),
+  ('10000000-0000-0000-0000-000000000001','11100000-0000-0000-0000-000000000001',
+   'exact-b','b','exact-b');
+set role service_role;
+do $$
+declare v_a uuid; v_b uuid; v_claimed uuid;
+begin
+  select id into v_a from public.message_outbox where dedupe_key = 'exact-a';
+  select id into v_b from public.message_outbox where dedupe_key = 'exact-b';
+  select id into v_claimed from public.claim_line_outbox(
+    '10000000-0000-0000-0000-000000000001', 1, false, v_b
+  );
+  if v_claimed <> v_b then raise exception 'targeted claim returned a different row'; end if;
+  if (select status from public.message_outbox where id = v_a) <> 'queued' then
+    raise exception 'targeted claim drained a neighboring row';
+  end if;
+end $$;
+reset role;
+
+-- Disconnect erases credentials, skips untouched queue, and preserves ambiguous rows for review.
+update public.message_outbox set status = 'manual_review', error = 'test-existing-review',
+  claim_token = null, claimed_at = null where dedupe_key = 'exact-b';
+insert into public.message_outbox(provider_id, recipient_id, message_id, body, dedupe_key)
+values ('10000000-0000-0000-0000-000000000001','11100000-0000-0000-0000-000000000001',
+  'disconnect-queued','queued','disconnect-queued');
+insert into public.message_outbox(provider_id, recipient_id, message_id, body, dedupe_key,
+  status, first_attempt_at, claimed_at, claim_token, quota_month)
+values ('10000000-0000-0000-0000-000000000001','11100000-0000-0000-0000-000000000001',
+  'disconnect-processing','processing','disconnect-processing','processing',now(),now(),
+  'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',date_trunc('month', now())::date);
+update public.line_channels set quota_reserved = 1
+where provider_id = '10000000-0000-0000-0000-000000000001';
+set role authenticated;
+select set_config('request.jwt.claim.sub', '10000000-0000-0000-0000-000000000001', false);
+do $$
+declare v_result record;
+begin
+  select * into v_result from public.disconnect_line_channel();
+  if v_result.status <> 'disabled' or v_result.review_count <> 1 then
+    raise exception 'disconnect result counts are incorrect';
+  end if;
+  if (select status from public.message_outbox where dedupe_key = 'disconnect-queued') <> 'skipped'
+     or (select status from public.message_outbox where dedupe_key = 'disconnect-processing') <> 'manual_review'
+     or (select error from public.message_outbox where dedupe_key = 'exact-b') <> 'test-existing-review' then
+    raise exception 'disconnect lost safe/ambiguous outbox state';
+  end if;
+end $$;
+reset role;
+do $$
+begin
+  if (select channel_secret is not null or access_token is not null or quota_reserved <> 0
+      from public.line_channels
+      where provider_id = '10000000-0000-0000-0000-000000000001') then
+    raise exception 'disconnect retained credentials or reservation';
+  end if;
+end $$;
+
+-- Restore the fixture channel for the original 0001 regression suite below.
+update public.line_channels set status = 'active', channel_secret = 'secret-owner',
+  access_token = 'token-owner', quota_reserved = 0
+where provider_id = '10000000-0000-0000-0000-000000000001';
+insert into public.message_outbox(provider_id, recipient_id, message_id, body, dedupe_key)
+values ('10000000-0000-0000-0000-000000000001',
+  '11100000-0000-0000-0000-000000000001', 'regression-restored', 'restored',
+  'regression-restored');
 
 set role service_role;
 select public.claim_line_webhook_event(

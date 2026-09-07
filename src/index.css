@@ -636,3 +636,11 @@ body:has(.land){background:radial-gradient(45% 45% at 8% 0%,var(--glow-a),transp
   *,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
   .hcard{transform:none!important}
 }
+
+/* LINE account setup and durable delivery feedback */
+.line-settings .card { padding: var(--space-4); margin-block: var(--space-4); border: 1px solid var(--line); border-radius: var(--radius); }
+.line-settings .fld { display: block; margin-block: 14px; }
+.line-parent { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding-block: 16px; }
+.line-parent > div { flex-basis: 100%; }
+.line-delivery { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.line-delivery > p { flex-basis: 100%; }

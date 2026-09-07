@@ -1,5 +1,5 @@
 import { authenticatedConnectInput, configureLineChannel, handler as connectHandler } from '../../supabase/functions/line-connect/index.ts'
-import { authenticatedSendAuthority, chooseClaimedDelivery, handler as sendHandler } from '../../supabase/functions/line-send/index.ts'
+import { authenticatedSendAuthority, claimedBodyIssue, chooseClaimedDelivery, handler as sendHandler, interactiveOutboxId } from '../../supabase/functions/line-send/index.ts'
 import { handler as webhookHandler } from '../../supabase/functions/line-webhook/index.ts'
 import { open, seal } from '../../supabase/functions/_shared/db.ts'
 
@@ -30,6 +30,19 @@ Deno.test('interactive send ignores body provider and cannot request auto mode',
   equal(authority, {
     ok: true, mode: 'interactive', providerId: 'provider-from-jwt', auto: false,
   })
+})
+
+Deno.test('interactive send accepts only an explicit UUID outbox target', () => {
+  equal(interactiveOutboxId({ outboxId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa' }),
+    'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa')
+  equal(interactiveOutboxId({ outboxId: 'not-a-uuid' }), null)
+  equal(interactiveOutboxId({}), null)
+})
+
+Deno.test('LINE send rejects oversized UTF-16 bodies instead of slicing persisted content', () => {
+  equal(claimedBodyIssue('message'), null)
+  equal(claimedBodyIssue('😀'.repeat(2501)), 'invalid-body')
+  equal(claimedBodyIssue('   '), 'invalid-body')
 })
 
 Deno.test('cron header uses only the separate secret path', async () => {
@@ -85,9 +98,9 @@ Deno.test('browser preflight allows only the configured frontend origin', async 
 Deno.test('connect persists pending before webhook mutation and activates last', async () => {
   const order: string[] = []
   const responses = [
-    new Response(JSON.stringify({ userId: 'bot-1', displayName: 'Tutor OA' }), { status: 200 }),
+    new Response(JSON.stringify({ userId: 'bot-1', basicId: '@tutor', displayName: 'Tutor OA' }), { status: 200 }),
     new Response(null, { status: 200 }),
-    new Response(null, { status: 200 }),
+    new Response(JSON.stringify({ success: true }), { status: 200 }),
   ]
   const response = await configureLineChannel(
     { providerId: 'p1', channelSecret: 'secret', accessToken: 'token' },
@@ -95,11 +108,15 @@ Deno.test('connect persists pending before webhook mutation and activates last',
     {
       fetch: async (_input, init) => { order.push(init?.method ?? 'GET'); return responses.shift()! },
       seal: async (value) => `sealed:${value}`,
-      persistPending: async (row) => { equal(row.status, 'pending'); order.push('pending') },
+      persistPending: async (row) => {
+        equal({ status: row.status, basicId: row.basic_id }, { status: 'pending', basicId: '@tutor' })
+        order.push('pending')
+      },
       setStatus: async (_provider, status) => { order.push(status) },
     },
   )
   equal(response.status, 200)
+  equal(await response.json(), { ok: true, displayName: 'Tutor OA', basicId: '@tutor' })
   equal(order, ['GET', 'pending', 'PUT', 'POST', 'active'])
 })
 
@@ -124,6 +141,26 @@ Deno.test('failed webhook setup leaves a retryable failed state', async () => {
   equal(order, ['GET', 'pending', 'PUT', 'setup_failed'])
 })
 
+Deno.test('LINE webhook verification must report success even with HTTP 200', async () => {
+  const statuses: string[] = []
+  const response = await configureLineChannel(
+    { providerId: 'p1', channelSecret: 'secret', accessToken: 'token' },
+    'https://functions.example/line-webhook',
+    {
+      fetch: async (_input, init) => {
+        if (!init?.method) return new Response(JSON.stringify({ userId: 'bot-1' }), { status: 200 })
+        if (init.method === 'PUT') return new Response(null, { status: 200 })
+        return new Response(JSON.stringify({ success: false, reason: 'signature' }), { status: 200 })
+      },
+      seal: async (value) => `sealed:${value}`,
+      persistPending: async () => {},
+      setStatus: async (_provider, status) => { statuses.push(status) },
+    },
+  )
+  equal(response.status, 502)
+  equal(statuses, ['setup_failed'])
+})
+
 Deno.test('malformed and unknown webhook payloads are acknowledged without external calls', async () => {
   const malformed = await webhookHandler(new Request('https://local/webhook', {
     method: 'POST', body: 'not-json',
@@ -140,9 +177,9 @@ Deno.test('crypto helpers fail closed on empty or malformed secrets', async () =
   equal(malformedRejected, true)
 })
 
-Deno.test('Supabase gateway lets webhook signature and cron auth reach their handlers', async () => {
+Deno.test('Supabase gateway delegates auth to handlers for modern JWT, LINE signature, and cron', async () => {
   const config = await Deno.readTextFile('supabase/config.toml')
   equal(/\[functions\.line-webhook\][\s\S]*?verify_jwt\s*=\s*false/.test(config), true)
   equal(/\[functions\.line-send\][\s\S]*?verify_jwt\s*=\s*false/.test(config), true)
-  equal(/\[functions\.line-connect\][\s\S]*?verify_jwt\s*=\s*true/.test(config), true)
+  equal(/\[functions\.line-connect\][\s\S]*?verify_jwt\s*=\s*false/.test(config), true)
 })

@@ -185,6 +185,7 @@ export default function AppShell() {
                 }}>{copy.menu.restore}</button>
                 <button className="row" onClick={() => { setMenu(false); setImportOpen(true) }}>{copy.importer.menu}</button>
                 <button className="row" onClick={() => { setMenu(false); download(rosterCsv(state), `รายชื่อ-${state.today}.csv`, 'text/csv;charset=utf-8') }}>{copy.importer.exportMenu}</button>
+                <button className="row" onClick={() => { setMenu(false); nav('/app/settings/line') }}>เชื่อม LINE OA</button>
                 <button className="row" onClick={() => { setMenu(false); setSheetsOpen(true) }}>{copy.sheets.menu}</button>
                 {!real && <button className="row" onClick={() => { resetDemo(); setMenu(false) }}>{copy.menu.reset}</button>}
               </div>

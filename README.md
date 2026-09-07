@@ -91,3 +91,7 @@ npm run dev
 MIT — ดูไฟล์ [LICENSE](LICENSE)
 
 ผลแก้ QA และข้อจำกัด: [docs/qa-fixes-20260906.md](docs/qa-fixes-20260906.md)
+
+## LINE OA
+
+เชื่อมบัญชี OA และผู้ปกครองได้ที่ `/app/settings/line` ในโหมดข้อมูลจริง หลังตั้งค่า Supabase และ deploy Edge Functions ตาม [คู่มือเชื่อม LINE OA](docs/line-oa-setup.md) การส่งยังเป็นแบบครูตรวจแล้วกดส่งเอง ไม่มี credential จริงอยู่ใน repository

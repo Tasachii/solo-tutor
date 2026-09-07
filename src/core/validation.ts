@@ -42,6 +42,8 @@ const hasUniqueStrings = (rows: unknown[], key: string): boolean => {
 
 export interface StateValidation { ok: boolean; errors: string[] }
 
+export const isUuid = (value: unknown): value is string => typeof value === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value)
+
 /** ตรวจทั้ง shape และความสัมพันธ์ก่อน state ถูก hydrate/restore */
 export function validateState(value: unknown): StateValidation {
   const errors: string[] = []
@@ -61,6 +63,9 @@ export function validateState(value: unknown): StateValidation {
   const state = value as unknown as AppState
   if (state.schemaVersion !== 5) errors.push('schemaVersion: ไม่รองรับ')
   if (!Number.isSafeInteger(state.revision) || state.revision < 0) errors.push('revision: ต้องเป็นจำนวนเต็มไม่ติดลบ')
+  if ((state.lineWorkspaceId === undefined) !== (state.lineProviderId === undefined)
+    || (state.lineProviderId !== undefined && !isUuid(state.lineProviderId))) errors.push('lineProviderId: ไม่ถูกต้อง')
+  if (state.lineWorkspaceId !== undefined && !isUuid(state.lineWorkspaceId)) errors.push('lineWorkspaceId: ไม่ถูกต้อง')
   if (state.mode !== 'demo' && state.mode !== 'real') errors.push('mode: ไม่ถูกต้อง')
   if (!isString(state.professionId) || !state.professionId) errors.push('professionId: ไม่ถูกต้อง')
   if (!isString(state.scenarioId)) errors.push('scenarioId: ไม่ถูกต้อง')
@@ -218,6 +223,14 @@ export function validateState(value: unknown): StateValidation {
     if (!['invoice', 'reminder', 'renewal', 'renewal_exhausted', 'receipt', 'faq_reply', 'moved', 'cancelled', 'summary'].includes(row.kind)
       || !['draft', 'sent', 'skipped'].includes(row.status) || !isISODate(row.createdAt)
       || !isString(row.draft) || !row.draft.trim() || !isString(row.dedupeKey) || !row.dedupeKey.trim()) errors.push(`messages[${index}]: สถานะหรือข้อมูลไม่ถูกต้อง`)
+    if (row.oaDelivery !== undefined) {
+      const d = row.oaDelivery
+      if (!isRecord(d) || row.status !== 'draft' || state.mode !== 'real'
+        || d.workspaceId !== state.lineWorkspaceId || d.providerId !== state.lineProviderId
+        || !['providerId', 'workspaceId', 'recipientId'].every(k => isUuid(d[k]))
+        || !isString(d.body) || !d.body.trim() || d.body !== row.draft
+        || d.dedupeKey !== `${state.lineWorkspaceId}:${row.dedupeKey}`) errors.push(`messages[${index}].oaDelivery: ไม่ถูกต้อง`)
+    }
     if ((row.sentAt !== undefined && !isISODate(row.sentAt)) || (row.edited !== undefined && typeof row.edited !== 'boolean')
       || (row.meta !== undefined && !isRecord(row.meta))) errors.push(`messages[${index}]: ข้อมูลเสริมไม่ถูกต้อง`)
     if ((row.kind === 'invoice' || row.kind === 'reminder')

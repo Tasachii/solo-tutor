@@ -6,6 +6,7 @@ verify_jwt = false
 [functions.line-send]
 verify_jwt = false
 
-# Browser connect calls carry a Supabase JWT; the handler also resolves it with auth.getUser().
+# Modern Supabase JWTs may use asymmetric keys the gateway cannot verify. The handler always
+# resolves the bearer token with auth.getUser(), so invalid tokens still fail closed.
 [functions.line-connect]
-verify_jwt = true
+verify_jwt = false

@@ -16,6 +16,7 @@ import ReceiptList from './app/ReceiptList'
 import Onboarding from './app/Onboarding'
 import Receipt from './app/Receipt'
 import ClientPreview from './app/ClientPreview'
+import LineSettings from './app/LineSettings'
 
 export default function App() {
   const { didReset, track } = useStore()
@@ -37,6 +38,7 @@ export default function App() {
         <Route path="subjects/:id" element={<SubjectDetail />} />
         <Route path="billing" element={<Billing />} />
         <Route path="admin" element={<Admin />} />
+        <Route path="settings/line" element={<LineSettings />} />
         <Route path="receipts" element={<ReceiptList />} />
         <Route path="onboarding" element={<Onboarding />} />
       </Route>

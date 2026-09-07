@@ -47,10 +47,15 @@ export interface Receipt { id: string; paymentId: string; number: string; issued
 
 export type MessageKind = 'invoice' | 'reminder' | 'renewal' | 'renewal_exhausted' | 'receipt' | 'faq_reply'
   | 'moved' | 'cancelled' | 'summary'
+export interface OaDelivery {
+  providerId: string; workspaceId: string; recipientId: string; dedupeKey: string; body: string
+}
 export interface Message {
   id: string; clientId: string; subjectId?: string; kind: MessageKind; draft: string; edited?: boolean
   status: 'draft' | 'sent' | 'skipped'; createdAt: ISODate; sentAt?: ISODate
   dedupeKey: string; meta?: Record<string, unknown>
+  /** Durable intent written before enqueue; freezes the payload until remote settlement. */
+  oaDelivery?: OaDelivery
 }
 export interface ChatTurn {
   id: string; clientId: string; from: 'client' | 'provider'; text: string; at: ISODate; viaAdmin?: boolean
@@ -68,6 +73,9 @@ export interface AppState {
   schemaVersion: 5
   /** เพิ่มทีละครั้งเมื่อ commit ลง storage สำเร็จ ใช้ตรวจ writer รุ่นเก่าหรือข้อมูล stale */
   revision: number
+  /** Stable ledger identity, retained in backups and discarded when starting a new ledger. */
+  lineWorkspaceId?: string
+  lineProviderId?: string
   mode: AppMode
   professionId: string
   scenarioId: string

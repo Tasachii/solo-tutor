@@ -29,11 +29,11 @@
 2. ตั้ง secrets: `SUPABASE_SERVICE_ROLE_KEY`, `LINE_SECRET_KEY` (อย่างน้อย 32 ตัวอักษร),
    `LINE_WEBHOOK_URL` (HTTPS URL ที่ควบคุมจาก server) และ `LINE_CRON_SECRET` (แยกจาก JWT ผู้ใช้)
    รวมถึง `LINE_ALLOWED_ORIGIN` ซึ่งต้องเป็น origin ของเว็บจริงแบบเจาะจง เช่น GitHub Pages ของโปรเจกต์
-3. `supabase functions deploy line-connect line-webhook line-send`
+3. Deploy ทีละฟังก์ชัน: `supabase functions deploy line-connect`, `supabase functions deploy line-webhook` และ `supabase functions deploy line-send`
 4. ถ้า CLI ไม่ยอม bundle การ import ข้าม `supabase/functions/` (`../../../src/core/…`)
    ให้คัดลอกสองไฟล์นั้นเข้า `functions/_shared/` ตอน deploy — **อย่าแก้สำเนา** ให้แก้ที่ `src/core/`
    แล้วคัดลอกทับ ไม่งั้นตรรกะสองชุดจะเพี้ยนกันโดยไม่มีใครรู้
-5. ตั้ง `pg_cron` เรียก `line-send` ทุกชั่วโมงสำหรับข้อความตามเวลา
+5. รอบนี้ส่งแบบกดเอง ยังไม่ตั้ง cron; ดูขั้นตอนผูก frontend และตรวจรับใน [`../docs/line-oa-setup.md`](../docs/line-oa-setup.md)
 
 `auth.users` และ `auth.uid()` เป็นของ Supabase Auth migration นี้จึงไม่สร้างหรือแก้ schema `auth` เอง
 ชุดทดสอบใน `tests/sql/bootstrap_supabase.sql` สร้างเพียง stub ที่เข้ากันได้ใน PostgreSQL ชั่วคราว
@@ -42,8 +42,9 @@
 คำขอ `line-connect` และการส่งแบบกดเองต้องมี Supabase bearer JWT ที่ตรวจด้วย
 `auth.getUser()` แล้ว provider จะมาจาก user ID ที่ตรวจแล้วเท่านั้น ค่า `providerId` ใน JSON ไม่มีสิทธิ์
 เปลี่ยน tenant การส่งตามเวลาใช้ `x-cron-secret` คนละช่องทาง และไม่มีการส่งจริงในชุดทดสอบ
-`config.toml` ปิด gateway JWT เฉพาะ `line-webhook` และ `line-send` เพื่อให้ LINE signature
-และ cron secret เข้าถึง handler ได้ จากนั้น handler ตรวจสิทธิ์เอง ส่วน `line-connect` คง gateway JWT ไว้
+`config.toml` ปิด gateway JWT ของ `line-webhook` และ `line-send` เพื่อให้ LINE signature
+และ cron secret เข้าถึง handler ได้ จากนั้น handler ตรวจสิทธิ์เอง `line-connect` ปิด gateway JWT
+เพื่อรองรับ signing key แบบใหม่ แต่ยังตรวจ bearer token ทุกครั้งด้วย `auth.getUser()` ใน handler
 
 ## ทดสอบในเครื่อง
 

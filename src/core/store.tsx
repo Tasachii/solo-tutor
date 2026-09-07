@@ -1,7 +1,7 @@
 import {
   createContext, useCallback, useContext, useEffect, useMemo, useState, useRef, type ReactNode,
 } from 'react'
-import type { AppState, Message, Subject, Particle, WorkStyle } from './types'
+import type { AppState, Message, Subject, Particle, WorkStyle, OaDelivery } from './types'
 import { isParticle } from './particle'
 import { isStyle } from './style'
 import { buildReal, buildScenario, isScenario } from './scenarios'
@@ -13,8 +13,8 @@ import { billingChangeIssue, buildPackageInvoice, closableSubjects, isFinalizedP
 import { deriveDrafts, refreshDrafts, retractDrafts, applySend, cancelledText, mkMessage, movedText } from './messages'
 import { balanceDue, complete as ledgerComplete, packageStatus, renewPackage, snapshotLegacyPrices, uncomplete } from './ledger'
 import { issueReceipt } from './receipts'
-import { isBillingMode, isISODate, isMoney, isNonNegativeMoney, isTime } from './validation'
-import { messageSendIssue } from './messageDelivery'
+import { isUuid, isBillingMode, isISODate, isMoney, isNonNegativeMoney, isTime } from './validation'
+import { financialRevision, messageSendIssue } from './messageDelivery'
 import { migrateCanonical } from './migrations'
 
 const KEY = 'solo-demo-v3'
@@ -25,6 +25,11 @@ export type Action =
   | { type: 'uncomplete'; unitId: string }
   | { type: 'closeMonth'; period: string }
   | { type: 'sendMessage'; id: string }
+  | { type: 'lineWorkspace'; id: string; providerId: string }
+  | { type: 'oaStart'; id: string; delivery: OaDelivery }
+  | { type: 'oaRecover'; id: string; delivery: OaDelivery }
+  | { type: 'oaSent'; id: string; providerId: string }
+  | { type: 'oaCancelled'; id: string; providerId: string }
   | { type: 'skipMessage'; id: string }
   | { type: 'editMessage'; id: string; draft: string }
   | { type: 'refreshMessage'; id: string }
@@ -75,6 +80,11 @@ export function reducer(state: AppState, action: Action): AppState {
   if ((action.type === 'complete' || action.type === 'uncomplete' || action.type === 'cancelUnit'
     || action.type === 'restoreUnit') && mutationTouchesFinalizedPeriod(state, action.unitId)) return state
   if (action.type === 'rescheduleUnit' && mutationTouchesFinalizedPeriod(state, action.unitId, action.date)) return state
+  if (['editMessage', 'skipMessage', 'refreshMessage', 'sendMessage', 'sendingStart', 'sendingNext'].includes(action.type)) {
+    const id = 'id' in action ? action.id : 'awaiting' in action ? action.awaiting : undefined
+    if (state.messages.some(m => m.id === id && m.oaDelivery)) return state
+  }
+  if (state.messages.some(m => m.oaDelivery) && ['restore', 'replace', 'startReal'].includes(action.type)) return state
   let s = state
   switch (action.type) {
     case 'complete': s = ledgerComplete(s, action.unitId); break
@@ -85,12 +95,34 @@ export function reducer(state: AppState, action: Action): AppState {
       if (created.length) s = { ...s, invoices: [...s.invoices, ...created] }
       break
     }
+    case 'lineWorkspace':
+      if (s.mode !== 'real' || s.lineWorkspaceId || !isUuid(action.id) || !isUuid(action.providerId)) return state
+      s = { ...s, lineWorkspaceId: action.id, lineProviderId: action.providerId }; break
+    case 'oaCancelled':
+      if (s.sending) return state
+      if (!s.messages.some(m => m.id === action.id && m.oaDelivery?.providerId === action.providerId)) return state
+      s = { ...s, messages: s.messages.map(m => m.id === action.id ? { ...m, oaDelivery: undefined } : m) }; break
+    case 'oaRecover':
+    case 'oaStart': {
+      const msg = s.messages.find(m => m.id === action.id)
+      if (s.mode !== 'real' || !msg || msg.status !== 'draft' || msg.oaDelivery
+        || s.lineProviderId !== action.delivery.providerId
+        || !!s.sending || s.lineWorkspaceId !== action.delivery.workspaceId
+        || !isUuid(action.delivery.recipientId) || action.delivery.dedupeKey !== `${s.lineWorkspaceId}:${msg.dedupeKey}`
+        || typeof action.delivery.body !== 'string' || !action.delivery.body.trim() || action.delivery.body.length > 5000
+        || (action.type === 'oaStart' && (action.delivery.body !== msg.draft || messageSendIssue(s, msg)))) return state
+      s = { ...s, messages: s.messages.map(m => m.id === msg.id ? { ...m, draft: action.delivery.body, oaDelivery: action.delivery } : m) }
+      break
+    }
+    case 'oaSent':
     case 'sendMessage': {
       const msg = s.messages.find((m) => m.id === action.id)
-      if (!msg) break
-      if (messageSendIssue(s, msg)) return state
+      if (!msg || msg.status !== 'draft') return state
+      if (action.type === 'oaSent') {
+        if (msg.oaDelivery?.providerId !== action.providerId) return state
+      } else if (messageSendIssue(s, msg)) return state
       s = applySend(s, msg)
-      s = { ...s, messages: s.messages.map((m) => (m.id === action.id ? { ...m, status: 'sent', sentAt: s.today } : m)) }
+      s = { ...s, messages: s.messages.map((m) => (m.id === action.id ? { ...m, status: 'sent', sentAt: s.today, oaDelivery: undefined } : m)) }
       if (msg.subjectId) {
         s = { ...s, chats: [...s.chats, { id: nid('ch'), clientId: msg.clientId, from: 'provider', text: msg.draft, at: s.today, viaAdmin: true }] }
       }
@@ -268,6 +300,7 @@ export function reducer(state: AppState, action: Action): AppState {
     case 'deleteSubject': {
       const sub = s.subjects.find((x) => x.id === action.subjectId)
       if (!sub) break
+      if (s.messages.some(m => m.clientId === sub.clientId && m.oaDelivery)) return state
       const unitIds = new Set(s.units.filter((u) => u.subjectId === sub.id).map((u) => u.id))
       if (s.invoices.some((invoice) => invoice.subjectId === sub.id)
         || s.completions.some(completion => unitIds.has(completion.unitId))) {
@@ -366,7 +399,7 @@ export function reducer(state: AppState, action: Action): AppState {
     case 'clearMessages':
       // เก็บ skipped/sent ไว้ ไม่งั้น dedupe หาย ร่างที่ผู้ใช้ข้ามจะกลับมา
       // และ 'Solo ช่วยไว้' ที่นับจากข้อความทวงที่ส่งแล้วจะกลายเป็นศูนย์
-      s = { ...s, messages: s.messages.filter((m) => m.status !== 'draft') }
+      s = { ...s, messages: s.messages.filter((m) => m.status !== 'draft' || !!m.oaDelivery) }
       break
     case 'replace':
       s = action.state
@@ -383,6 +416,8 @@ export function reducer(state: AppState, action: Action): AppState {
   s = { ...s, messages: refreshDrafts(s) }
   const add = deriveDrafts(s)
   if (add.length) s = { ...s, messages: [...s.messages, ...add] }
+  if (action.type !== 'oaSent' && action.type !== 'oaCancelled' && state.messages.some(m => m.oaDelivery
+    && financialRevision(state, m) !== financialRevision(s, m))) return state
   return s
 }
 

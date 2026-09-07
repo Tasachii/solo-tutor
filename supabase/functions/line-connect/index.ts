@@ -33,14 +33,16 @@ export async function configureLineChannel(
     headers: auth, signal: AbortSignal.timeout(10_000),
   })
   if (!info.ok) return jsonError(400, 'token')
-  const bot = await info.json() as { userId?: unknown; displayName?: unknown }
+  const bot = await info.json() as { userId?: unknown; basicId?: unknown; displayName?: unknown }
   if (typeof bot.userId !== 'string' || !bot.userId) return jsonError(502, 'line-response')
   const displayName = typeof bot.displayName === 'string' ? bot.displayName : null
+  const basicId = typeof bot.basicId === 'string' ? bot.basicId : null
 
   // Persist encrypted credentials in a non-deliverable state before mutating LINE configuration.
   await deps.persistPending({
     provider_id: providerId,
     bot_user_id: bot.userId,
+    basic_id: basicId,
     channel_secret: await deps.seal(channelSecret),
     access_token: await deps.seal(accessToken),
     display_name: displayName,
@@ -61,7 +63,8 @@ export async function configureLineChannel(
       method: 'POST', headers: { ...auth, 'Content-Type': 'application/json' },
       body: JSON.stringify({ endpoint: webhookUrl }), signal: AbortSignal.timeout(10_000),
     })
-    if (!test.ok) {
+    const testResult = await test.json().catch(() => null) as { success?: unknown } | null
+    if (!test.ok || testResult?.success !== true) {
       await deps.setStatus(providerId, 'setup_failed')
       return jsonError(502, 'webhook')
     }
@@ -70,7 +73,7 @@ export async function configureLineChannel(
     throw error
   }
   await deps.setStatus(providerId, 'active', new Date().toISOString())
-  return ok({ ok: true, displayName })
+  return ok({ ok: true, displayName, basicId })
 }
 
 export const handler = withCors(serveErrors(async (req) => {
@@ -86,12 +89,20 @@ export const handler = withCors(serveErrors(async (req) => {
     fetch,
     seal,
     persistPending: async (row) => {
-      const { error } = await db.from('line_channels').upsert(row)
+      const { error } = await db.rpc('replace_line_channel', {
+        p_provider_id: row.provider_id,
+        p_bot_user_id: row.bot_user_id,
+        p_basic_id: row.basic_id,
+        p_channel_secret: row.channel_secret,
+        p_access_token: row.access_token,
+        p_display_name: row.display_name,
+      })
       if (error) throw error
     },
     setStatus: async (providerId, status, verifiedAt) => {
       const changes: Record<string, unknown> = { status }
       if (verifiedAt) changes.last_verified_at = verifiedAt
+      changes.updated_at = new Date().toISOString()
       const { error } = await db.from('line_channels').update(changes).eq('provider_id', providerId)
       if (error) throw error
     },

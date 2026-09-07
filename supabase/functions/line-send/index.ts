@@ -57,11 +57,27 @@ export async function authenticatedSendAuthority(
   })
 }
 
+export function interactiveOutboxId(body: Record<string, unknown>): string | null {
+  const value = typeof body.outboxId === 'string' ? body.outboxId.trim() : ''
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)
+    ? value
+    : null
+}
+
+/** LINE limits text by UTF-16 code units; reject instead of silently slicing the audited body. */
+export function claimedBodyIssue(body: string): string | null {
+  return body.trim().length === 0 || body.length > 5000 ? 'invalid-body' : null
+}
+
 export const handler = withCors(serveErrors(async (req) => {
   if (req.method !== 'POST') return jsonError(405, 'method-not-allowed')
   const body = await jsonBody(req)
   const authority = await authenticatedSendAuthority(req, body)
   if (!authority.ok) return jsonError(401, 'unauthorized')
+  const targetOutboxId = authority.mode === 'interactive' ? interactiveOutboxId(body) : null
+  if (authority.mode === 'interactive' && !targetOutboxId) {
+    return jsonError(400, 'missing-outbox-id')
+  }
 
   const db = admin()
   let providerIds: string[]
@@ -96,12 +112,19 @@ export const handler = withCors(serveErrors(async (req) => {
       continue
     }
 
-    const token = await open(channel.access_token)
     const { data: claimed, error: claimError } = await db.rpc('claim_line_outbox', {
-      p_provider_id: providerId, p_limit: 20, p_auto: auto,
+      p_provider_id: providerId,
+      p_limit: targetOutboxId ? 1 : 20,
+      p_auto: auto,
+      p_outbox_id: targetOutboxId,
     })
     if (claimError) throw claimError
     const queue = (claimed ?? []) as ClaimedRow[]
+    if (queue.length === 0) continue
+    if (typeof channel.access_token !== 'string' || !channel.access_token) {
+      throw new Error('Active LINE channel has no access token')
+    }
+    const token = await open(channel.access_token)
     let tokenInvalid = channel.status === 'invalid'
 
     const finish = async (row: ClaimedRow, outcome: string, error: string | null = null, retryAt: Date | null = null) => {
@@ -118,6 +141,11 @@ export const handler = withCors(serveErrors(async (req) => {
     }
 
     for (const row of queue) {
+      const bodyIssue = claimedBodyIssue(row.body)
+      if (bodyIssue) {
+        await finish(row, 'failed', bodyIssue)
+        continue
+      }
       const choice = chooseClaimedDelivery(channel as ChannelRow, row, auto, tokenInvalid)
       if (choice.channel !== 'oa') {
         await finish(row, 'skipped', choice.reason)
@@ -150,6 +178,13 @@ export const handler = withCors(serveErrors(async (req) => {
         await finish(row, outcome, outcome)
       }
     }
+  }
+  if (authority.mode === 'interactive') {
+    const { data: row, error } = await db.from('message_outbox').select('status')
+      .eq('provider_id', authority.providerId).eq('id', targetOutboxId!).maybeSingle()
+    if (error) throw error
+    if (!row) return jsonError(404, 'outbox-not-found')
+    return ok({ ok: true, outboxId: targetOutboxId, status: row.status })
   }
   return ok({ ok: true, sent })
 }))

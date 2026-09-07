@@ -214,7 +214,7 @@ function rerender(state: AppState, m: Message): string | null {
  */
 export function refreshDrafts(state: AppState): Message[] {
   return state.messages.map((m) => {
-    if (m.status !== 'draft' || m.edited) return m
+    if (m.status !== 'draft' || m.edited || m.oaDelivery) return m
     const fresh = rerender(state, m)
     const revision = financialRevision(state, m)
     if (!fresh) return m
@@ -261,7 +261,7 @@ function stillStands(state: AppState, m: Message): boolean {
  * "วันนี้เรียนเป็นครั้งที่ 0 นอกแพ็ก" ค้างรอให้กดส่งหาผู้ปกครอง
  */
 export function retractDrafts(state: AppState): Message[] {
-  return state.messages.filter((m) => m.status !== 'draft' || stillStands(state, m))
+  return state.messages.filter((m) => m.status !== 'draft' || !!m.oaDelivery || stillStands(state, m))
 }
 
 export function deriveDrafts(state: AppState): Message[] {
