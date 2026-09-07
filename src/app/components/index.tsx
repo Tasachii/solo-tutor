@@ -2,6 +2,8 @@ import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { Link } from 'react-router-dom'
 import { copy } from '../../copy'
+import { promptpayPayload } from '../../core/promptpay'
+import { qrMatrix, qrPath } from '../../core/qr'
 
 export function DemoBadge() {
   // จอแคบมาก (iPhone SE 320px) โชว์แค่ "เดโม" — ส่วนขยายซ่อนด้วย CSS
@@ -54,6 +56,30 @@ export function ProgressBar({ value, max, tone, label = 'ความคืบ�
       aria-valuemin={0} aria-valuenow={safeValue} aria-valuemax={safeMax}>
       <i style={{ width: `${pct}%` }} />
     </span>
+  )
+}
+
+/**
+ * QR พร้อมเพย์ของจริง — สแกนจ่ายได้ด้วยแอปธนาคาร
+ * ยอดที่ฝังมาจาก ledger เท่านั้น ที่นี่ไม่คำนวณอะไรเพิ่ม
+ * คืน null เมื่อปลายทางหรือยอดใช้ไม่ได้ ปลายทางที่เรียกต้องมีทางสำรองเสมอ
+ */
+export function PromptPayQR({ destination, amount, label, sub }: {
+  destination: string; amount?: number; label: string; sub?: string
+}) {
+  const payload = promptpayPayload(destination, amount)
+  const matrix = payload ? qrMatrix(payload) : null
+  if (!matrix) return null
+  const size = matrix.length
+  return (
+    <div className="qr">
+      <svg className="qr__code" viewBox={`-2 -2 ${size + 4} ${size + 4}`} width="112" height="112"
+        role="img" aria-label={label} shapeRendering="crispEdges">
+        <rect x={-2} y={-2} width={size + 4} height={size + 4} />
+        <path d={qrPath(matrix)} />
+      </svg>
+      <div className="qr__t"><b>{label}</b>{sub && <span>{sub}</span>}</div>
+    </div>
   )
 }
 

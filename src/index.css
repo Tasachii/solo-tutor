@@ -267,6 +267,10 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
   background:var(--surface);border:1px solid var(--line);border-radius:var(--radius)}
 .qr__box{flex:none;width:72px;height:72px;border-radius:var(--radius-sm);border:3px solid var(--ink);
   background:conic-gradient(from 0deg,var(--ink) 25%,transparent 0 50%,var(--ink) 0 75%,transparent 0) 0 0/16px 16px,var(--surface)}
+/* QR ต้องดำบนขาวเสมอ ไม่ตามธีม — กล้องแอปธนาคารอ่านคอนทราสต์กลับด้านไม่ได้ */
+.qr__code{flex:none;border-radius:var(--radius-sm);background:#fff}
+.qr__code rect{fill:#fff}
+.qr__code path{fill:#000}
 .qr__t b{display:block}
 .qr__t span{display:block;font-size:var(--fs-small);color:var(--muted)}
 

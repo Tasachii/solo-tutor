@@ -6,7 +6,7 @@ import { PROMPTPAY_DISPLAY } from '../platform/config'
 import { balanceDue, clientById, packageStatus, paidAmount } from '../core/ledger'
 import { receiptOfInvoice } from '../core/receipts'
 import { money, periodOf, periodThai } from '../core/format'
-import { DemoBadge, EmptyState, ProgressBar, QRPlaceholder } from './components'
+import { DemoBadge, EmptyState, ProgressBar, PromptPayQR, QRPlaceholder } from './components'
 import { isPaymentDestination, normalizePaymentDestination } from '../core/paymentDestination'
 
 /** มุมมองผู้จ่าย — อ่านอย่างเดียว ตัวเลขทุกตัวมาจาก ledger ชุดเดียวกับฝั่งครู */
@@ -93,9 +93,14 @@ export default function ClientPreview() {
             <div className="cv__pay">
               {/* เลขบัญชีของครูจริง — ของเดโมใช้ตัวอย่าง */}
               {real ? (isPaymentDestination(state.provider.promptpayId)
-                ? <><p>โอนผ่านพร้อมเพย์</p><strong>{normalizePaymentDestination(state.provider.promptpayId)}</strong><p>ผู้รับเงิน: {state.provider.name}</p><p className="hint">ตรวจชื่อผู้รับในแอปธนาคารก่อนโอน แล้วส่งสลิปกลับในแชท</p></>
+                ? <>
+                    {/* ยอดใน QR มาจาก ledger — ถ้าสร้างไม่ได้ยังเหลือเลขบัญชีให้โอนเองเสมอ */}
+                    <PromptPayQR destination={state.provider.promptpayId} amount={due}
+                      label={copy.clientView.scanToPay} sub={copy.clientView.scanAmount.replace('{n}', money(due))} />
+                    <p>โอนผ่านพร้อมเพย์</p><strong>{normalizePaymentDestination(state.provider.promptpayId)}</strong><p>ผู้รับเงิน: {state.provider.name}</p><p className="hint">ตรวจชื่อผู้รับในแอปธนาคารก่อนโอน แล้วส่งสลิปกลับในแชท</p>
+                  </>
                 : <p role="status">ยังไม่ได้ตั้งค่าพร้อมเพย์ กรุณาติดต่อผู้ให้บริการเพื่อขอข้อมูลชำระเงิน</p>)
-                : <QRPlaceholder label="QR ตัวอย่าง — ใช้ชำระเงินจริงไม่ได้" sub={PROMPTPAY_DISPLAY} />}
+                : <QRPlaceholder label={copy.clientView.qrSample} sub={PROMPTPAY_DISPLAY} />}
               <p className="hint">{real ? copy.clientView.slipHow : copy.clientView.sample}</p>
             </div>
           )}

@@ -1,6 +1,8 @@
 import { useParams } from 'react-router-dom'
 import { readDocument } from '../core/documents'
 import { dateThai, money, periodThai } from '../core/format'
+import { PromptPayQR } from './components'
+import { copy } from '../copy'
 
 /** Mounted outside StoreProvider: recipient never loads, modifies or inherits a workspace. */
 export default function SharedDocument() {
@@ -25,7 +27,11 @@ export default function SharedDocument() {
       </table>
       <p>รับชำระแล้ว <b className="num">{money(d.paid)} บาท</b></p>
       <p>คงเหลือ <b className="num">{money(balance)} บาท</b></p>
-      {balance > 0 && <div className="card"><p>โอนผ่านพร้อมเพย์</p><strong>{d.destination || 'กรุณาติดต่อผู้ส่งเพื่อขอข้อมูลชำระเงิน'}</strong><p className="hint">ตรวจชื่อผู้รับในแอปธนาคารให้ตรงกับผู้ให้บริการก่อนยืนยันโอน</p></div>}
+      {balance > 0 && <div className="card">
+        {/* ลิงก์นี้คือสิ่งที่ผู้ปกครองได้รับจริง — สแกนจากตรงนี้ได้เลยถ้าปลายทางใช้ได้ */}
+        {d.destination && <PromptPayQR destination={d.destination} amount={balance}
+          label={copy.clientView.scanToPay} sub={copy.clientView.scanAmount.replace('{n}', money(balance))} />}
+        <p>โอนผ่านพร้อมเพย์</p><strong>{d.destination || 'กรุณาติดต่อผู้ส่งเพื่อขอข้อมูลชำระเงิน'}</strong><p className="hint">ตรวจชื่อผู้รับในแอปธนาคารให้ตรงกับผู้ให้บริการก่อนยืนยันโอน</p></div>}
       <p className="paper__fine">สำเนาที่ผู้ส่งจัดทำ · Solo Tutor ไม่ได้รับรองลายเซ็นหรือยืนยันการโอนเงิน ติดต่อผู้ส่งเพื่อตรวจสอบยอดล่าสุด</p>
     </article>
     <p className="hint no-print">ลิงก์นี้มีข้อมูลของคุณ ผู้ที่ได้รับลิงก์สามารถเปิดอ่านได้</p>
