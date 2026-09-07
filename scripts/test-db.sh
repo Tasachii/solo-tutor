@@ -7,11 +7,20 @@ cleanup() { docker rm -f "$container_name" >/dev/null 2>&1 || true; }
 trap cleanup EXIT
 docker run --detach --name "$container_name" --env POSTGRES_PASSWORD="$db_password" \
   --volume "$repo_dir:/work:ro" postgres:16-alpine >/dev/null
-for _ in $(seq 1 30); do
-  if docker exec "$container_name" pg_isready -U postgres >/dev/null 2>&1; then break; fi
+# The postgres image runs a temporary socket-only server during initdb, so pg_isready
+# answers "ready" before the real server exists and the next command dies with exit 2.
+# Waiting on a TCP query skips that phantom: the init server never listens on 127.0.0.1.
+ready=0
+for _ in $(seq 1 60); do
+  if docker exec --env PGPASSWORD="$db_password" "$container_name" \
+      psql -U postgres -h 127.0.0.1 -Atqc 'select 1' >/dev/null 2>&1; then ready=1; break; fi
   sleep 1
 done
-docker exec "$container_name" pg_isready -U postgres >/dev/null
+if [[ "$ready" != "1" ]]; then
+  echo "postgres never accepted a connection — container log follows" >&2
+  docker logs "$container_name" >&2 || true
+  exit 1
+fi
 docker exec "$container_name" psql -v ON_ERROR_STOP=1 -U postgres \
   -f /work/tests/sql/bootstrap_supabase.sql \
   -f /work/supabase/migrations/0001_line.sql \
