@@ -233,6 +233,11 @@ test('ทุกทางเข้าพาไปใช้งานได้เ�
     const link = page.locator('.land').getByRole('link', { name: label }).first()
     await expect(link).toHaveAttribute('href', /\/start$/)
   }
+  // การ์ดตัวอย่างบน hero ต้องเป็นเคสติวเตอร์ล้วน — เลิกปนอาชีพที่ยังไม่เปิด
+  for (const word of ['ต่อเล็บเจล', 'ทำความสะอาด', 'คุณมิ้นท์']) {
+    await expect(page.locator('.land__hero')).not.toContainText(word)
+  }
+  await expect(page.locator('.land__hero')).toContainText('ค่าเรียนน้องภูมิ')
 
   // หน้าราคา — 4 แพลน (Free · Pro รายเดือน · 3 เดือน · 12 เดือน) ทุกแพลนเป็นลิงก์เข้าหน้าเลือกรูปแบบ ไม่ใช่ปุ่มเปิดฟอร์ม
   await page.goto('#/pricing')
@@ -240,10 +245,16 @@ test('ทุกทางเข้าพาไปใช้งานได้เ�
   await expect(ctas).toHaveCount(4)
   for (let i = 0; i < 4; i++) await expect(ctas.nth(i)).toHaveAttribute('href', /\/start$/)
   await expect(page.getByText('Concierge')).toHaveCount(0)
-  await expect(page.getByText('สนใจร่วมทดลองใช้', { exact: true })).toBeVisible()
-  await expect(page.getByText('แพ็กเกจเหล่านี้เป็นแนวคิดสำหรับเดโม ยังไม่เปิดขายหรือรับชำระเงิน')).toBeVisible()
+  await expect(page.getByText('เปิดรับรุ่นแรก 10 คน — เราตั้งระบบให้ฟรี', { exact: true })).toBeVisible()
+  await expect(page.getByText('ช่วงรุ่นแรกยังไม่เปิดชำระเงินในแอป — ทีมเปิดใช้งานให้ทีละคน')).toBeVisible()
   await expect(page.locator('.plan__amt').nth(3)).toHaveText(/2,490/)
-
+  // ฟรีจำกัด 5 นักเรียน (แผนธุรกิจ rev.2) — เคยเขียนว่าไม่จำกัด
+  await expect(page.locator('.plan').first()).toContainText('สูงสุด 5 นักเรียน')
+  await expect(page.locator('.plan').first()).not.toContainText('ไม่จำกัด')
+  // ค่าเฉลี่ยต่อเดือนคำนวณจากราคาจริง ไม่ได้พิมพ์ไว้
+  await expect(page.locator('.plan').nth(2).locator('.plan__save')).toContainText('เฉลี่ย 266/เดือน')
+  await expect(page.locator('.plan').nth(3).locator('.plan__save')).toContainText('เฉลี่ย 208/เดือน')
+  await expect(page.locator('.plan').nth(3).locator('.plan__save b')).toHaveText('ประหยัด 1,098')
   // กดแล้วเลือกแบบหนึ่งแตะเดียว ถึงหน้าใช้งานโดยไม่ต้องกรอกอะไร
   await ctas.nth(1).click()
   await expect(page.locator('input, textarea, select')).toHaveCount(0)

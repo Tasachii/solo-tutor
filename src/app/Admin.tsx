@@ -290,8 +290,8 @@ export default function Admin() {
             </div>}
             <div className="btnrow">
               <input className="inp" value={input} onChange={(e) => setInput(e.target.value)}
-                placeholder={state.mode === 'real' ? 'คำถามที่ได้รับจากลูกค้า' : `${copy.admin.sendAs}${client.name}`}
-                aria-label={state.mode === 'real' ? 'คำถามจริงจากลูกค้า' : copy.admin.simTitle} />
+                placeholder={state.mode === 'real' ? copy.admin.realAsk : `${copy.admin.sendAs}${client.name}`}
+                aria-label={state.mode === 'real' ? copy.admin.realAskLabel : copy.admin.simTitle} />
               <button className="btn btn--secondary btn--sm" disabled={!input.trim()} onClick={() => draftAnswer(input)}>ร่างคำตอบ</button>
             </div>
           </div>

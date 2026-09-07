@@ -6,6 +6,7 @@ import { ToastProvider } from '../../src/app/components/Toast'
 import WaitlistSheet from '../../src/platform/WaitlistSheet'
 import Admin from '../../src/app/Admin'
 import { deriveDrafts } from '../../src/core/messages'
+import { copy } from '../../src/copy'
 
 const mocks = vi.hoisted(() => ({ state: null as unknown as ReturnType<typeof buildScenario> }))
 vi.mock('../../src/core/store', () => ({
@@ -42,7 +43,7 @@ describe('failed durable writes preserve user input and explain failure', () => 
 
   it('keeps the customer question when its reply draft was not saved', () => {
     render(<MemoryRouter initialEntries={['/?tab=chat&chat=c1']}><ToastProvider><Admin /></ToastProvider></MemoryRouter>)
-    const field = screen.getByRole('textbox', { name: 'คำถามจริงจากลูกค้า' })
+    const field = screen.getByRole('textbox', { name: copy.admin.realAskLabel })
     fireEvent.change(field, { target: { value: 'เดือนนี้เท่าไร' } })
     fireEvent.click(screen.getByRole('button', { name: 'ร่างคำตอบ' }))
     expect((field as HTMLInputElement).value).toBe('เดือนนี้เท่าไร')

@@ -17,3 +17,18 @@ test('history speaks Thai, the parent sees the month of the bill, and ค้า�
   await expect(page.getByText('ค้างสะสม')).toBeVisible()
   await expect(page.locator('details.hint--fold summary')).toContainText('ตัวเลขนี้มาจากไหน')
 })
+
+/**
+ * โหมดเว็บ (ค่าเริ่มต้นบนจอ ≥1024px) เคยล้าง max-width ของหน้าที่ผู้ปกครองเปิด
+ * ทำให้บรรทัดยาวเต็มจอฉาย — หน้านี้ไม่ใช่หน้าจอฉาย ต้องคงความกว้างอ่านง่ายไว้
+ */
+test('the parent page keeps its readable width even in web frame', async ({ page }) => {
+  test.skip(page.viewportSize()!.width < 900, 'กรอบเว็บมีผลเฉพาะจอกว้าง')
+  await page.addInitScript(() => localStorage.setItem('solo-frame', 'web'))
+  await page.goto('#/client/c1')
+  await expect(page.locator('.page--client')).toBeVisible()
+
+  const width = await page.locator('.page--client').evaluate((el) => el.getBoundingClientRect().width)
+  expect(width).toBeLessThanOrEqual(560)
+  await expect(page.locator('.cv__h1')).toHaveText('ใบแจ้งค่าเรียน')
+})

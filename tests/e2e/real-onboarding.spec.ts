@@ -1,4 +1,5 @@
 import { expect, test, type Page } from './fixtures'
+import { copy } from '../../src/copy'
 
 /**
  * เส้นทางของครูตัวจริง (ผู้หญิง): เริ่มใช้จริง → กรอกชื่อ เลือก ค่ะ → รายชื่อ → เช็คชื่อ → ปิดยอด
@@ -14,12 +15,12 @@ async function startReal(page: Page) {
 }
 
 const field = (page: Page, label: string) => page.locator('.fld').filter({ hasText: label }).locator('input, textarea').first()
-const particleGroup = (scope: Page | ReturnType<Page['getByRole']>) => scope.getByRole('group', { name: 'คำลงท้ายในข้อความถึงลูกค้า' })
+const particleGroup = (scope: Page | ReturnType<Page['getByRole']>) => scope.getByRole('group', { name: copy.onboarding.particle })
 
 test('a female tutor never has to say ครับ — and can flip it later from the menu', async ({ page }) => {
   await startReal(page)
 
-  await field(page, 'ชื่อที่ลูกค้าเรียกคุณ').fill('ครูมายด์')
+  await field(page, copy.onboarding.providerName).fill('ครูมายด์')
   await field(page, 'PromptPay').fill('0812345678')
   // ยังไม่เลือกคำลงท้าย = ห้ามไปต่อ — ค่าเริ่มต้นผิดเพศคือบั๊กที่กันไว้
   await expect(page.getByRole('button', { name: 'ถัดไป' })).toBeDisabled()

@@ -374,6 +374,8 @@ body:has(.land){background:radial-gradient(45% 45% at 8% 0%,var(--glow-a),transp
 .plan__price{display:flex;align-items:baseline;gap:var(--space-2);flex-wrap:wrap}
 .plan__amt{font-size:32px;font-weight:800;color:var(--brand-ink)}
 .plan__unit{color:var(--muted);font-size:var(--fs-small)}
+.plan__save{display:flex;align-items:center;gap:var(--space-2);flex-wrap:wrap;margin:0;font-size:var(--fs-small);color:var(--muted)}
+.plan__save b{padding:1px 8px;border-radius:999px;background:var(--ok-soft);color:var(--ok);font-weight:700}
 .plan__desc{margin:0;color:var(--muted);font-size:var(--fs-small)}
 .plan__feats{list-style:none;margin:var(--space-2) 0;padding:0;display:grid;gap:6px}
 .plan__feats li{font-size:var(--fs-small);padding-left:20px;position:relative}
@@ -468,6 +470,8 @@ body:has(.land){background:radial-gradient(45% 45% at 8% 0%,var(--glow-a),transp
   :root[data-frame="web"] body{background:var(--bg)}
   :root[data-frame="web"] .page{max-width:none}
   :root[data-frame="web"] .pane{max-width:900px;margin:0 auto}
+  /* หน้าที่ผู้ปกครองเปิดเองไม่ใช่หน้าจอฉาย — คงความกว้างอ่านง่ายไว้ทุกโหมด */
+  :root[data-frame="web"] .page--client{max-width:560px}
 }
 
 /* จุดสีหน้าชิปเลือกสี */

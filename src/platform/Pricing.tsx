@@ -8,7 +8,19 @@ import { AppearanceButton, ThemeToggle } from './ThemeToggle'
 
 /** ตัวเลขราคาอยู่ที่นี่ ข้อความอยู่ใน copy — ดัชนีตรงกับ copy.pricing.plans (แผนธุรกิจ rev.2) */
 const PRICES: number[] = [0, 299, 799, 2490]
+/** กี่เดือนต่อหนึ่งรอบบิล — ใช้หารหาค่าเฉลี่ย ไม่มีตัวเลขไหนพิมพ์ไว้ในข้อความ */
+const MONTHS: number[] = [0, 1, 3, 12]
 const HIGHLIGHT = 1
+const MONTHLY = 1
+
+/** ค่าเฉลี่ยต่อเดือนและส่วนต่างจากการจ่ายรายเดือน — คำนวณจาก PRICES เสมอ */
+export function planSavings(i: number): { perMonth: number; saves: number } | null {
+  if (MONTHS[i] <= 1) return null
+  return {
+    perMonth: Math.round(PRICES[i] / MONTHS[i]),
+    saves: PRICES[MONTHLY] * MONTHS[i] - PRICES[i],
+  }
+}
 
 export default function Pricing() {
   const [lead, setLead] = useState(false)
@@ -34,6 +46,15 @@ export default function Pricing() {
                 <span className="plan__amt num">{priceOf(i)}</span>
                 <span className="plan__unit">{p.unit}</span>
               </div>
+              {(() => {
+                const s = planSavings(i)
+                return s && (
+                  <p className="plan__save">
+                    <span>{copy.pricing.perMonth.replace('{n}', money(s.perMonth))}</span>
+                    {s.saves > 0 && <b>{copy.pricing.saves.replace('{n}', money(s.saves))}</b>}
+                  </p>
+                )
+              })()}
               <p className="plan__desc">{p.desc}</p>
               <ul className="plan__feats">
                 {p.features.map((f) => <li key={f}>{f}</li>)}

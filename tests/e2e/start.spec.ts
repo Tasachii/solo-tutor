@@ -1,4 +1,5 @@
 import { expect, test } from './fixtures'
+import { copy } from '../../src/copy'
 
 /** หน้าแรก → เลือกรูปแบบ → เข้าแอปด้วยข้อมูลที่ตรงแบบ · เปลี่ยนจากเมนูได้ · โหมดจริงไม่ลบข้อมูล */
 test('picking a style shapes the demo, the filters and the add-sheet default; the menu can change it', async ({ page }) => {
@@ -40,8 +41,8 @@ test('in real mode the picker changes defaults only — nothing is wiped', async
   await page.getByRole('button', { name: 'เมนู' }).click()
   await page.getByRole('dialog', { name: 'เมนู' }).getByRole('button', { name: 'เริ่มใช้จริง' }).click()
   await page.getByRole('dialog', { name: 'เริ่มใช้จริง' }).getByRole('button', { name: 'เริ่มใช้จริง' }).click()
-  await page.locator('.fld').filter({ hasText: 'ชื่อที่ลูกค้าเรียกคุณ' }).locator('input').fill('ครูมายด์')
-  await page.getByRole('group', { name: 'คำลงท้ายในข้อความถึงลูกค้า' }).getByRole('button', { name: 'ค่ะ' }).click()
+  await page.locator('.fld').filter({ hasText: copy.onboarding.providerName }).locator('input').fill('ครูมายด์')
+  await page.getByRole('group', { name: copy.onboarding.particle }).getByRole('button', { name: 'ค่ะ' }).click()
   await page.getByRole('button', { name: 'ถัดไป' }).click()
   await page.locator('.fld').filter({ hasText: 'วางรายชื่อจาก Excel หรือ LINE' }).locator('textarea').fill('น้องปลา, คุณแม่ปลา')
   await page.getByRole('button', { name: 'เริ่มใช้งาน (1)' }).click()
