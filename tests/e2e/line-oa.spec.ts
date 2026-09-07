@@ -13,6 +13,7 @@ const messageText = 'ข้อความทดสอบ LINE OA ถึงผ�
 type MockOptions = { connected?: boolean; linked?: boolean; timeoutAfterEnqueue?: boolean }
 
 const installMockBackend = async (page: Page, options: MockOptions = {}) => {
+  const planRequests: unknown[] = []
   const state = {
     connected: options.connected ?? false,
     linked: options.linked ?? false,
@@ -53,6 +54,8 @@ const installMockBackend = async (page: Page, options: MockOptions = {}) => {
     // ซิงก์คลาวด์ทำงานเบื้องหลังหลังเข้าสู่ระบบ — เทสนี้สนใจ LINE จึงตอบว่าว่างและรับ push ไว้เฉย ๆ
     // ตัวนับการใช้งานและรายงานข้อผิดพลาดยิงจากทุกหน้า — รับไว้เฉย ๆ ไม่ใช่เรื่องของเทสนี้
     if (url.pathname === '/functions/v1/usage' || url.pathname === '/functions/v1/report-error') return json({ ok: true })
+    if (url.pathname === '/rest/v1/providers' && request.method() === 'GET') return json([{ plan: 'free', plan_until: null, paused_at: null }])
+    if (url.pathname === '/rest/v1/plan_requests' && request.method() === 'GET') return json(planRequests)
     if (url.pathname === '/rest/v1/ledger_snapshots' && request.method() === 'GET') return json([])
     if (url.pathname === '/rest/v1/rpc/save_ledger_snapshot') {
       state.snapshotSaves += 1

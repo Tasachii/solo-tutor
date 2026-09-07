@@ -9,6 +9,8 @@ import { isMoney } from '../core/validation'
 import { billingChangeIssue, type BillingChangeIssue } from '../core/billing'
 import { defaultBillingFor } from '../core/style'
 import { fillVocab } from '../professions'
+import { readPlanInfo, studentCapIssue, type CapIssue } from '../core/plan'
+import { PlanSheet } from './PlanSheet'
 
 type Mode = BillingMode['mode']
 
@@ -77,6 +79,7 @@ export default function SubjectSheet({ subject, onClose }: { subject?: Subject; 
   const [pkTotal, setPkTotal] = useState(String(b?.mode === 'package' ? b.total : 10))
   const [pkPrice, setPkPrice] = useState(String(b?.mode === 'package' ? b.price : 3500))
   const [err, setErr] = useState<Record<string, string>>({})
+  const [capIssue, setCapIssue] = useState<CapIssue | null>(null)
   const [packageIntent, setPackageIntent] = useState<'opening_balance' | 'paid_purchase'>('opening_balance')
   const nextBilling = buildBilling(mode, {
     rate, flat, packageTotal: pkTotal, packagePrice: pkPrice,
@@ -94,6 +97,8 @@ export default function SubjectSheet({ subject, onClose }: { subject?: Subject; 
     if (mode === 'package' && !billing) e.pk = copy.common.numberPositive
     setErr(e)
     if (Object.keys(e).length || !billing || changeIssue) return
+    // เพดานแพ็กฟรี — เช็คก่อน dispatch เพื่อบอกครูว่าติดอะไร ไม่ใช่ปฏิเสธเงียบ ๆ
+    if (!subject) { const issue = studentCapIssue(state, readPlanInfo(), 1); if (issue) { setCapIssue(issue); return } }
 
     // นับต่อท้ายด้วย เพราะเพิ่มสองคนติดกันในมิลลิวินาทีเดียว id จะชนกัน
     const stamp = `${Date.now().toString(36)}${(seq.current += 1).toString(36)}`
@@ -216,6 +221,7 @@ export default function SubjectSheet({ subject, onClose }: { subject?: Subject; 
           </label>
         </>
       )}
+      {capIssue && <PlanSheet issue={capIssue} onClose={() => setCapIssue(null)} />}
     </BottomSheet>
   )
 }

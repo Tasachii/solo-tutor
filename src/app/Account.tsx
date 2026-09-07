@@ -7,6 +7,7 @@ import { AuthForm } from './components/AuthForm'
 import { ConfirmSheet } from './components'
 import { useToast } from './components/Toast'
 import { useCloudSync } from './CloudSync'
+import { PlanCard } from './PlanCard'
 
 const when = (iso: string | null): string => {
   if (!iso) return copy.account.never
@@ -68,6 +69,8 @@ export default function Account() {
             <button className="btn btn--secondary" onClick={() => setAsk('push')}>{a.useLocal}</button>
           </div>
         </section>}
+
+        <PlanCard />
 
         <section className="card">
           <h2 className="h2">{a.deleteTitle}</h2>

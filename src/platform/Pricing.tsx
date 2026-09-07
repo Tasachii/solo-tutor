@@ -3,13 +3,12 @@ import { Link } from 'react-router-dom'
 import { copy } from '../copy'
 import { money } from '../core/format'
 import { DemoBadge, PenguinMark } from '../app/components'
+import { MONTHS, PRICES } from './plans'
 import WaitlistSheet from './WaitlistSheet'
 import { AppearanceButton, ThemeToggle } from './ThemeToggle'
 
 /** ตัวเลขราคาอยู่ที่นี่ ข้อความอยู่ใน copy — ดัชนีตรงกับ copy.pricing.plans (แผนธุรกิจ rev.2) */
-const PRICES: number[] = [0, 299, 799, 2490]
-/** กี่เดือนต่อหนึ่งรอบบิล — ใช้หารหาค่าเฉลี่ย ไม่มีตัวเลขไหนพิมพ์ไว้ในข้อความ */
-const MONTHS: number[] = [0, 1, 3, 12]
+/** ราคาและจำนวนเดือนอยู่ที่ platform/plans — ที่เดียวกับที่หน้าบัญชีครูและเซิร์ฟเวอร์ใช้ */
 const HIGHLIGHT = 1
 const MONTHLY = 1
 

@@ -8,6 +8,8 @@ import { PARTICLES } from '../core/particle'
 import { defaultBillingFor } from '../core/style'
 import { normalizePaymentDestination, isPaymentDestination } from '../core/paymentDestination'
 import { parseMoneyInput } from './SubjectSheet'
+import { readPlanInfo, studentCapIssue, type CapIssue } from '../core/plan'
+import { PlanSheet } from './PlanSheet'
 
 interface Row { name: string; clientName: string; lineId?: string; error?: string }
 
@@ -32,6 +34,7 @@ export default function Onboarding() {
   const [pp, setPp] = useState(state.provider.promptpayId)
   const [particle, setParticle] = useState<Particle | undefined>(state.provider.particle)
   const [text, setText] = useState('')
+  const [capIssue, setCapIssue] = useState<CapIssue | null>(null)
   const [mode, setMode] = useState<BillingMode['mode']>(state.style ? defaultBillingFor(state.style) : prof.defaultBilling ?? 'per_unit')
   // ราคาเริ่มต้นที่แก้ได้ก่อนกดเริ่ม — เดิมล็อกไว้ ครูที่คิดคนละราคาต้องไปแก้ทีละคน
   const [rate, setRate] = useState('400')
@@ -58,6 +61,8 @@ export default function Onboarding() {
         : mode === 'flat_monthly' ? { mode: 'flat_monthly', amount: parseMoneyInput(flat)! }
           : { mode: 'package', total: parseMoneyInput(packTotal)!, price: parseMoneyInput(packPrice)!, purchasedAt: state.today }
     if (badCount > 0 && !confirmBadRows) { setConfirmBadRows(true); return }
+    const issue = studentCapIssue(state, readPlanInfo(), good.length)
+    if (issue) { setCapIssue(issue); return }
     if (!dispatch({
       type: 'finishOnboarding',
       provider: { name: name.trim() || state.provider.name, promptpayId: normalizedPromptpay ?? '', particle },
@@ -209,6 +214,7 @@ export default function Onboarding() {
           )}
         </>
       )}
+      {capIssue && <PlanSheet issue={capIssue} onClose={() => setCapIssue(null)} />}
     </div>
   )
 }

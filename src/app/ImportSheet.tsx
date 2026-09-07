@@ -12,6 +12,8 @@ import {
 import { defaultBillingFor } from '../core/style'
 import { BottomSheet } from './components'
 import { useToast } from './components/Toast'
+import { readPlanInfo, studentCapIssue, type CapIssue } from '../core/plan'
+import { PlanSheet } from './PlanSheet'
 
 const FIELDS: Field[] = ['name', 'payer', 'line', 'price']
 
@@ -68,8 +70,11 @@ export function ImportSheet({ onClose }: { onClose: () => void }) {
     return { mode: 'package', total: packNum, price: amount, purchasedAt: state.today }
   }
 
+  const [capIssue, setCapIssue] = useState<CapIssue | null>(null)
   const confirm = () => {
     if (!good.length || !priceOk || (mode === 'package' && !packOk)) return
+    const issue = studentCapIssue(state, readPlanInfo(), good.length)
+    if (issue) { setCapIssue(issue); return }
     if (bad > 0 && !confirmSkipped) { setConfirmSkipped(true); return }
     const ok = dispatch({
       type: 'bulkAddSubjects',
@@ -182,6 +187,7 @@ export function ImportSheet({ onClose }: { onClose: () => void }) {
           <button className="btn btn--ghost btn--sm" onClick={() => { setGrid(null); setMap(null) }}>{c.pickAnother}</button>
         </>
       )}
+      {capIssue && <PlanSheet issue={capIssue} onClose={() => setCapIssue(null)} />}
     </BottomSheet>
   )
 }

@@ -247,7 +247,8 @@ test('ทุกทางเข้าพาไปใช้งานได้เ�
   for (let i = 0; i < 4; i++) await expect(ctas.nth(i)).toHaveAttribute('href', /\/start$/)
   await expect(page.getByText('Concierge')).toHaveCount(0)
   await expect(page.getByText('เปิดรับรุ่นแรก 10 คน — เราตั้งระบบให้ฟรี', { exact: true })).toBeVisible()
-  await expect(page.getByText('ช่วงรุ่นแรกยังไม่เปิดชำระเงินในแอป — ทีมเปิดใช้งานให้ทีละคน')).toBeVisible()
+  // ข้อความเรื่องชำระเงินตามหน้าบัญชีครู (เฟส 4) — อ้างจาก copy เพื่อไม่ให้เทสผูกกับถ้อยคำ
+  await expect(page.getByText(copy.pricing.notes[2])).toBeVisible()
   await expect(page.locator('.plan__amt').nth(3)).toHaveText(/2,490/)
   // ฟรีจำกัด 5 นักเรียน (แผนธุรกิจ rev.2) — เคยเขียนว่าไม่จำกัด
   await expect(page.locator('.plan').first()).toContainText('สูงสุด 5 นักเรียน')

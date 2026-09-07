@@ -7,6 +7,8 @@ import {
   type CloudSnapshot, type SyncDecision,
 } from '../core/cloudSync'
 import { forgetKeys, loadKey, rememberKeyFromPassword } from '../core/cloudKey'
+import { readPlanInfo, writePlanInfo, type PlanInfo } from '../core/plan'
+import { readPlan } from '../integrations/planApi'
 import { copy } from '../copy'
 
 /**
@@ -23,6 +25,9 @@ export interface CloudSyncValue {
   lastAt: string | null
   cloud: CloudSnapshot | null
   error: string
+  /** แพ็กสมาชิกล่าสุดที่เห็นจากเซิร์ฟเวอร์ — ไม่มีบัญชี = null = ฟรี */
+  plan: PlanInfo | null
+  refreshPlan: () => Promise<void>
   refreshSession: () => void
   syncNow: () => Promise<void>
   resolve: (choice: 'pull' | 'push') => Promise<boolean>
@@ -53,6 +58,7 @@ export function CloudSyncProvider({ children }: { children: ReactNode }) {
   const [cloud, setCloud] = useState<CloudSnapshot | null>(null)
   const [error, setError] = useState('')
   const [hasKey, setHasKey] = useState(false)
+  const [plan, setPlan] = useState<PlanInfo | null>(readPlanInfo)
 
   const stateRef = useRef(state); stateRef.current = state
   const sessionRef = useRef(session); sessionRef.current = session
@@ -60,6 +66,12 @@ export function CloudSyncProvider({ children }: { children: ReactNode }) {
   const statusRef = useRef(status); statusRef.current = status
   const busy = useRef(false)
   const again = useRef(false)
+
+  const refreshPlan = useCallback(async () => {
+    if (!sessionRef.current) return
+    const next = await readPlan()
+    if (next) { writePlanInfo(next); setPlan(next) }
+  }, [])
 
   const fail = useCallback((e: unknown) => {
     if (e instanceof SupabaseRestError && (e.code === 'network' || e.code === 'timeout')) { setStatus('offline'); setError(''); return }
@@ -105,6 +117,7 @@ export function CloudSyncProvider({ children }: { children: ReactNode }) {
     setStatus('syncing'); setError('')
     try {
       const head = await readSnapshot()
+      await refreshPlan()
       const decision = force ?? decideSync({ revision: st.revision, hasData: hasLedgerData(st) }, readSyncMeta(), head, s.user.id)
       if (decision === 'push') await push(head?.revision ?? 0)
       else if (decision === 'pull') { if (head) await pull(head); else await push(0) }
@@ -116,7 +129,7 @@ export function CloudSyncProvider({ children }: { children: ReactNode }) {
       busy.current = false
       if (again.current) { again.current = false; void reconcile() }
     }
-  }, [fail, push, pull])
+  }, [fail, push, pull, refreshPlan])
 
   // โหลดกุญแจของบัญชีนี้จากเครื่อง — ไม่มี = ต้องขอรหัสผ่านอีกครั้ง (เครื่องใหม่ หรือเคยล้าง)
   useEffect(() => {
@@ -177,7 +190,7 @@ export function CloudSyncProvider({ children }: { children: ReactNode }) {
 
   const signOutDevice = useCallback((): boolean => {
     try { signOut() } catch { return false }
-    forgetKeys()
+    forgetKeys(); writePlanInfo(null); setPlan(null)
     keyRef.current = null; setHasKey(false); setSession(null); setCloud(null); setStatus('signedout'); setError('')
     return true
   }, [])
@@ -189,13 +202,13 @@ export function CloudSyncProvider({ children }: { children: ReactNode }) {
   }, [fail, signOutDevice])
 
   const value = useMemo<CloudSyncValue>(() => ({
-    enabled, session, status, lastAt, cloud, error, refreshSession, syncNow, resolve, unlock, deleteCloud, signOutDevice,
-  }), [enabled, session, status, lastAt, cloud, error, refreshSession, syncNow, resolve, unlock, deleteCloud, signOutDevice])
+    enabled, session, status, lastAt, cloud, error, plan, refreshPlan, refreshSession, syncNow, resolve, unlock, deleteCloud, signOutDevice,
+  }), [enabled, session, status, lastAt, cloud, error, plan, refreshPlan, refreshSession, syncNow, resolve, unlock, deleteCloud, signOutDevice])
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
 }
 
 const OFF: CloudSyncValue = {
-  enabled: false, session: null, status: 'off', lastAt: null, cloud: null, error: '',
+  enabled: false, session: null, status: 'off', lastAt: null, cloud: null, error: '', plan: null, refreshPlan: async () => {},
   refreshSession: () => {}, syncNow: async () => {}, resolve: async () => false, unlock: async () => false,
   deleteCloud: async () => false, signOutDevice: () => { try { signOut() } catch { return false } forgetKeys(); return true },
 }

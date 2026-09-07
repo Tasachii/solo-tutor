@@ -28,8 +28,10 @@ docker exec "$container_name" psql -v ON_ERROR_STOP=1 -U postgres \
   -f /work/supabase/migrations/0003_intake.sql \
   -f /work/supabase/migrations/0004_usage.sql \
   -f /work/supabase/migrations/0005_ledger_sync.sql \
+  -f /work/supabase/migrations/0006_plans.sql \
   -f /work/tests/sql/line_backend.sql \
-  -f /work/tests/sql/ledger_sync.sql
+  -f /work/tests/sql/ledger_sync.sql \
+  -f /work/tests/sql/plans.sql
 
 redeem_sql="set role service_role; select ok from public.redeem_line_link_code(
   '10000000-0000-0000-0000-000000000001', 'line-redeem', '123456'
