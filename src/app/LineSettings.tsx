@@ -77,7 +77,7 @@ export default function LineSettings() {
   })
   return <div className="pane line-settings">
     <div className="rowhead"><h1 className="h1">เชื่อม LINE OA</h1><Link to="/app/admin">กลับหน้าแอดมิน</Link></div>
-    <p className="hint">ส่งข้อความจากบัญชีร้านถึงผู้ปกครองที่ผูกไว้ โดยครูตรวจข้อความและกดส่งเอง</p>
+    <p className="hint">ส่งข้อความจาก LINE OA ของคุณถึงผู้ปกครองที่ผูกไว้ โดยครูตรวจข้อความและกดส่งเอง</p>
     {notice && <p className="warnbar" role="status">{notice}</p>}
     {state.mode !== 'real' ? <p>ใช้การเชื่อม LINE OA ในโหมดข้อมูลจริง เปิดเมนูแล้วเลือกเริ่มใช้จริงก่อน</p>
       : !config ? <div className="card"><h2 className="h2">รอตั้งค่าระบบเชื่อมต่อ</h2><p>ผู้ดูแลต้องผูกโปรเจกต์สำหรับบัญชีครูก่อน จึงจะเข้าสู่ระบบและเชื่อม OA ได้</p><p className="hint">ระหว่างนี้ยังเปิด LINE เพื่อส่งข้อความเองจากหน้าแอดมินได้</p></div>
