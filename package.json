@@ -16,7 +16,7 @@
     "test:edge": "bash scripts/test-edge.sh"
   },
   "dependencies": {
-    "react": "^18.3.1",
+    "react": "^19.2.8",
     "react-dom": "^18.3.1",
     "react-router-dom": "7.18.3"
   },
@@ -25,7 +25,7 @@
     "@testing-library/jest-dom": "^7.0.1",
     "@testing-library/react": "^16.3.3",
     "@types/node": "^22.20.1",
-    "@types/react": "^18.3.31",
+    "@types/react": "^19.2.18",
     "@types/react-dom": "^18.3.7",
     "@vitejs/plugin-react": "^4.3.4",
     "jsdom": "^27.0.1",
