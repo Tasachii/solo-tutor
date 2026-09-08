@@ -32,21 +32,27 @@ function RouteLoading() {
 }
 
 export default function App() {
-  const { state, track } = useStore()
+  const { state, track, ledgerReplacements } = useStore()
   const initialMode = useRef(state.mode)
 
   useEffect(() => { track('app_open'); sendUsage('app_open', 1, initialMode.current) }, [track])
 
-  // ตัวนับ 4 เหตุการณ์สำหรับทีม — ดูจากความยาวรายการที่เปลี่ยน ไม่ต้องแตะ reducer
-  const seen = useRef({ subjects: state.subjects.length, invoices: state.invoices.length, payments: state.payments.length })
+  // ตัวนับ 3 เหตุการณ์สำหรับทีม — ดูจากความยาวรายการที่เปลี่ยน ไม่ต้องแตะ reducer
+  // นับได้เฉพาะงานที่ครูลงมือทำในเครื่องนี้: กู้คืนไฟล์ ดึงคลาวด์ เริ่มใช้จริง หรืออ่านก้อนใหม่จากเครื่อง
+  // ทำให้ความยาวรายการกระโดดโดยไม่มีใครทำงานเพิ่ม ถ้านับด้วยจะได้ตัวเลขที่เข้าข้างตัวเอง
+  const seen = useRef({ subjects: state.subjects.length, invoices: state.invoices.length,
+    payments: state.payments.length, replacements: ledgerReplacements })
   useEffect(() => {
     const prev = seen.current
-    const next = { subjects: state.subjects.length, invoices: state.invoices.length, payments: state.payments.length }
+    const next = { subjects: state.subjects.length, invoices: state.invoices.length,
+      payments: state.payments.length, replacements: ledgerReplacements }
+    seen.current = next
+    // ยกสมุดบัญชีทั้งก้อน — ตั้งฐานใหม่เงียบ ๆ เพื่อให้งานจริงชิ้นถัดไปยังรายงานส่วนต่างที่ถูกต้อง
+    if (next.replacements !== prev.replacements) return
     if (next.subjects !== prev.subjects) sendUsage('students_changed', next.subjects, state.mode)
     if (next.invoices > prev.invoices) sendUsage('invoice_issued', next.invoices - prev.invoices, state.mode)
     if (next.payments > prev.payments) sendUsage('payment_recorded', next.payments - prev.payments, state.mode)
-    seen.current = next
-  }, [state.subjects.length, state.invoices.length, state.payments.length, state.mode])
+  }, [state.subjects.length, state.invoices.length, state.payments.length, state.mode, ledgerReplacements])
   return (
     <Suspense fallback={<RouteLoading />}>
       <Routes>

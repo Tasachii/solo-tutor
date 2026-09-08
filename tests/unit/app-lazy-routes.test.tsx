@@ -6,7 +6,7 @@ import { buildScenario } from '../../src/core/scenarios'
 const track = vi.fn()
 vi.mock('../../src/core/store', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../src/core/store')>()
-  return { ...actual, useStore: () => ({ state: buildScenario('default'), track }) }
+  return { ...actual, useStore: () => ({ state: buildScenario('default'), track, ledgerReplacements: 0 }) }
 })
 vi.mock('../../src/core/usage', () => ({ sendUsage: vi.fn() }))
 

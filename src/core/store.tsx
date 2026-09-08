@@ -96,6 +96,12 @@ export type Action =
   | { type: 'replace'; state: AppState }
   | { type: 'track'; name: string; props?: Record<string, unknown> }
 
+/**
+ * ยกสมุดบัญชีมาทั้งก้อน — กู้คืนไฟล์ · ดึงจากคลาวด์ · เริ่มใช้จริง · ลบบัญชี
+ * ครูไม่ได้เพิ่งออกบิลหรือรับเงินเท่าจำนวนที่โผล่มา ตัวนับการใช้งานจึงต้องตั้งฐานใหม่เงียบ ๆ ไม่ใช่รายงานว่ามีงานเกิดขึ้น
+ */
+const LEDGER_REPLACEMENT_ACTIONS = new Set<Action['type']>(['restore', 'replace', 'startReal', 'deleteAccountLocal'])
+
 let uid = 0
 const nid = (p: string): string => { uid += 1; return `${p}-${Date.now().toString(36)}${uid}` }
 
@@ -620,6 +626,11 @@ export interface StoreValue {
   persistenceError: string | null
   recoveryRaw: string | null
   writeStatus: WriteStatus
+  /**
+   * นับครั้งที่สมุดบัญชีถูกยกมาทั้งก้อนแทนที่จะเดินหน้าด้วยงานของครู
+   * เลขนี้เปลี่ยนเมื่อไหร่ = ความยาวรายการที่เพิ่มขึ้นไม่ใช่งานที่เพิ่งเกิด ผู้ใช้ค่านี้ต้องตั้งฐานใหม่ ไม่ใช่รายงาน
+   */
+  ledgerReplacements: number
   /** Rehydrate the latest durable state after a conflict/error and resume if leadership is still held. */
   retryPersistence: () => boolean
   /** Reserve the lifetime writer before the irreversible server-side account deletion starts. */
@@ -646,10 +657,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [recoveryRaw, setRecoveryRaw] = useState(initial.recoveryRaw)
   const [writeStatus, setWriteStatusState] = useState<WriteStatus>('acquiring')
   const [lockAttempt, setLockAttempt] = useState(0)
+  const [ledgerReplacements, setLedgerReplacements] = useState(0)
   const setWriteStatus = useCallback((status: WriteStatus) => {
     writeStatusRef.current = status
     setWriteStatusState(status)
   }, [])
+  /** เรียกทุกครั้งที่ state ถูกแทนทั้งก้อน — อ่านใหม่จากเครื่อง รับก้อนจากแท็บอื่น หรือ action ที่ยกสมุดบัญชี */
+  const markLedgerReplaced = useCallback(() => { setLedgerReplacements(count => count + 1) }, [])
 
   const rehydrateLatest = useCallback((): boolean => {
     try {
@@ -661,6 +675,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         savedRaw.current = serialized
         current.current = normalized
         blocked.current = false
+        // อ่านใหม่จากเครื่อง ไม่ใช่ครูลงมือทำ — รายการที่โผล่มาต้องไม่ถูกนับเป็นงานที่เพิ่งเกิด
+        markLedgerReplaced()
         setState(normalized)
         setDidReset(false)
         setRecoveryRaw(null)
@@ -684,6 +700,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       savedRaw.current = canonical
       current.current = normalized
       blocked.current = false
+      markLedgerReplaced()
       setState(normalized)
       setDidReset(false)
       setRecoveryRaw(null)
@@ -695,7 +712,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       setWriteStatus('error')
       return false
     }
-  }, [setWriteStatus])
+  }, [markLedgerReplaced, setWriteStatus])
 
   const dispatch = useCallback((action: Action): boolean => {
     if (accountDeletionPending.current) {
@@ -730,6 +747,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       savedRaw.current = serialized
       current.current = committed
       blocked.current = false
+      // กู้คืน/สลับโหมด/ลบบัญชี เปลี่ยนสมุดบัญชีทั้งก้อน — ไม่ใช่บิลหรือยอดเงินที่ครูเพิ่งทำในเครื่องนี้
+      if (LEDGER_REPLACEMENT_ACTIONS.has(action.type)) markLedgerReplaced()
       setState(committed)
       setDidReset(false)
       setRecoveryRaw(null)
@@ -739,7 +758,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       setPersistenceError('บันทึกไม่สำเร็จ การเปลี่ยนแปลงล่าสุดยังไม่ถูกเก็บ กรุณาสำรองข้อมูล ตรวจพื้นที่ว่าง แล้วลองอีกครั้ง')
       return false
     }
-  }, [setWriteStatus])
+  }, [markLedgerReplaced, setWriteStatus])
 
   const prepareAccountDeletion = useCallback((): boolean => {
     if (accountDeletionPending.current || blocked.current || !leader.current || writeStatusRef.current !== 'writable') {
@@ -771,10 +790,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     savedRaw.current = durableRaw
     current.current = clean
     blocked.current = !writable
+    markLedgerReplaced()
     setState(clean)
     setDidReset(false)
     setRecoveryRaw(null)
-  }, [])
+  }, [markLedgerReplaced])
 
   const commitAccountDeletion = useCallback((): 'cleared' | 'local-retained' => {
     if (!accountDeletionPending.current || !leader.current || writeStatusRef.current !== 'writable') {
@@ -884,6 +904,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         if (!migrated) throw new Error('invalid state')
         savedRaw.current = event.newValue
         current.current = normalize(migrated)
+        // ก้อนนี้มาจากแท็บอื่น แท็บนั้นนับให้แล้ว — นับซ้ำที่นี่คือรายงานงานที่ไม่มีใครทำเพิ่ม
+        markLedgerReplaced()
         setState(current.current)
         setPersistenceError(null)
       } catch {
@@ -893,7 +915,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     }
     window.addEventListener('storage', sync)
     return () => window.removeEventListener('storage', sync)
-  }, [setWriteStatus])
+  }, [markLedgerReplaced, setWriteStatus])
 
   useEffect(() => {
     const acceptDeletion = (markerRaw: string | null) => {
@@ -950,10 +972,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const resetDemo = useCallback((scenarioId?: string) =>
     dispatch({ type: 'replace', state: normalize(buildScenario(scenarioId ?? current.current.scenarioId)) }), [dispatch])
   const value = useMemo<StoreValue>(() => ({ state, dispatch, track, resetDemo, didReset,
-    hydrated: true, persistenceError, recoveryRaw, writeStatus, retryPersistence,
+    hydrated: true, persistenceError, recoveryRaw, writeStatus, ledgerReplacements, retryPersistence,
     prepareAccountDeletion, commitAccountDeletion, cancelAccountDeletion }),
-  [state, dispatch, track, resetDemo, didReset, persistenceError, recoveryRaw, writeStatus, retryPersistence,
-    prepareAccountDeletion, commitAccountDeletion, cancelAccountDeletion])
+  [state, dispatch, track, resetDemo, didReset, persistenceError, recoveryRaw, writeStatus, ledgerReplacements,
+    retryPersistence, prepareAccountDeletion, commitAccountDeletion, cancelAccountDeletion])
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
 }
 
