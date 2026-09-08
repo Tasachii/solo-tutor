@@ -140,6 +140,8 @@ export default function Admin() {
   const signedIn = (() => { try { return !!getSession() } catch { return false } })()
   const inlineLinksOnly = state.mode === 'real' && !configured
   const needsSignIn = state.mode === 'real' && configured && !signedIn
+  // รู้ได้ก็ต่อเมื่อเคยลองแล้ว — ประกาศทันทีที่รู้ ไม่รอให้ครูกดซ้ำจนงง
+  const [backendMissing, setBackendMissing] = useState(false)
   // ร่างที่เราเป็นคนใส่ลิงก์ให้ ไม่ใช่ร่างที่ครูแก้เอง
   const [linkEdited, setLinkEdited] = useState<string[]>([])
 
@@ -149,6 +151,7 @@ export default function Admin() {
    */
   const publishFor = async (m: Message, popup: Window | null): Promise<string | null> => {
     const secured = await secureDraft(state, m.draft)
+    if (secured.skipped === 'unsupported') setBackendMissing(true)
     if (publishBlocks(secured.skipped)) {
       popup?.close()
       // ลิงก์เดิมถูกปิดไปแล้ว: ล้างธงแก้เอง แล้ว refreshDrafts จะเขียนร่างใหม่พร้อมลิงก์ใหม่ในรอบเดียวกัน
@@ -298,6 +301,8 @@ export default function Admin() {
 
           {/* บิลด์ที่ไม่มีโปรเจกต์ยังส่งได้ แต่ต้องบอกก่อนส่งว่าลิงก์นั้นปิดไม่ได้ ไม่ใช่ปล่อยผ่านเงียบ ๆ */}
           {inlineLinksOnly && <p className="warnbar" role="status" data-testid="insecure-link-notice">{copy.sharedLinks.insecureNotice}</p>}
+          {/* ฐานหลังบ้านยังไม่ได้อัปเดต — ครูกดซ้ำก็ไม่ผ่าน จึงต้องบอกว่าเป็นเรื่องของผู้ดูแล ไม่ใช่ความผิดครู */}
+          {backendMissing && <p className="warnbar" role="status" data-testid="unsupported-link-notice">{copy.sharedLinks.unsupportedNotice}</p>}
           {needsSignIn && <p className="warnbar" role="status" data-testid="signed-out-link-notice">
             {copy.sharedLinks.signedOutNotice.replace('{days}', String(DEFAULT_SHARE_DAYS))}
           </p>}

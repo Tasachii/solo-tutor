@@ -84,4 +84,23 @@ describe('คำเตือนเรื่องลิงก์ที่ปิ�
       expect(notice).toMatch(/ยังไม่ได้ส่ง/)
     }
   })
+
+  it('ยังไม่เข้าสู่ระบบ — ต้องส่งได้ตามปกติ ไม่ใช่ถูกปิดทาง', async () => {
+    // โหมดจริงแบบไม่สมัครบัญชีคือเส้นทางที่แอปรองรับมาตลอด การหยุดส่งคือการถอยหลัง
+    const { publishBlocks } = await import('../../src/core/documentPublish')
+    expect(publishBlocks('signed-out')).toBe(false)
+    expect(publishBlocks('not-configured')).toBe(false)
+    expect(publishBlocks('demo')).toBe(false)
+    expect(publishBlocks('no-link')).toBe(false)
+    // ฐานยังไม่ได้อัปเดต: ลองใหม่กี่ครั้งก็ไม่ผ่าน หยุดส่งเท่ากับส่งบิลไม่ได้เลย
+    expect(publishBlocks('unsupported')).toBe(false)
+    // ส่วนที่ต้องหยุดจริง คือครูมีสิทธิ์ออกลิงก์ที่ปิดได้อยู่แล้วแต่รอบนี้ไม่สำเร็จ
+    expect(publishBlocks('failed')).toBe(true)
+    expect(publishBlocks('stale')).toBe(true)
+  })
+
+  it('คำเตือนตอนยังไม่เข้าสู่ระบบต้องไม่ทำให้เข้าใจว่าส่งไม่ได้', () => {
+    expect(copy.sharedLinks.signedOutNotice).toMatch(/ส่งได้ตามปกติ/)
+    expect(copy.sharedLinks.unsupportedNotice).toMatch(/ส่งได้ตามปกติ/)
+  })
 })

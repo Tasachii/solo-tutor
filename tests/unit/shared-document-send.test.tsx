@@ -146,8 +146,10 @@ describe('ส่งผ่าน LINE OA', () => {
     expect(dispatch.state().chats.at(-1)?.text).toContain(SECURE)
   })
 
-  it('ยังไม่เข้าสู่ระบบ ลิงก์ถูกปิดไปแล้ว หรือเผยแพร่ล้ม → ไม่ส่ง และร่างไม่ถูกแตะ', async () => {
-    for (const skipped of ['signed-out', 'stale', 'failed']) {
+  it('ลิงก์ถูกปิดไปแล้ว หรือเผยแพร่ล้ม → ไม่ส่ง และร่างไม่ถูกแตะ', async () => {
+    // 'signed-out' ไม่อยู่ในนี้โดยตั้งใจ — ครูโหมดจริงที่ไม่ได้สมัครบัญชีต้องส่งบิลได้ตามเดิม
+    // หน้าจอประกาศไว้แล้วว่าลิงก์รอบนี้ปิดไม่ได้ การหยุดส่งจะทำให้ส่งบิลไม่ได้เลย
+    for (const skipped of ['stale', 'failed']) {
       const dispatch = makeDispatch(realState())
       const message = linkedDraft(dispatch.state())
       api.secureDraft.mockResolvedValueOnce({ draft: rewrite(message.draft), links: [], skipped })
@@ -205,12 +207,12 @@ describe('ส่งและคัดลอกจากแท็บร่าง'
 
   it('เผยแพร่ไม่สำเร็จ → ไม่เปิด LINE บอกเหตุผลที่ทำต่อได้ และร่างยังเป็นลิงก์เดิม', async () => {
     const message = linkedDraft(store.current)
-    api.secureDraft.mockResolvedValue({ draft: 'ไม่ควรถูกใช้', links: [], skipped: 'signed-out' })
+    api.secureDraft.mockResolvedValue({ draft: 'ไม่ควรถูกใช้', links: [], skipped: 'failed' })
     showAdmin()
 
     fireEvent.click(screen.getAllByRole('button', { name: copy.admin.sendLine })[0])
 
-    expect(await screen.findByText(copy.sharedLinks.publishSignedOut)).toBeTruthy()
+    expect(await screen.findByText(copy.sharedLinks.publishFailed)).toBeTruthy()
     expect(api.openLine).not.toHaveBeenCalled()
     expect(store.current.messages.find(m => m.id === message.id)!.draft).toBe(message.draft)
     expect(store.current.sending).toBeUndefined()
@@ -260,5 +262,28 @@ describe('ส่งและคัดลอกจากแท็บร่าง'
     showAdmin()
     expect(screen.getByTestId('signed-out-link-notice').textContent).toContain('90')
     expect(screen.queryByTestId('insecure-link-notice')).toBeNull()
+  })
+
+  it('ยังไม่เข้าสู่ระบบ → ส่งได้ตามปกติด้วยลิงก์รุ่นเดิม และหน้าจอประกาศข้อจำกัดไว้แล้ว', async () => {
+    // ครูโหมดจริงที่ไม่ได้สมัครบัญชีคือเส้นทางที่แอปรองรับ ห้ามปิดทางส่งบิลของเขา
+    const message = linkedDraft(store.current)
+    api.secureDraft.mockResolvedValue({ draft: message.draft, links: [], skipped: 'signed-out' })
+    showAdmin()
+
+    fireEvent.click(screen.getAllByRole('button', { name: copy.admin.sendLine })[0])
+
+    await waitFor(() => expect(api.openLine).toHaveBeenCalled())
+    expect(String(api.openLine.mock.calls[0][0])).toBe(message.draft)
+  })
+
+  it('ฐานหลังบ้านยังไม่ได้อัปเดต → ส่งได้ และขึ้นคำเตือนที่บอกว่าเป็นเรื่องของผู้ดูแล', async () => {
+    api.secureDraft.mockResolvedValue({ draft: linkedDraft(store.current).draft, links: [], skipped: 'unsupported' })
+    showAdmin()
+
+    fireEvent.click(screen.getAllByRole('button', { name: copy.admin.sendLine })[0])
+
+    await waitFor(() => expect(api.openLine).toHaveBeenCalled())
+    expect((await screen.findByTestId('unsupported-link-notice')).textContent)
+      .toBe(copy.sharedLinks.unsupportedNotice)
   })
 })

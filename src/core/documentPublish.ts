@@ -15,7 +15,7 @@ import {
   documentLabel, documentLinkFor, exportUrlKey, generateDocumentKey, sealDocument, sealLabel, shareExpiryFrom,
 } from './documentShare'
 import { publishSharedDocument, sharedDocumentLiveness } from './sharedDocumentApi'
-import { getSession, getSupabaseConfig } from '../integrations/supabaseRest'
+import { getSession, getSupabaseConfig, SupabaseRestError } from '../integrations/supabaseRest'
 import { loadKey } from './cloudKey'
 
 /** จับได้ทั้งลิงก์รุ่นเดิม (base64url ล้วน) และรุ่นใหม่ (token.key) แต่ไม่กินเครื่องหมายท้ายประโยค */
@@ -73,7 +73,8 @@ async function documentFingerprint(doc: SharedDocument): Promise<string> {
  * `not-configured` และ `demo` ส่งได้แต่ต้องบอกว่าลิงก์นี้กำหนดวันหมดอายุหรือปิดไม่ได้
  * `signed-out`, `failed`, `stale` ต้องหยุด ห้ามส่งลิงก์ที่ครูเข้าใจว่าปิดได้แต่จริง ๆ ปิดไม่ได้
  */
-export type PublishSkip = 'no-link' | 'demo' | 'not-configured' | 'signed-out' | 'failed' | 'stale'
+/** `unsupported` = ฐานหลังบ้านยังไม่ได้ migrate ให้มีตารางลิงก์ — เครื่องครูใหม่กว่าฐานได้เสมอตอน deploy */
+export type PublishSkip = 'no-link' | 'demo' | 'not-configured' | 'signed-out' | 'unsupported' | 'stale' | 'failed' | 'stale'
 
 export interface SecureDraftResult {
   draft: string
@@ -83,12 +84,15 @@ export interface SecureDraftResult {
 }
 
 /**
- * ส่งต่อไม่ได้เมื่อครูจะเข้าใจผิดว่าลิงก์ปิดได้ทั้งที่ปิดไม่ได้
- * `not-configured` และ `demo` ไม่อยู่ในนี้ เพราะบิลด์นั้นไม่มีทางออกลิงก์ที่ปิดได้เลย
- * และหน้าจอบอกข้อจำกัดนั้นไว้ตลอดอยู่แล้ว ไม่ใช่การเงียบแล้วลดระดับให้
+ * หยุดส่งเฉพาะเมื่อครูมีสิทธิ์ออกลิงก์ที่ปิดได้อยู่แล้ว แต่รอบนี้ทำไม่สำเร็จ
+ *
+ * `demo`, `not-configured`, `signed-out` และ `unsupported` ไม่อยู่ในนี้ เพราะทั้งสี่แบบ
+ * ออกลิงก์ที่ปิดได้ไม่ได้ตั้งแต่ต้น การหยุดส่งจึงไม่ได้ปกป้องอะไร มีแต่ทำให้ครูส่งบิลไม่ได้เลย
+ * โดยเฉพาะครูที่ใช้จริงแบบไม่สมัครบัญชี ซึ่งเป็นเส้นทางที่แอปรองรับมาตลอด
+ * หน้าจอต้องประกาศข้อจำกัดไว้ก่อนกดส่ง — ไม่ใช่เงียบแล้วลดระดับให้ และไม่ใช่ปิดทางส่ง
  */
 export const publishBlocks = (skipped: PublishSkip | null): boolean =>
-  skipped === 'signed-out' || skipped === 'failed' || skipped === 'stale'
+  skipped === 'failed' || skipped === 'stale'
 
 const tokensIn = (draft: string): { legacy: string[]; secure: string[] } => {
   const legacy = new Set<string>()
@@ -165,7 +169,12 @@ export async function secureDraft(state: AppState, draft: string): Promise<Secur
 
     writeCache(providerId, cache)
     return { draft: text, links, skipped: null }
-  } catch {
+  } catch (error) {
+    // ฐานยังไม่มีคำสั่งนี้ (ยังไม่ได้ apply migration) — ออกลิงก์ที่ปิดได้ไม่ได้ทั้งระบบ
+    // ต่างจาก "ล้มเหลว" ตรงที่ลองใหม่กี่ครั้งก็ไม่ผ่าน การหยุดส่งจึงแปลว่าครูส่งบิลไม่ได้เลย
+    if (error instanceof SupabaseRestError && error.status === 404) {
+      return { draft, links: [], skipped: 'unsupported' }
+    }
     // เครือข่ายล่ม เซสชันหมดอายุ หรือฐานปฏิเสธ — คืนข้อความเดิมทั้งดุ้น ไม่ส่งข้อความที่ลิงก์พัง
     return { draft, links: [], skipped: 'failed' }
   }
