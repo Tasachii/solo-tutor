@@ -22,6 +22,16 @@ if [[ "$ready" != "1" ]]; then
   docker logs "$container_name" >&2 || true
   exit 1
 fi
+# **ทำให้เหมือนโปรดักชันก่อนรันไมเกรชัน**: Supabase ติดตั้ง pgcrypto ไว้ในสคีมา `extensions`
+# ไม่ใช่ `public` ฟังก์ชันที่ตั้ง `search_path = public, pg_temp` จึงมองไม่เห็น digest/gen_random_bytes
+# บนฐานจริง ทั้งที่ผ่านฉลุยในคอนเทนเนอร์เปล่าที่ลงส่วนขยายไว้ใน public — บั๊กที่หลุดขึ้นเว็บจริงมาแล้ว
+# ตั้ง search_path ของฐานให้เหมือน role postgres ของ Supabase ด้วย ไม่งั้นเราจะจำลองผิดด้าน:
+# บั๊กจริงอยู่ที่ "ฟังก์ชันที่ปักหมุด search_path ของตัวเอง" ไม่ใช่คำสั่งระดับบนสุดของไมเกรชัน
+docker exec "$container_name" psql -U postgres -v ON_ERROR_STOP=1 -q -c \
+  'create schema if not exists extensions;
+   create extension if not exists pgcrypto with schema extensions;
+   alter database postgres set search_path = public, extensions;'
+
 # Migrations are discovered from the directory in numeric order, so adding one needs no
 # edit here. Two files must run inside that sequence: pre_production_safety seeds rows that
 # 0007 has to survive, and post_production_safety checks the result before 0008 builds on it.
