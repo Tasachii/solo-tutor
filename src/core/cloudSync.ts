@@ -81,9 +81,27 @@ export function decideSync(
   return 'idle'
 }
 
-/** มีข้อมูลจริงที่เสียแล้วเสียดายไหม — เครื่องที่เพิ่งเริ่มใช้จริงยังไม่มีอะไร ดึงจากคลาวด์ได้เลย */
+/**
+ * มีข้อมูลจริงที่เสียแล้วเสียดายไหม — เครื่องที่เพิ่งเริ่มใช้จริงยังไม่มีอะไร ดึงจากคลาวด์ได้เลย
+ * ต้องนับทุกตารางที่ครูกรอกเอง (เท่ากับ hasAccountLedgerData ใน store) — เครื่องที่มีแค่ผู้จ่าย
+ * หรือการจ่ายที่ยังไม่ผูกนักเรียน เคยถูกมองว่าเปล่าแล้วโดนคลาวด์ทับเงียบ ๆ
+ */
 export const hasLedgerData = (s: AppState): boolean =>
-  s.subjects.length > 0 || s.completions.length > 0 || s.invoices.length > 0
+  s.clients.length > 0 || s.subjects.length > 0 || s.units.length > 0
+  || s.completions.length > 0 || s.invoices.length > 0 || s.payments.length > 0
+  || s.receipts.length > 0 || s.messages.length > 0 || s.chats.length > 0
+
+/** อ่านสำเนาที่เก็บไว้ก่อนดึงคลาวด์ครั้งล่าสุด — คืน null ถ้าไม่มีหรืออ่านไม่ออก */
+export function readPrePullBackup(schema: number): { at: string; result: RestoreResult } | null {
+  try {
+    const raw = localStorage.getItem(PRE_PULL_BACKUP_KEY)
+    if (!raw) return null
+    const at = (() => { try { return String((JSON.parse(raw) as { exportedAt?: unknown }).exportedAt ?? '') } catch { return '' } })()
+    return { at, result: fromBackup(raw, schema) }
+  } catch {
+    return null
+  }
+}
 
 export const readSyncMeta = (): SyncMeta | null => {
   try {

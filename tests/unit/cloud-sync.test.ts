@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { buildScenario } from '../../src/core/scenarios'
 import { deriveKey } from '../../src/core/cloudCrypto'
-import { clearAccountLocalArtifacts, decideSync, hasLedgerData, ledgerFingerprint, packSnapshot, PRE_PULL_BACKUP_KEY, readSyncMeta, unpackSnapshot, writePrePullBackup, writeSyncMeta, SYNC_META_KEY, type SyncMeta } from '../../src/core/cloudSync'
+import { clearAccountLocalArtifacts, decideSync, hasLedgerData, ledgerFingerprint, packSnapshot, PRE_PULL_BACKUP_KEY, readPrePullBackup, readSyncMeta, unpackSnapshot, writePrePullBackup, writeSyncMeta, SYNC_META_KEY, type SyncMeta } from '../../src/core/cloudSync'
 import { reducer } from '../../src/core/store'
 import { SCHEMA } from '../../src/core/store'
 
@@ -71,9 +71,27 @@ describe('snapshot pack/unpack', () => {
     expect(await unpackSnapshot({ ...sealed, kdf: 'future-kdf' }, key, SCHEMA))
       .toEqual({ ok: false, reason: 'unsupportedKdf' })
   })
-  it('hasLedgerData: เดโมมีข้อมูล เครื่องเปล่าไม่มี', () => {
+  it('hasLedgerData: เดโมมีข้อมูล เครื่องเปล่าไม่มี — เครื่องที่มีแค่ผู้จ่ายหรือการจ่ายก็ถือว่ามีข้อมูล', () => {
     expect(hasLedgerData(real)).toBe(true)
-    expect(hasLedgerData({ ...real, subjects: [], completions: [], invoices: [] })).toBe(false)
+    const empty = { ...buildScenario('empty'), mode: 'real' as const }
+    expect(hasLedgerData(empty)).toBe(false)
+    // เคยดูแค่ subjects/completions/invoices — เครื่องที่เหลือแค่ผู้จ่ายเคยถูกคลาวด์ทับเงียบ
+    expect(hasLedgerData({ ...empty, clients: [{ id: 'c1', name: 'คุณแม่' }] })).toBe(true)
+    expect(hasLedgerData({ ...empty, payments: real.payments.slice(0, 1) })).toBe(true)
+    expect(hasLedgerData({ ...empty, messages: real.messages.slice(0, 1) })).toBe(true)
+  })
+  it('readPrePullBackup: อ่านสำเนากลับพร้อมเวลา · ไม่มีหรือขยะ → null/ไม่ผ่าน', () => {
+    localStorage.removeItem(PRE_PULL_BACKUP_KEY)
+    expect(readPrePullBackup(SCHEMA)).toBeNull()
+    expect(writePrePullBackup(real, '2025-09-02T02:00:00.000Z')).toBe(true)
+    const saved = readPrePullBackup(SCHEMA)!
+    expect(saved.at).toBe('2025-09-02T02:00:00.000Z')
+    expect(saved.result.ok).toBe(true)
+    if (saved.result.ok) expect(saved.result.state.subjects.length).toBe(real.subjects.length)
+    localStorage.setItem(PRE_PULL_BACKUP_KEY, '{"format":"solo-backup-1","app":{}}')
+    expect(readPrePullBackup(SCHEMA)?.result.ok).toBe(false)
+    localStorage.setItem(PRE_PULL_BACKUP_KEY, 'not json')
+    expect(readPrePullBackup(SCHEMA)?.result).toEqual({ ok: false, reason: 'unreadable' })
   })
 })
 

@@ -21,7 +21,7 @@ export default function Account() {
   const cloud = useCloudSync()
   const toast = useToast()
   const a = copy.account
-  const [ask, setAsk] = useState<null | 'pull' | 'push' | 'delete' | 'account'>(null)
+  const [ask, setAsk] = useState<null | 'pull' | 'push' | 'delete' | 'account' | 'prepull'>(null)
   const [password, setPassword] = useState('')
   const [busy, setBusy] = useState(false)
   const [recoveryBusy, setRecoveryBusy] = useState(false)
@@ -42,7 +42,7 @@ export default function Account() {
     setRecoveryBusy(true)
     const recovery = await cloud.exportRecovery()
     setRecoveryBusy(false)
-    if (!recovery) return
+    if (!recovery) { toast.push({ text: a.recoveryUnavailable, tone: 'warn' }); return }
     const href = URL.createObjectURL(new Blob([recovery], { type: 'application/json' }))
     const anchor = document.createElement('a')
     anchor.href = href
@@ -77,8 +77,9 @@ export default function Account() {
           {cloud.error && <p className="warnbar">{cloud.error}</p>}
           <p className="hint">{a.lastAt}: {when(cloud.lastAt)}</p>
           <div className="btnrow">
-            <button className="btn btn--secondary" disabled={cloud.status === 'syncing' || cloud.status === 'locked'} onClick={() => void cloud.syncNow()}>{a.syncNow}</button>
+            <button className="btn btn--secondary" disabled={cloud.status === 'syncing' || cloud.status === 'locked' || writeStatus !== 'writable'} onClick={() => void cloud.syncNow()}>{a.syncNow}</button>
           </div>
+          {writeStatus !== 'writable' && <p className="hint" role="status">{a.readonlyTab}</p>}
         </section>
 
         {cloud.status === 'locked' && <form className="card" onSubmit={unlock}>
@@ -96,6 +97,12 @@ export default function Account() {
             <button className="btn btn--primary" onClick={() => setAsk('pull')}>{a.useCloud}</button>
             <button className="btn btn--secondary" onClick={() => setAsk('push')}>{a.useLocal}</button>
           </div>
+        </section>}
+
+        {cloud.prePullBackupAt && <section className="card" data-testid="prepull-card">
+          <h2 className="h2">{a.prePullTitle}</h2>
+          <p className="hint">{a.prePullBody.replace('{at}', when(cloud.prePullBackupAt))}</p>
+          <button className="btn btn--secondary btn--sm" disabled={writeStatus !== 'writable'} onClick={() => setAsk('prepull')}>{a.prePullRestore}</button>
         </section>}
 
         <PlanCard />
@@ -130,6 +137,8 @@ export default function Account() {
       onConfirm={async () => { const ok = await cloud.resolve('pull'); if (ok) toast.push({ text: a.pulled, tone: 'ok' }); return ok }} />}
     {ask === 'push' && <ConfirmSheet title={a.useLocal} body={a.useLocalConfirm} confirmLabel={a.useLocal} onClose={() => setAsk(null)}
       onConfirm={async () => { const ok = await cloud.resolve('push'); if (ok) toast.push({ text: a.pushed, tone: 'ok' }); return ok }} />}
+    {ask === 'prepull' && <ConfirmSheet title={a.prePullTitle} body={a.prePullConfirm} confirmLabel={a.prePullRestore} onClose={() => setAsk(null)}
+      onConfirm={async () => { const ok = await cloud.restorePrePullBackup(); toast.push({ text: ok ? a.prePullRestored : a.prePullFailed, tone: ok ? 'ok' : 'danger' }); return ok }} />}
     {ask === 'delete' && <ConfirmSheet title={a.deleteTitle} body={a.deleteConfirm} confirmLabel={a.deleteTitle} danger onClose={() => setAsk(null)}
       onConfirm={async () => { const ok = await cloud.deleteCloud(); if (ok) toast.push({ text: a.deleteDone, tone: 'ok' }); return ok }} />}
     {ask === 'account' && <BottomSheet title={a.deleteAccountTitle} sub={a.deleteAccountBody}

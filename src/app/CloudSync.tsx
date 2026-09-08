@@ -4,7 +4,7 @@ import { getSession, getSupabaseConfig, signOut, SupabaseRestError, type Supabas
 import { deleteSnapshot, deleteTeacherAccount, readSnapshot, saveSnapshot } from '../integrations/cloudApi'
 import {
   clearAccountLocalArtifacts, decideSync, hasLedgerData, ledgerFingerprint, packSnapshot, readSyncMeta, unpackSnapshot, writeSyncMeta,
-  writePrePullBackup, type CloudSnapshot, type SyncDecision,
+  writePrePullBackup, readPrePullBackup, type CloudSnapshot, type SyncDecision,
 } from '../core/cloudSync'
 import { exportRecoveryKey, forgetKey, forgetKeys, importRecoveryKey, keyFromPassword, loadKey, rememberKey } from '../core/cloudKey'
 import { readPlanInfo, writePlanInfo, type PlanInfo } from '../core/plan'
@@ -36,6 +36,10 @@ export interface CloudSyncValue {
   unlock: (password: string) => Promise<boolean>
   exportRecovery: () => Promise<string | null>
   importRecovery: (recovery: string) => Promise<boolean>
+  /** เวลาของสำเนาที่เก็บไว้ก่อนดึงคลาวด์ครั้งล่าสุด — null = ไม่มี */
+  prePullBackupAt: string | null
+  /** วางสำเนาก่อนดึงคลาวด์กลับลงเครื่อง แล้วล้าง meta ให้รอบถัดไปถามครูใหม่ ไม่ทับคลาวด์เงียบ ๆ */
+  restorePrePullBackup: () => Promise<boolean>
   deleteAccount: (password: string) => Promise<AccountDeleteResult>
   deleteCloud: () => Promise<boolean>
   signOutDevice: () => boolean
@@ -67,6 +71,7 @@ export function CloudSyncProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState('')
   const [hasKey, setHasKey] = useState(false)
   const [plan, setPlan] = useState<PlanInfo | null>(readPlanInfo)
+  const [prePullBackupAt, setPrePullBackupAt] = useState<string | null>(() => readPrePullBackup(SCHEMA)?.at ?? null)
 
   const stateRef = useRef(state); stateRef.current = state
   const sessionRef = useRef(session); sessionRef.current = session
@@ -167,9 +172,11 @@ export function CloudSyncProvider({ children }: { children: ReactNode }) {
       setStatus('conflict'); setError('ข้อมูลในเครื่องเปลี่ยนระหว่างดาวน์โหลด กรุณาเลือกอีกครั้ง')
       return false
     }
-    if (!writePrePullBackup(stateRef.current, new Date().toISOString())) {
+    const backupAt = new Date().toISOString()
+    if (!writePrePullBackup(stateRef.current, backupAt)) {
       setCloud(head); setStatus('error'); setError(copy.account.applyFailed); return false
     }
+    setPrePullBackupAt(backupAt)
     if (!dispatch({ type: 'restore', state: r.state })) { setStatus('error'); setError(copy.account.applyFailed); return false }
     // ลายนิ้วมือของก้อนที่เพิ่งวาง — store อาจ normalize เพิ่มร่างข้อความให้ รอบถัดไปก็แค่ push ทับ ไม่ใช่ conflict
     const at = new Date().toISOString()
@@ -312,9 +319,12 @@ export function CloudSyncProvider({ children }: { children: ReactNode }) {
       const key = await importRecoveryKey(s.user.id, recovery)
       if (!key || !identityIsCurrent(s.user.id, expectedGeneration)) return false
       const head = await readSnapshot()
-      if (!head || !identityIsCurrent(s.user.id, expectedGeneration)) return false
-      const opened = await unpackSnapshot(head, key, SCHEMA)
-      if (!opened.ok || !identityIsCurrent(s.user.id, expectedGeneration)) return false
+      if (!identityIsCurrent(s.user.id, expectedGeneration)) return false
+      // ยังไม่มี snapshot = ไม่มีอะไรให้พิสูจน์กุญแจ แต่ไฟล์ตรงบัญชีแล้ว จดไว้แล้ว push ก้อนแรกด้วยกุญแจนี้
+      if (head) {
+        const opened = await unpackSnapshot(head, key, SCHEMA)
+        if (!opened.ok || !identityIsCurrent(s.user.id, expectedGeneration)) return false
+      }
       await rememberKey(s.user.id, key)
       if (!identityIsCurrent(s.user.id, expectedGeneration)) { forgetKey(s.user.id); return false }
       cancelOperations()
@@ -323,6 +333,18 @@ export function CloudSyncProvider({ children }: { children: ReactNode }) {
       return true
     } catch (e) { fail(e); return false }
   }, [cancelOperations, fail, identityIsCurrent, reconcile])
+
+  const restorePrePullBackup = useCallback(async (): Promise<boolean> => {
+    if (writeStatus !== 'writable') return false
+    const saved = readPrePullBackup(SCHEMA)
+    if (!saved || !saved.result.ok || saved.result.state.mode !== 'real') return false
+    cancelOperations()
+    if (!dispatch({ type: 'restore', state: saved.result.state })) return false
+    // ไม่จดว่าซิงก์แล้ว — รอบถัดไป decideSync เห็นเครื่องมีข้อมูลและไม่มี meta → ถามครูว่าจะเอาชุดไหน
+    writeSyncMeta(null); setLastAt(null); setCloud(null); setConflictCounts(null); setError('')
+    setStatus('synced')
+    return true
+  }, [cancelOperations, dispatch, writeStatus])
 
   const signOutDevice = useCallback((): boolean => {
     const userId = sessionRef.current?.user.id
@@ -408,16 +430,16 @@ export function CloudSyncProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo<CloudSyncValue>(() => ({
     enabled, session, status, lastAt, cloud, conflictCounts, error, plan, refreshPlan, refreshSession, syncNow, resolve, unlock,
-    exportRecovery, importRecovery, deleteAccount, deleteCloud, signOutDevice,
+    exportRecovery, importRecovery, prePullBackupAt, restorePrePullBackup, deleteAccount, deleteCloud, signOutDevice,
   }), [enabled, session, status, lastAt, cloud, conflictCounts, error, plan, refreshPlan, refreshSession, syncNow, resolve, unlock,
-    exportRecovery, importRecovery, deleteAccount, deleteCloud, signOutDevice])
+    exportRecovery, importRecovery, prePullBackupAt, restorePrePullBackup, deleteAccount, deleteCloud, signOutDevice])
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
 }
 
 const OFF: CloudSyncValue = {
   enabled: false, session: null, status: 'off', lastAt: null, cloud: null, conflictCounts: null, error: '', plan: null, refreshPlan: async () => {},
   refreshSession: () => {}, syncNow: async () => {}, resolve: async () => false, unlock: async () => false,
-  exportRecovery: async () => null, importRecovery: async () => false,
+  exportRecovery: async () => null, importRecovery: async () => false, prePullBackupAt: null, restorePrePullBackup: async () => false,
   deleteAccount: async () => 'failed',
   deleteCloud: async () => false, signOutDevice: () => { try { signOut() } catch { return false } forgetKeys(); return true },
 }
