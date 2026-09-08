@@ -13,7 +13,7 @@ const fill = (text: string, vars: Record<string, string | number>): string =>
   text.replace(/\{(\w+)\}/g, (_m, key: string) => String(vars[key] ?? ''))
 
 /**
- * แท็บการบ้าน — มอบหมายให้หลายคนพร้อมกัน ติดตามว่าใครส่งแล้ว และทวงเมื่อเลยกำหนด
+ * แท็บการบ้าน — มอบหมายให้หลายคนพร้อมกัน ติดตามว่าใครส่งแล้ว และเตือนเมื่อเลยกำหนด
  * ข้อความทุกใบร่างให้แล้วเข้าคิวเดียวกับข้อความอื่น ครูตรวจแล้วกดส่ง (share-link หรือ LINE OA)
  */
 export default function AdminHomework() {

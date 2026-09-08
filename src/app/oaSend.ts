@@ -5,7 +5,7 @@ import { getSession, getSupabaseConfig } from '../integrations/supabaseRest'
 import { deliverOa, deliveryTarget, findDelivery, type OutboxRow } from '../integrations/lineApi'
 
 /**
- * ส่งข้อความหนึ่งใบผ่าน LINE OA — ใช้ร่วมกันระหว่างปุ่มบนการ์ดข้อความและการส่งเป็นชุดจากแท็บทวงเงิน/การบ้าน
+ * ส่งข้อความหนึ่งใบผ่าน LINE OA — ใช้ร่วมกันระหว่างปุ่มบนการ์ดข้อความและการส่งเป็นชุดจากแท็บค้างจ่าย/การบ้าน
  *
  * กติกาที่ห้ามหลุด (เหมือน LineMessageAction เดิมทุกข้อ):
  * - ไม่มีอะไรออกจากเครื่องก่อน "ความตั้งใจส่ง" (oaDelivery) ถูกบันทึกลง storage สำเร็จ

@@ -17,7 +17,7 @@ const fill = (text: string, vars: Record<string, string | number>): string =>
 type BulkResult = { sent: number; skipped: { name: string; reason: string }[] }
 
 /**
- * แท็บทวงเงิน — บิลค้างทุกใบในหน้าเดียว ครูเห็นข้อความก่อนกด แล้วส่งผ่าน LINE OA ทีละใบหรือทั้งชุด
+ * แท็บค้างจ่าย — บิลค้างทุกใบในหน้าเดียว ครูเห็นข้อความก่อนกด แล้วส่งผ่าน LINE OA ทีละใบหรือทั้งชุด
  * การส่งด้วย share-link (เปิด LINE แล้วยืนยันเอง) ยังอยู่ที่แท็บรอส่งตามเดิม
  */
 export default function AdminCollect() {

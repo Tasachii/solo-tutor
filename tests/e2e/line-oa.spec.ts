@@ -297,7 +297,7 @@ test('แท็บค้างจ่าย: ส่งทวงทั้งชุ
   expect(Object.keys(backend.outbox)[0]).toMatch(new RegExp(`^${workspaceId}:rem:inv-s2-`))
   expect(backend.escaped).toEqual([])
   // บิลยังค้าง (ยังไม่ได้รับเงิน) แถวจึงยังอยู่ แต่บันทึกว่าทวงแล้ววันนี้ และไม่มีใบให้ส่งซ้ำ
-  await expect(linkedRow).toContainText('ทวงล่าสุด')
+  await expect(linkedRow).toContainText(copy.collect.lastReminder.split(' ')[0])
   await expect(sendAll).toBeDisabled()
   await expect.poll(() => page.evaluate(() => {
     const state = JSON.parse(localStorage.getItem('solo-demo-v3')!)
