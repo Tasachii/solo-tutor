@@ -119,3 +119,12 @@
 | H-02 | หน้า `/login` สมัคร/เข้าสู่ระบบ → เริ่มโหมดจริง → รอผลคลาวด์ก่อนเข้าแอป (synced→today · conflict/locked→บัญชีครู · error→ปุ่มเข้าแอป) | `platform/Login.tsx` · `AuthForm` (`initialMode`) · route ห่อ `CloudSyncProvider` | ครูเปลี่ยนเครื่องได้ข้อมูลเดิม ไม่ผ่าน onboarding และไม่ push ทับคลาวด์ · ครูใหม่ไป onboarding โดยไม่มีข้อมูลเดโมหลุด | ผ่าน local/mock | **Supabase Auth "Confirm email" ต้องปิด** ไม่งั้นสมัครแล้วไม่ได้ session (รอเจ้าของตรวจใน Dashboard) |
 | H-03 | Onboarding กันกรอกทับข้อมูลที่กำลังดึงจากคลาวด์ (ปิดปุ่มระหว่าง syncing · เด้ง today เมื่อ pull เสร็จ) | `Onboarding.tsx` (`cloudPulling`) | เทส H-02 ผ่านโดยไม่เห็น onboarding | ผ่าน local/mock | |
 | H-04 | ครูโหมดจริงที่ onboarded แล้วเปิด `/` → `/app/today` · `?stay=1` ดูหน้าขาย · ลิงก์กลับหน้าแรกทุกหน้าใช้ `?stay=1` | `core/entry.ts` · unit `entry.test.ts` · e2e `login.spec.ts` (เทส 2) · `pwa.spec.ts` เดิม | เดโมไม่ถูกเด้ง · standalone เหมือนเดิม | ผ่าน local/mock | |
+
+## I. ปรับตามแผน plan_solo.md (8 ก.ย. ดึก)
+
+| ID | งาน | หลักฐาน / ไฟล์ | เกณฑ์ผ่าน | สถานะ | ผล/ข้อค้าง |
+|---|---|---|---|---|---|
+| I-01 | สลับลำดับตั้งค่า LINE: บันทึก credential ในแอปก่อน แล้วค่อยกด Verify | `supabase/functions/line-webhook/index.ts:53–62` (ตรวจลายเซ็นด้วย secret ที่เก็บในฐาน) · `docs/owner-setup.md` ข้อ 2 | ลำดับในเอกสารตรงกับพฤติกรรมจริงของ webhook | แก้เอกสารแล้ว | **ยังไม่ได้ลองบน LINE Console จริง** — เจ้าของยืนยัน |
+| I-02 | แก้คำกล่าวอ้างที่เกินหลักฐานในคู่มือเจ้าของ | run 34219854721 / 34224331395 · `scripts/check-backup-freshness.mjs` | ไม่มีประโยคที่อ้างเกินสิ่งที่พิสูจน์ได้ | ผ่าน (เอกสาร) | Uptime เคยผ่านแล้ว · RPO 24 ชม. ยังไม่รับประกันเพราะตัวเตือนยอม 48 ชม. |
+| I-03 | ตัวนับ traction ไม่ถูกทำให้พองจาก restore/import/cloud pull | `src/App.tsx` · `src/core/store.tsx` · unit tests | restore สมุดบัญชีที่มีบิลจำนวนมากต้องไม่ยิง `invoice_issued` และการกระทำจริงถัดไปยังนับ delta ถูก | ผ่าน local | เดิมนับจากส่วนต่างความยาว array |
+| I-04 | ลิงก์เอกสารผู้ปกครองยังไม่ปลอดภัยพอสำหรับข้อมูลจริง | `src/core/documents.ts:56` (base64url ไม่ใช่การเข้ารหัส) | ต้องมีการตรวจความแท้ วันหมดอายุ และการเพิกถอน | **ยังไม่ทำ (P02)** | ห้ามอ้างว่าลิงก์ปลอดภัย · สำเนาที่ผู้รับดาวน์โหลดไปแล้วเรียกคืนไม่ได้ ห้ามสัญญาว่าลบให้หมดได้ |
