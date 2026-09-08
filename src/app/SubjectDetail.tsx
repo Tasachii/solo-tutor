@@ -108,6 +108,7 @@ export default function SubjectDetail() {
         }}>{copy.detail.sendSummary}</button>
         <button className="btn btn--secondary btn--sm" onClick={() => nav(`/client/${s.clientId}`)}>{copy.detail.clientView}</button>
         {state.mode === 'real' && <button className="btn btn--secondary btn--sm" onClick={() => setHomework('')}>{copy.detail.homework}</button>}
+        <button className="btn btn--ghost btn--sm" onClick={() => nav('/app/admin?tab=homework')}>{copy.homework.manageLink}</button>
         <button className="btn btn--secondary btn--sm" onClick={() => nav(`/app/admin?tab=chat&chat=${s.clientId}`)}>{copy.detail.openChat}</button>
         {s.active && <button className="btn btn--ghost btn--sm" onClick={() => setStopping(true)}>{copy.subjects.stop}</button>}
         {!s.active && <button className="btn btn--primary btn--sm" onClick={() => {

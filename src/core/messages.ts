@@ -1,8 +1,10 @@
-import type { AppState, Invoice, Message, MessageKind, Subject } from './types'
+import type { AppState, HomeworkItem, Invoice, Message, MessageKind, Subject } from './types'
 import { professionById, templatesFor } from '../professions'
 import { balanceDue, clientById, completionsIn, packageStatus, subjectById } from './ledger'
 import { daysOverdue, dueDaysOf, invoiceFor, ladderFor } from './billing'
 import { addDays, dateThai, dayThai, money, periodThai } from './format'
+import { homeworkAssignKey, homeworkDaysLate, homeworkOf, homeworkOfMessage, homeworkReminderKey, homeworkStatus } from './homework'
+import { nudgeKey } from './collections'
 
 import { documentUrl, invoiceDocument, receiptDocument } from './documents'
 import { financialRevision } from './messageDelivery'
@@ -110,11 +112,51 @@ export function nudgeText(state: AppState, inv: Invoice): string {
   })
 }
 
-/** การบ้าน — ครูพิมพ์เนื้อหาสดแล้วคัดลอก ไม่มีฟิลด์ใหม่ใน ledger จึงไม่บันทึกอะไร */
+/** การบ้านแบบคัดลอก — ครูพิมพ์เนื้อหาสดแล้วคัดลอก ไม่บันทึกอะไรใน ledger */
 export function homeworkText(state: AppState, subject: Subject, text: string): string {
   return render(templatesFor(state.professionId).homework, {
     ...baseVars(state, subject), dayThai: dayThai(state.today), dateThai: dateThai(state.today), text: text.trim(),
   })
+}
+
+const homeworkVars = (state: AppState, item: HomeworkItem): Vars | null => {
+  const subject = subjectById(state, item.subjectId)
+  if (!subject) return null
+  return {
+    ...baseVars(state, subject),
+    dayThai: dayThai(item.assignedAt), dateThai: dateThai(item.assignedAt),
+    dueDayThai: dayThai(item.dueAt), dueDateThai: dateThai(item.dueAt),
+    text: item.text.trim(),
+  }
+}
+
+/** มอบหมายการบ้านจาก ledger — บอกวันครบกำหนดส่ง */
+export function homeworkAssignText(state: AppState, item: HomeworkItem): string | null {
+  const vars = homeworkVars(state, item)
+  return vars ? render(templatesFor(state.professionId).homeworkAssign, vars) : null
+}
+
+/** ทวงการบ้านที่เลยกำหนด — จำนวนวันเลยมาจาก ledger สะกิดใหม่ทุกวันเหมือนข้อความทวงเงิน */
+export function homeworkReminderText(state: AppState, item: HomeworkItem): string | null {
+  const vars = homeworkVars(state, item)
+  return vars ? render(templatesFor(state.professionId).homeworkReminder, { ...vars, daysLate: homeworkDaysLate(item, state.today) }) : null
+}
+
+/** ร่างมอบหมาย — สร้างตอนครูกดมอบหมาย (การกระทำ ไม่ใช่ derive) */
+export function homeworkAssignMessage(state: AppState, item: HomeworkItem): Message | null {
+  const text = homeworkAssignText(state, item)
+  return text ? mkMessage(state, 'homework', item.clientId, item.subjectId, text, homeworkAssignKey(item), { homeworkId: item.id }) : null
+}
+
+/** ร่างทวงการบ้าน — key ต่อรายการสำหรับใบอัตโนมัติ · key ต่อวันสำหรับที่ครูกดทวงซ้ำ */
+export function homeworkReminderMessage(state: AppState, item: HomeworkItem, manualKey?: string): Message | null {
+  const text = homeworkReminderText(state, item)
+  return text ? mkMessage(state, 'homework_reminder', item.clientId, item.subjectId, text, manualKey ?? homeworkReminderKey(item), { homeworkId: item.id }) : null
+}
+
+/** ทวงสั้นที่ครูกดเองจากแท็บทวงเงิน — ข้อความเดียวกับปุ่มคัดลอก แต่เข้าคิวส่งและนับเป็นประวัติทวง */
+export function nudgeMessage(state: AppState, inv: Invoice): Message {
+  return mkMessage(state, 'nudge', inv.clientId, inv.subjectId, nudgeText(state, inv), nudgeKey(inv.id, state.today), { invoiceId: inv.id })
 }
 
 /** แจ้งเลื่อนคาบ — เกิดจากการกระทำของครู ไม่ใช่ derive จึงสร้างตอนกดเลื่อน */
@@ -226,6 +268,18 @@ function rerender(state: AppState, m: Message): string | null {
     if (!subject || !packageStatus(state, subject)) return null
     return renewalText(state, subject, m.kind === 'renewal_exhausted')
   }
+  if (m.kind === 'nudge') {
+    const inv = invOf(m.meta?.invoiceId)
+    return inv ? nudgeText(state, inv) : null
+  }
+  if (m.kind === 'homework_reminder') {
+    const item = homeworkOfMessage(state, m)
+    return item ? homeworkReminderText(state, item) : null
+  }
+  if (m.kind === 'homework') {
+    const item = homeworkOfMessage(state, m)
+    return item ? homeworkAssignText(state, item) : null
+  }
   return null
 }
 
@@ -272,6 +326,20 @@ function stillStands(state: AppState, m: Message): boolean {
     return m.kind === 'renewal_exhausted'
       ? pk.overBy >= 1
       : pk.overBy === 0 && pk.remaining >= 1 && pk.remaining <= 2
+  }
+  if (m.kind === 'nudge') {
+    // ทวงสั้นค้างอยู่ได้จนกว่าบิลจะจ่ายครบหรือหายไป — ครูจะส่งวันไหนก็ได้
+    const inv = invOf(m.meta?.invoiceId)
+    return !!inv && (inv.status === 'sent' || inv.status === 'overdue')
+  }
+  if (m.kind === 'homework') {
+    // มอบหมายแล้วลบ/ทำเครื่องหมายส่งแล้วก่อนส่งข้อความ = ไม่มีอะไรให้บอกผู้ปกครองแล้ว
+    const item = homeworkOfMessage(state, m)
+    return !!item && !item.submittedAt
+  }
+  if (m.kind === 'homework_reminder') {
+    const item = homeworkOfMessage(state, m)
+    return !!item && homeworkStatus(item, state.today) === 'overdue'
   }
   // receipt ออกแล้วออกเลย · moved/cancelled/summary/faq_reply เกิดจากการกระทำ ไม่ใช่เงื่อนไข
   return true
@@ -331,10 +399,18 @@ export function deriveDrafts(state: AppState): Message[] {
         `ren:${subject.id}:${pk.purchasedAt}:low`))
     }
   }
+
+  // การบ้านที่เลยกำหนดและยังไม่ได้รับ → ร่างทวงหนึ่งใบต่อรายการ (ทวงซ้ำเป็นการกระทำของครู ไม่ derive)
+  for (const item of homeworkOf(state)) {
+    if (homeworkStatus(item, state.today) !== 'overdue') continue
+    if (!subjectById(state, item.subjectId)?.active) continue
+    const reminder = homeworkReminderMessage(state, item)
+    if (reminder) push(reminder)
+  }
   return add
 }
 
-export const ORDER: MessageKind[] = ['moved', 'cancelled', 'reminder', 'invoice', 'renewal_exhausted', 'renewal', 'faq_reply', 'summary', 'receipt']
+export const ORDER: MessageKind[] = ['moved', 'cancelled', 'reminder', 'nudge', 'invoice', 'renewal_exhausted', 'renewal', 'homework_reminder', 'homework', 'faq_reply', 'summary', 'receipt']
 export const sortDrafts = (a: Message, b: Message): number => ORDER.indexOf(a.kind) - ORDER.indexOf(b.kind)
 
 /** ส่งข้อความแล้วผลข้างเคียงต่อ invoice */

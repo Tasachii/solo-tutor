@@ -3,7 +3,7 @@ import { isPaymentDestination } from './paymentDestination'
 import { LINE_TEXT_LIMIT } from './share'
 
 export const isFinancialMessage = (message: Message): boolean =>
-  ['invoice', 'reminder', 'renewal', 'renewal_exhausted', 'receipt'].includes(message.kind)
+  ['invoice', 'reminder', 'nudge', 'renewal', 'renewal_exhausted', 'receipt'].includes(message.kind)
   || (message.kind === 'faq_reply' && ['currentInvoice', 'paymentStatus'].includes(String(message.meta?.answerFrom)))
 
 /** Revision of recipient data used to author a financial message, independent of custom prose. */
@@ -36,7 +36,7 @@ export function messageSendIssue(state: AppState, message: Message): string | nu
   if (isFinancialMessage(message) && message.meta?.financialRevision !== financialRevision(state, message)) {
     return 'ยอดหรือข้อมูลเปลี่ยนหลังเขียนข้อความ กรุณาสร้างข้อความจากยอดล่าสุดก่อนส่ง (ข้อความที่แก้เองยังถูกเก็บไว้)'
   }
-  const financial = ['invoice', 'reminder', 'renewal', 'renewal_exhausted'].includes(message.kind)
+  const financial = ['invoice', 'reminder', 'nudge', 'renewal', 'renewal_exhausted'].includes(message.kind)
     || (message.kind === 'faq_reply' && ['currentInvoice', 'paymentStatus'].includes(String(message.meta?.answerFrom)))
   if (financial && (!state.provider.name.trim() || !isPaymentDestination(state.provider.promptpayId))) {
     return 'กรุณาตั้งชื่อผู้รับเงินและเลขพร้อมเพย์ที่ถูกต้องก่อนส่งข้อมูลชำระเงิน'

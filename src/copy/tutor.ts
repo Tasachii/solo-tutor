@@ -13,6 +13,10 @@ export const tutorTemplates = {
     'สวัสดี{p} {clientHonorific}{clientName} เดือน {periodThai} {subjectName}เรียนไป {qty} ครั้ง ยอดคงเหลือ {total} บาท{p} สแกนโอนได้ตามสะดวกเลยนะ{pq} ขอบคุณ{p}',
   homework:
     'สวัสดี{p} {clientHonorific}{clientName} การบ้านของ{subjectName} วัน{dayThai}ที่ {dateThai}{p}: {text} รบกวนช่วยดูให้ด้วยนะ{pq} ขอบคุณ{p} 🙏',
+  homeworkAssign:
+    'สวัสดี{p} {clientHonorific}{clientName} การบ้านของ{subjectName} วัน{dayThai}ที่ {dateThai}{p}: {text} ส่งภายในวัน{dueDayThai}ที่ {dueDateThai}นะ{pq} รบกวนช่วยดูให้ด้วยนะ{pq} ขอบคุณ{p} 🙏',
+  homeworkReminder:
+    'สวัสดี{p} {clientHonorific}{clientName} ขออนุญาตติดตามการบ้านของ{subjectName} ที่มอบหมายเมื่อวัน{dayThai}ที่ {dateThai} ({text}) ครบกำหนดส่งวัน{dueDayThai}ที่ {dueDateThai} ตอนนี้เลยมา {daysLate} วันแล้ว{p} รบกวนช่วยเตือนน้องส่งให้ด้วยนะ{pq} ขอบคุณ{p} 🙏',
   renewal:
     'เรียน{clientHonorific}{clientName} ขอเรียนแจ้งว่าแพ็ก {packageTotal} ครั้งของ{subjectName} เหลืออีก {remaining} ครั้ง{p} หากสนใจต่อแพ็กใหม่ {packageTotal} ครั้ง {packagePrice} บาท ดูรายละเอียดได้ที่ {invoiceUrl} {p} 🙏',
   renewalExhausted:

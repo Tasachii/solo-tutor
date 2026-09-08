@@ -42,6 +42,9 @@ export const handler = serveErrors(async (req) => {
   if (req.method !== 'POST') return new Response('method not allowed', { status: 405 })
   const raw = await readLineWebhookBody(req)
   const signature = req.headers.get('x-line-signature') ?? ''
+  // LINE signs every delivery. A request without the header is not LINE: refuse before any
+  // parsing or tenant lookup so unauthenticated traffic never reaches the database. (C-02, partial)
+  if (!signature) return new Response('bad signature', { status: 401 })
 
   // Destination must be decoded to select the tenant secret. No event is processed before verification.
   const hook = parseWebhook(raw)

@@ -16,6 +16,14 @@ import { lineShareUrl } from '../core/share'
 import { findDelivery } from '../integrations/lineApi'
 import LineMessageAction from './LineMessageAction'
 import { isPaymentDestination } from '../core/paymentDestination'
+import AdminCollect from './AdminCollect'
+import AdminHomework from './AdminHomework'
+import { collectionRows } from '../core/collections'
+import { homeworkSummary } from '../core/homework'
+
+type AdminTab = 'drafts' | 'chat' | 'collect' | 'homework'
+const readTab = (raw: string | null): AdminTab =>
+  raw === 'chat' || raw === 'collect' || raw === 'homework' ? raw : 'drafts'
 
 function MessageCard({ m, awaiting, queueActive, left, onSend, onSent, onCancel, onSkipQueue, onCopy, onSkip, onEdit }: {
   m: Message; awaiting: boolean; left: number; queueActive: boolean
@@ -92,7 +100,7 @@ export default function Admin() {
   const { state, dispatch, track, hydrated } = useStore()
   const toast = useToast()
   const [params, setParams] = useSearchParams()
-  const tab = params.get('tab') === 'chat' ? 'chat' : 'drafts'
+  const tab = readTab(params.get('tab'))
   const chatWith = params.get('chat') ?? ''
   const [input, setInput] = useState('')
   const [actionError, setActionError] = useState('')
@@ -179,6 +187,8 @@ export default function Admin() {
 
   if (!hydrated) return <div className="pane"><Skeleton rows={4} /></div>
 
+  const overdueCount = collectionRows(state).filter(r => r.daysOverdue > 0).length
+  const homeworkOverdue = homeworkSummary(state).overdue
   const clientsList = state.clients.filter((c) => state.subjects.some((s) => s.clientId === c.id))
   const room = state.chats.filter((c) => c.clientId === chatWith)
   const client = clientById(state, chatWith)
@@ -203,10 +213,19 @@ export default function Admin() {
         <button className={`chip${tab === 'drafts' ? ' chip--on' : ''}`} aria-pressed={tab === 'drafts'} onClick={() => setParams({ tab: 'drafts' })}>
           {copy.admin.tabDrafts} {drafts.length ? <span className="chip__n">{drafts.length}</span> : null}
         </button>
+        <button className={`chip${tab === 'collect' ? ' chip--on' : ''}`} aria-pressed={tab === 'collect'} onClick={() => setParams({ tab: 'collect' })}>
+          {copy.admin.tabCollect} {overdueCount ? <span className="chip__n">{overdueCount}</span> : null}
+        </button>
+        <button className={`chip${tab === 'homework' ? ' chip--on' : ''}`} aria-pressed={tab === 'homework'} onClick={() => setParams({ tab: 'homework' })}>
+          {copy.admin.tabHomework} {homeworkOverdue ? <span className="chip__n">{homeworkOverdue}</span> : null}
+        </button>
         <button className={`chip${tab === 'chat' ? ' chip--on' : ''}`} aria-pressed={tab === 'chat'} onClick={() => setParams({ tab: 'chat' })}>
           {copy.admin.tabChat}
         </button>
       </div>
+
+      {tab === 'collect' && <AdminCollect />}
+      {tab === 'homework' && <AdminHomework />}
 
       {tab === 'drafts' && (
         <>

@@ -173,7 +173,8 @@ export function nextSendWindow(at: Date): Date {
 
 /** ยิ่งเลขน้อยยิ่งด่วน — ข้อความทวงสำคัญกว่าชวนต่อแพ็ก */
 const KIND_RANK: Record<string, number> = {
-  reminder: 0, invoice: 1, renewal_exhausted: 2, renewal: 3, receipt: 4, summary: 5,
+  reminder: 0, nudge: 0, invoice: 1, renewal_exhausted: 2, renewal: 3, receipt: 4,
+  homework_reminder: 5, summary: 6, homework: 7,
 }
 
 export interface Candidate { recipientId: string; kind: MessageKind; dedupeKey: string }

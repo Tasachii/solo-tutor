@@ -1,4 +1,5 @@
 import { expect, test, type Page } from './fixtures'
+import { copy } from '../../src/copy'
 
 test.skip(process.env.SOLO_LINE_QA !== '1', 'LINE OA mock E2E runs only in the isolated QA command')
 
@@ -9,8 +10,14 @@ const remoteClientId = '44444444-4444-4444-8444-444444444444'
 const outboxId = '55555555-5555-4555-8555-555555555555'
 const projectOrigin = 'https://line-qa.supabase.co'
 const messageText = 'ข้อความทดสอบ LINE OA ถึงผู้ปกครอง'
+const legacyKey = `${workspaceId}:qa-message-key`
 
-type MockOptions = { connected?: boolean; linked?: boolean; timeoutAfterEnqueue?: boolean }
+type MockOptions = {
+  connected?: boolean; linked?: boolean; timeoutAfterEnqueue?: boolean
+  /** ผู้จ่าย (local id) ที่ถือว่าเชื่อม OA แล้ว นอกเหนือจาก c1 เมื่อ linked */
+  linkedClients?: string[]
+}
+type OutboxRow = { id: string; status: 'queued' | 'processing' | 'sent'; recipient_id: string; body: string; message_id: string; last_error: null }
 
 const installMockBackend = async (page: Page, options: MockOptions = {}) => {
   const planRequests: unknown[] = []
@@ -18,13 +25,17 @@ const installMockBackend = async (page: Page, options: MockOptions = {}) => {
     connected: options.connected ?? false,
     linked: options.linked ?? false,
     timeoutAfterEnqueue: options.timeoutAfterEnqueue ?? false,
+    linkedClients: options.linkedClients ?? [],
     outboxStatus: '' as '' | 'queued' | 'processing' | 'sent',
+    /** แถว outbox ต่อ dedupe key สำหรับข้อความอื่นนอกจากข้อความ QA หลัก */
+    outbox: {} as Record<string, OutboxRow>,
     enqueueCount: 0,
     lineSendCount: 0,
     snapshotSaves: 0,
     handled: [] as string[],
     escaped: [] as string[],
   }
+  const isLinked = (localKey: string) => (state.linked && localKey === 'c1') || state.linkedClients.includes(localKey)
 
   page.on('request', request => {
     const url = new URL(request.url())
@@ -69,11 +80,12 @@ const installMockBackend = async (page: Page, options: MockOptions = {}) => {
     }
     if (url.pathname === '/rest/v1/rpc/line_delivery_target') {
       const body = request.postDataJSON() as { p_local_client_key: string }
+      const linked = isLinked(body.p_local_client_key)
       return json([{
         client_id: remoteClientId,
-        recipient_id: state.linked && body.p_local_client_key === 'c1' ? recipientId : null,
+        recipient_id: linked ? recipientId : null,
         channel_status: state.connected ? 'active' : null,
-        eligible: state.connected && state.linked && body.p_local_client_key === 'c1', reason: 'ok',
+        eligible: state.connected && linked, reason: linked ? 'ok' : 'recipient-not-linked',
         unfollowed_at: null, quota_used: 2, quota_limit: 300,
       }])
     }
@@ -95,6 +107,8 @@ const installMockBackend = async (page: Page, options: MockOptions = {}) => {
       return json([{ code: '123456', expires_at: '2026-09-08T00:00:00Z' }])
     }
     if (url.pathname === '/rest/v1/message_outbox' && request.method() === 'GET') {
+      const key = (url.searchParams.get('dedupe_key') ?? '').replace(/^eq\./, '')
+      if (key !== legacyKey) return json(state.outbox[key] ? [state.outbox[key]] : [])
       if (!state.outboxStatus) return json([])
       return json([{
         id: outboxId, status: state.outboxStatus, recipient_id: recipientId,
@@ -103,19 +117,33 @@ const installMockBackend = async (page: Page, options: MockOptions = {}) => {
     }
     if (url.pathname === '/rest/v1/rpc/enqueue_line_message') {
       const body = request.postDataJSON() as Record<string, string>
+      state.enqueueCount += 1
+      if (body.p_dedupe_key !== legacyKey) {
+        // Repeated identical calls are idempotent, exactly like the server RPC.
+        const row = state.outbox[body.p_dedupe_key] ?? {
+          id: crypto.randomUUID(), status: 'queued' as const, recipient_id: body.p_recipient_id,
+          body: body.p_body, message_id: body.p_message_id, last_error: null,
+        }
+        expect(body.p_recipient_id).toBe(recipientId)
+        expect(body.p_body).toBe(row.body)
+        state.outbox[body.p_dedupe_key] = row
+        return json(row.id)
+      }
       expect(body).toMatchObject({
         p_recipient_id: recipientId,
         p_message_id: 'qa-message-key',
         p_body: messageText,
-        p_dedupe_key: `${workspaceId}:qa-message-key`,
+        p_dedupe_key: legacyKey,
       })
-      state.enqueueCount += 1
       if (!state.outboxStatus) state.outboxStatus = 'queued'
       return json(outboxId)
     }
     if (url.pathname === '/functions/v1/line-send') {
-      expect(request.postDataJSON()).toEqual({ outboxId })
+      const body = request.postDataJSON() as { outboxId: string }
       state.lineSendCount += 1
+      const extra = Object.values(state.outbox).find(row => row.id === body.outboxId)
+      if (extra) { extra.status = 'sent'; return json({ ok: true, outboxId: extra.id, status: 'sent' }) }
+      expect(body).toEqual({ outboxId })
       state.outboxStatus = 'sent'
       if (state.timeoutAfterEnqueue) {
         // Keep the gateway request pending beyond the browser transport's 12-second bound.
@@ -148,6 +176,8 @@ const seedRealWorkspace = async (page: Page) => {
       status: 'draft', createdAt: saved.today, dedupeKey: 'qa-message-key',
       meta: { answerFrom: 'schedule', question: 'ขอเวลาคาบเรียน' },
     }]
+    // ข้อความการบ้านของชุดเดโมอ้างถึงรายการเหล่านี้ — ตัดออกพร้อมกันเพื่อให้ state สอดคล้อง
+    saved.homework = []
     localStorage.setItem('solo-demo-v3', JSON.stringify(saved))
   }, { providerId, workspaceId, messageText })
 }
@@ -240,4 +270,37 @@ test('ตรวจรายการ processing หลัง worker หยุด
   expect(backend.lineSendCount).toBe(1)
   expect(backend.enqueueCount).toBe(1)
   expect(backend.escaped).toEqual([])
+})
+
+test('แท็บค้างจ่าย: ส่งทวงทั้งชุดผ่าน OA ทีละใบ ข้ามผู้ปกครองที่ยังไม่เชื่อม และบันทึกประวัติทวง', async ({ page }) => {
+  // คุณพ่อภูมิ (c2) เชื่อม OA แล้ว · คุณแม่ต้น (c4) ยังไม่เชื่อม · คุณแม่มิว (c3) ยังไม่ถึงรอบทวง
+  const backend = await installMockBackend(page, { connected: true, linked: true, linkedClients: ['c2'] })
+  await seedRealWorkspace(page)
+  await login(page)
+  await page.goto('#/app/admin?tab=collect')
+  const rows = page.getByTestId('collect-row')
+  await expect(rows).toHaveCount(3)
+  const linkedRow = rows.filter({ hasText: 'คุณพ่อภูมิ' })
+  const unlinkedRow = rows.filter({ hasText: 'คุณแม่ต้น' })
+  await expect(linkedRow).toContainText(copy.collect.oaLinked)
+  await expect(unlinkedRow).toContainText(copy.collect.oaNotLinked)
+
+  const sendAll = page.getByRole('button', { name: new RegExp(copy.collect.sendAllOa) })
+  await expect(sendAll).toContainText('(1)')
+  await sendAll.click()
+  // ใบของผู้ปกครองที่ยังไม่เชื่อมถูกข้ามพร้อมเหตุผล ไม่ใช่หายเงียบ
+  await expect(page.locator('.bulk')).toContainText('ส่งผ่าน OA แล้ว 1 ใบ · ข้าม 1 ใบ')
+  await expect(page.locator('.bulk')).toContainText(`คุณแม่ต้น — ${copy.collect.oaNotLinked}`)
+
+  expect(backend.lineSendCount).toBe(1)
+  expect(Object.keys(backend.outbox)).toHaveLength(1)
+  expect(Object.keys(backend.outbox)[0]).toMatch(new RegExp(`^${workspaceId}:rem:inv-s2-`))
+  expect(backend.escaped).toEqual([])
+  // บิลยังค้าง (ยังไม่ได้รับเงิน) แถวจึงยังอยู่ แต่บันทึกว่าทวงแล้ววันนี้ และไม่มีใบให้ส่งซ้ำ
+  await expect(linkedRow).toContainText('ทวงล่าสุด')
+  await expect(sendAll).toBeDisabled()
+  await expect.poll(() => page.evaluate(() => {
+    const state = JSON.parse(localStorage.getItem('solo-demo-v3')!)
+    return state.messages.filter((m: { kind: string; status: string }) => m.kind === 'reminder' && m.status === 'sent').length
+  })).toBe(1)
 })

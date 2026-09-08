@@ -1,6 +1,10 @@
-import type { AppState, BillingMode } from './types'
+import type { AppState, BillingMode, HomeworkItem } from './types'
 import { isParticle } from './particle'
 import { isStyle } from './style'
+import { HOMEWORK_TEXT_MAX } from './homework'
+
+export const MESSAGE_KINDS = ['invoice', 'reminder', 'renewal', 'renewal_exhausted', 'receipt', 'faq_reply',
+  'moved', 'cancelled', 'summary', 'nudge', 'homework', 'homework_reminder'] as const
 
 export const isMoney = (value: unknown): value is number =>
   typeof value === 'number' && Number.isSafeInteger(value) && value > 0
@@ -245,12 +249,35 @@ export function validateState(value: unknown): StateValidation {
     return payment?.invoiceId
   }).filter(isString)
   if (new Set(receiptInvoiceIds).size !== receiptInvoiceIds.length) errors.push('receipts: บิลหนึ่งใบมีใบเสร็จซ้ำ')
+  // การบ้านเป็น array เสริม — ไม่มี = ไม่เคยใช้; มีแล้วต้องผูกกับนักเรียน/ผู้จ่ายที่มีจริง
+  const homework = state.homework
+  const homeworkById = new Map<string, HomeworkItem>()
+  if (homework !== undefined) {
+    if (!Array.isArray(homework) || homework.length > 100_000) errors.push('homework: ต้องเป็น array')
+    else {
+      if (!hasUniqueStrings(homework, 'id')) errors.push('homework: id ต้องมีค่าและไม่ซ้ำ')
+      homework.forEach((row, index) => {
+        if (!isRecord(row)) { errors.push(`homework[${index}]: ต้องเป็น object`); return }
+        if (!subjectIds.has(row.subjectId)) errors.push(`homework[${index}].subjectId: ไม่พบรายการ`)
+        if (isString(row.subjectId) && subjectsById.get(row.subjectId)?.clientId !== row.clientId) errors.push(`homework[${index}].clientId: ไม่ใช่ผู้จ่ายของรายการนี้`)
+        if (!isString(row.text) || !row.text.trim() || row.text.length > HOMEWORK_TEXT_MAX) errors.push(`homework[${index}].text: ต้องมีค่าและไม่ยาวเกิน`)
+        if (!isISODate(row.assignedAt) || !isISODate(row.dueAt) || row.dueAt < row.assignedAt) errors.push(`homework[${index}]: วันมอบหมายหรือกำหนดส่งไม่ถูกต้อง`)
+        if (row.submittedAt !== undefined && (!isISODate(row.submittedAt) || (isISODate(row.assignedAt) && row.submittedAt < row.assignedAt))) errors.push(`homework[${index}].submittedAt: ไม่ถูกต้อง`)
+        if (isString(row.id)) homeworkById.set(row.id, row as unknown as HomeworkItem)
+      })
+    }
+  }
   state.messages.forEach((row, index) => {
     if (!isRecord(row)) { errors.push(`messages[${index}]: ต้องเป็น object`); return }
     if (!clientIds.has(row.clientId)) errors.push(`messages[${index}].clientId: ไม่พบผู้จ่าย`)
     if (row.subjectId !== undefined && !subjectIds.has(row.subjectId)) errors.push(`messages[${index}].subjectId: ไม่พบรายการ`)
     if (isString(row.subjectId) && subjectsById.get(row.subjectId)?.clientId !== row.clientId) errors.push(`messages[${index}].clientId: ไม่ใช่ผู้จ่ายของรายการนี้`)
-    if (!['invoice', 'reminder', 'renewal', 'renewal_exhausted', 'receipt', 'faq_reply', 'moved', 'cancelled', 'summary'].includes(row.kind)
+    if ((row.kind === 'homework' || row.kind === 'homework_reminder')) {
+      const item = isRecord(row.meta) && isString(row.meta.homeworkId) ? homeworkById.get(row.meta.homeworkId) : undefined
+      if (!item) errors.push(`messages[${index}].meta.homeworkId: ไม่พบการบ้าน`)
+      else if (item.clientId !== row.clientId || item.subjectId !== row.subjectId) errors.push(`messages[${index}].meta.homeworkId: การบ้านไม่ตรงกับผู้รับหรือรายการ`)
+    }
+    if (!(MESSAGE_KINDS as readonly string[]).includes(row.kind)
       || !['draft', 'sent', 'skipped'].includes(row.status) || !isISODate(row.createdAt)
       || !isString(row.draft) || !row.draft.trim() || !isString(row.dedupeKey) || !row.dedupeKey.trim()) errors.push(`messages[${index}]: สถานะหรือข้อมูลไม่ถูกต้อง`)
     if (row.oaDelivery !== undefined) {
@@ -263,11 +290,11 @@ export function validateState(value: unknown): StateValidation {
     }
     if ((row.sentAt !== undefined && !isISODate(row.sentAt)) || (row.edited !== undefined && typeof row.edited !== 'boolean')
       || (row.meta !== undefined && !isRecord(row.meta))) errors.push(`messages[${index}]: ข้อมูลเสริมไม่ถูกต้อง`)
-    if ((row.kind === 'invoice' || row.kind === 'reminder')
+    if ((row.kind === 'invoice' || row.kind === 'reminder' || row.kind === 'nudge')
       && (!isRecord(row.meta) || !isString(row.meta.invoiceId) || !invoiceIds.has(row.meta.invoiceId))) {
       errors.push(`messages[${index}].meta.invoiceId: ไม่พบบิล`)
     }
-    if ((row.kind === 'invoice' || row.kind === 'reminder') && isRecord(row.meta) && isString(row.meta.invoiceId)) {
+    if ((row.kind === 'invoice' || row.kind === 'reminder' || row.kind === 'nudge') && isRecord(row.meta) && isString(row.meta.invoiceId)) {
       const invoice = invoicesById.get(row.meta.invoiceId)
       if (invoice && (invoice.clientId !== row.clientId || invoice.subjectId !== row.subjectId)) {
         errors.push(`messages[${index}].meta.invoiceId: บิลไม่ตรงกับผู้รับหรือรายการ`)

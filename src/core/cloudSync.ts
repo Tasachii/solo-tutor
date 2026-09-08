@@ -90,6 +90,7 @@ export const hasLedgerData = (s: AppState): boolean =>
   s.clients.length > 0 || s.subjects.length > 0 || s.units.length > 0
   || s.completions.length > 0 || s.invoices.length > 0 || s.payments.length > 0
   || s.receipts.length > 0 || s.messages.length > 0 || s.chats.length > 0
+  || (s.homework?.length ?? 0) > 0
 
 /** อ่านสำเนาที่เก็บไว้ก่อนดึงคลาวด์ครั้งล่าสุด — คืน null ถ้าไม่มีหรืออ่านไม่ออก */
 export function readPrePullBackup(schema: number): { at: string; result: RestoreResult } | null {

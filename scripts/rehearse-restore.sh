@@ -26,7 +26,8 @@ fi
 test -s "$work/schema.sql" -a -s "$work/data.sql" || { echo "schema.sql/data.sql missing" >&2; exit 1; }
 # extension ที่ Supabase ใส่มาเองแต่ migration ของเราไม่ใช้ (pg_cron/vault/uuid-ossp/pg_stat_statements)
 # ไม่มีใน postgres ธรรมดา — ตัดออกเฉพาะบรรทัดเหล่านี้ ที่เหลือต้องผ่านทั้งหมด
-grep -vE 'CREATE EXTENSION IF NOT EXISTS "(pg_cron|pg_stat_statements|supabase_vault|uuid-ossp)"|ALTER PUBLICATION "supabase_realtime"' "$work/schema.sql" > "$work/schema.portable.sql"
+# dump จาก pg_dump ธรรมดา (ไม่ใช่ supabase CLI) ยังมี CREATE SCHEMA public ซึ่งฐานใหม่มีอยู่แล้ว — ตัดออกเช่นกัน
+grep -vE 'CREATE EXTENSION IF NOT EXISTS "(pg_cron|pg_stat_statements|supabase_vault|uuid-ossp)"|ALTER PUBLICATION "supabase_realtime"|^CREATE SCHEMA (IF NOT EXISTS )?public;|^COMMENT ON SCHEMA public ' "$work/schema.sql" > "$work/schema.portable.sql"
 skipped=$(( $(wc -l < "$work/schema.sql") - $(wc -l < "$work/schema.portable.sql") ))
 
 docker run --detach --name "$container" --env POSTGRES_PASSWORD=solo-restore \

@@ -10,7 +10,8 @@ import { periodOf, todayISO } from './format'
 import { isWellFormed } from './backup'
 import { urlParam } from './urlParams'
 import { billingChangeIssue, buildPackageInvoice, closableSubjects, isFinalizedPeriod, markOverdue, mutationTouchesFinalizedPeriod, reconcileDraftInvoices } from './billing'
-import { deriveDrafts, refreshDrafts, retractDrafts, applySend, cancelledText, mkMessage, movedText } from './messages'
+import { deriveDrafts, refreshDrafts, retractDrafts, applySend, cancelledText, mkMessage, movedText, nudgeMessage, homeworkAssignMessage, homeworkReminderMessage } from './messages'
+import { HOMEWORK_TEXT_MAX, homeworkOf, homeworkStatus } from './homework'
 import { balanceDue, complete as ledgerComplete, packageStatus, renewPackage, snapshotLegacyPrices, uncomplete } from './ledger'
 import { issueReceipt } from './receipts'
 import { isUuid, isBillingMode, isISODate, isMoney, isNonNegativeMoney, isTime } from './validation'
@@ -40,6 +41,7 @@ function hasAccountLedgerData(state: AppState): boolean {
   return state.clients.length > 0 || state.subjects.length > 0 || state.units.length > 0
     || state.completions.length > 0 || state.invoices.length > 0 || state.payments.length > 0
     || state.receipts.length > 0 || state.messages.length > 0 || state.chats.length > 0
+    || (state.homework?.length ?? 0) > 0
 }
 
 export type Action =
@@ -81,6 +83,15 @@ export type Action =
   | { type: 'cancelUnit'; unitId: string }
   | { type: 'restoreUnit'; unitId: string }
   | { type: 'clearMessages' }
+  /** ทวงสั้นจากแท็บทวงเงิน — วันละใบต่อบิล เข้าคิวรอครูกดส่ง */
+  | { type: 'nudgeInvoice'; invoiceId: string }
+  /** มอบหมายการบ้านให้หลายคนพร้อมกัน — หนึ่งรายการ + หนึ่งร่างต่อคน */
+  | { type: 'addHomework'; subjectIds: string[]; text: string; dueAt: string }
+  | { type: 'homeworkSubmitted'; id: string }
+  | { type: 'homeworkReopen'; id: string }
+  | { type: 'deleteHomework'; id: string }
+  /** ทวงซ้ำด้วยมือ — key ต่อวัน ไม่ชนกับใบอัตโนมัติ */
+  | { type: 'remindHomework'; id: string }
   | { type: 'deleteAccountLocal' }
   | { type: 'replace'; state: AppState }
   | { type: 'track'; name: string; props?: Record<string, unknown> }
@@ -380,6 +391,7 @@ export function reducer(state: AppState, action: Action): AppState {
         payments: s.payments.filter((p) => !invIds.has(p.invoiceId)),
         receipts: s.receipts.filter((r) => !payIds.has(r.paymentId)),
         messages: s.messages.filter((m) => m.subjectId !== sub.id),
+        ...(s.homework ? { homework: s.homework.filter((h) => h.subjectId !== sub.id) } : {}),
       }
       // ผู้จ่ายที่ไม่เหลือคนเรียนแล้ว ลบทิ้งพร้อมแชท
       const stillUsed = s.subjects.some((x) => x.clientId === sub.clientId)
@@ -466,6 +478,61 @@ export function reducer(state: AppState, action: Action): AppState {
       // และ 'Solo ช่วยไว้' ที่นับจากข้อความทวงที่ส่งแล้วจะกลายเป็นศูนย์
       s = { ...s, messages: s.messages.filter((m) => m.status !== 'draft' || !!m.oaDelivery) }
       break
+    case 'nudgeInvoice': {
+      const inv = s.invoices.find(i => i.id === action.invoiceId)
+      if (!inv || inv.kind !== 'monthly' || (inv.status !== 'sent' && inv.status !== 'overdue')) return state
+      const message = nudgeMessage(s, inv)
+      // วันละใบ — กดซ้ำวันเดียวกันไม่สร้างซ้ำ (ใบเดิมยังรออยู่ในคิว)
+      if (s.messages.some(m => m.dedupeKey === message.dedupeKey)) return state
+      s = { ...s, messages: [...s.messages, message] }
+      break
+    }
+    case 'addHomework': {
+      const text = action.text.trim()
+      const ids = [...new Set(action.subjectIds)]
+      if (!text || text.length > HOMEWORK_TEXT_MAX || ids.length === 0 || !isISODate(action.dueAt) || action.dueAt < s.today) return state
+      const subjects = ids.map(id => s.subjects.find(x => x.id === id))
+      if (subjects.some(x => !x || !x.active)) return state
+      const items = subjects.map((subject, i) => ({
+        id: nid(`hw${i}`), subjectId: subject!.id, clientId: subject!.clientId, text, assignedAt: s.today, dueAt: action.dueAt,
+      }))
+      s = { ...s, homework: [...homeworkOf(s), ...items] }
+      const drafts = items.map(item => homeworkAssignMessage(s, item)).filter((m): m is NonNullable<typeof m> => !!m)
+      s = { ...s, messages: [...s.messages, ...drafts] }
+      break
+    }
+    case 'homeworkSubmitted': {
+      const item = homeworkOf(s).find(h => h.id === action.id)
+      if (!item || item.submittedAt) return state
+      s = { ...s, homework: homeworkOf(s).map(h => h.id === action.id ? { ...h, submittedAt: s.today } : h) }
+      break
+    }
+    case 'homeworkReopen': {
+      const item = homeworkOf(s).find(h => h.id === action.id)
+      if (!item?.submittedAt) return state
+      s = { ...s, homework: homeworkOf(s).map(h => h.id === action.id ? { ...h, submittedAt: undefined } : h) }
+      break
+    }
+    case 'deleteHomework': {
+      if (!homeworkOf(s).some(h => h.id === action.id)) return state
+      if (s.messages.some(m => m.meta?.homeworkId === action.id && m.oaDelivery)) return state
+      // ร่างที่ยังไม่ส่งไปพร้อมกัน ประวัติที่ส่งแล้วเก็บไว้ (บอกว่าเคยแจ้งผู้ปกครองจริง)
+      s = {
+        ...s,
+        homework: homeworkOf(s).filter(h => h.id !== action.id),
+        messages: s.messages.filter(m => !(m.meta?.homeworkId === action.id && m.status === 'draft')),
+      }
+      break
+    }
+    case 'remindHomework': {
+      const item = homeworkOf(s).find(h => h.id === action.id)
+      if (!item || homeworkStatus(item, s.today) !== 'overdue') return state
+      if (s.messages.some(m => m.kind === 'homework_reminder' && m.meta?.homeworkId === item.id && m.status === 'draft')) return state
+      const message = homeworkReminderMessage(s, item, `hwrem:${item.id}:${s.today}`)
+      if (!message || s.messages.some(m => m.dedupeKey === message.dedupeKey)) return state
+      s = { ...s, messages: [...s.messages, message] }
+      break
+    }
     case 'replace':
       s = action.state
       break

@@ -26,6 +26,8 @@ const genericTemplates = (profession: ProfessionTemplate): ProfessionMessages =>
     },
     nudge: `สวัสดี{p} {clientHonorific}{clientName} เดือน {periodThai} {subjectName}ทำไป {qty} ${v.units} ยอดคงเหลือ {total} บาท{p} สแกนโอนได้ตามสะดวกเลยนะ{pq} ขอบคุณ{p}`,
     homework: 'สวัสดี{p} {clientHonorific}{clientName} วัน{dayThai}ที่ {dateThai} ของ{subjectName} มีสิ่งที่ฝากไว้{p}: {text} ขอบคุณ{p} 🙏',
+    homeworkAssign: 'สวัสดี{p} {clientHonorific}{clientName} วัน{dayThai}ที่ {dateThai} ของ{subjectName} มีสิ่งที่ฝากไว้{p}: {text} ภายในวัน{dueDayThai}ที่ {dueDateThai}นะ{pq} ขอบคุณ{p} 🙏',
+    homeworkReminder: `สวัสดี{p} {clientHonorific}{clientName} ขออนุญาตติดตามสิ่งที่ฝากไว้ของ{subjectName} เมื่อวัน{dayThai}ที่ {dateThai} ({text}) ครบกำหนดวัน{dueDayThai}ที่ {dueDateThai} เลยมา {daysLate} วันแล้ว{p} รบกวนช่วยดูให้ด้วยนะ{pq} ขอบคุณ{p} 🙏`,
     renewal: `เรียน{clientHonorific}{clientName} แพ็ก {packageTotal} ${v.units}ของ{subjectName} เหลือ {remaining} ${v.units}{p} ต่อแพ็กใหม่ {packageTotal} ${v.units} {packagePrice} บาท ดูรายละเอียดที่ {invoiceUrl}`,
     renewalExhausted: `เรียน{clientHonorific}{clientName} แพ็ก {packageTotal} ${v.units}ของ{subjectName} ครบแล้ว{p} รอบล่าสุดเป็นครั้งที่ {overBy} นอกแพ็ก ต่อแพ็กใหม่ {packageTotal} ${v.units} {packagePrice} บาท ดูรายละเอียดที่ {invoiceUrl}`,
     receipt: 'ได้รับยอด {total} บาทของ{subjectName} เดือน {periodThai} แล้ว{p} ขอบคุณ{p} 🙏 ใบเสร็จ: {receiptUrl}',

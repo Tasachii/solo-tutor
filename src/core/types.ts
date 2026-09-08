@@ -51,6 +51,20 @@ export interface Receipt { id: string; paymentId: string; number: string; issued
 
 export type MessageKind = 'invoice' | 'reminder' | 'renewal' | 'renewal_exhausted' | 'receipt' | 'faq_reply'
   | 'moved' | 'cancelled' | 'summary'
+  /** ทวงสั้นที่ครูกดเองจากแท็บทวงเงิน — สร้างได้วันละใบต่อบิล */
+  | 'nudge'
+  /** มอบหมายการบ้าน (ครูพิมพ์เนื้อหา) และทวงการบ้านที่เลยกำหนดยังไม่ส่ง */
+  | 'homework' | 'homework_reminder'
+/**
+ * การบ้านที่มอบหมาย — เก็บใน ledger เพื่อให้ "ทวงการบ้าน" derive จากข้อมูลจริง
+ * ไม่มีเงิน ไม่แตะบิล; ลบเมื่อลบนักเรียน
+ */
+export interface HomeworkItem {
+  id: string; subjectId: string; clientId: string; text: string
+  assignedAt: ISODate; dueAt: ISODate
+  /** ครูทำเครื่องหมายว่าได้รับแล้ว — ร่างทวงถอนตัวเอง */
+  submittedAt?: ISODate
+}
 export interface OaDelivery {
   providerId: string; workspaceId: string; recipientId: string; dedupeKey: string; body: string
 }
@@ -88,6 +102,8 @@ export interface AppState {
   clients: Client[]; subjects: Subject[]; units: ServiceUnit[]; completions: CompletionEvent[]
   invoices: Invoice[]; payments: Payment[]; receipts: Receipt[]; messages: Message[]; chats: ChatTurn[]
   waitlist: WaitlistEntry[]; events: EventLog[]
+  /** การบ้านที่มอบหมาย — ไม่มี = ยังไม่เคยใช้ (ไฟล์สำรอง/ข้อมูลเก่าเปิดได้เหมือนเดิม) */
+  homework?: HomeworkItem[]
   counters: { receipt: number; invoice: number }
   onboarded: boolean
   /** วิธีเก็บเงินหลักที่เลือกตอนเข้าใช้ — เรื่องหน้าจอ ไม่แตะ ledger · ไม่ตั้ง = ผสม */

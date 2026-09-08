@@ -15,8 +15,12 @@ export interface ProfessionMessages {
   reminder: { soft: string; clear: string; final: string }
   /** ข้อความสั้นให้ครูคัดลอกไปวางเอง — ใช้ยอดคงเหลือและจำนวนครั้งจาก ledger */
   nudge: string
-  /** ข้อความการบ้าน — เนื้อหาครูพิมพ์สด ไม่บันทึก ห่อด้วยคำทักทายและคำลงท้ายให้ */
+  /** ข้อความการบ้านแบบคัดลอก — เนื้อหาครูพิมพ์สด ไม่บันทึก ห่อด้วยคำทักทายและคำลงท้ายให้ */
   homework: string
+  /** มอบหมายการบ้านจากแท็บการบ้าน — มีวันครบกำหนดส่ง บันทึกใน ledger */
+  homeworkAssign: string
+  /** ทวงการบ้านที่เลยกำหนดส่งแล้วยังไม่ได้รับ — จำนวนวันมาจาก ledger */
+  homeworkReminder: string
   renewal: string
   renewalExhausted: string
   receipt: string

@@ -2,9 +2,9 @@ import type { AppState, Invoice, Message, Payment, Particle, WorkStyle } from '.
 import { styleOfScenario } from './style'
 import { buildFromPlans, dayIn, demoToday, emptyBase, periodBack, thisPeriod, type SubjectPlan } from '../mock/seed'
 import { receiptNumber, receiptSnapshot } from './receipts'
-import { receiptText } from './messages'
+import { homeworkAssignText, homeworkReminderText, receiptText } from './messages'
 import { markOverdue } from './billing'
-import { periodThai, todayISO } from './format'
+import { addDays, periodThai, todayISO } from './format'
 import { snapshotLegacyPrices } from './ledger'
 
 export const SCENARIOS = ['default', 'per-unit', 'flat-heavy', 'package-heavy', 'monthly-heavy', 'empty'] as const
@@ -107,6 +107,25 @@ function scenarioDefault(): AppState {
       { id: 'ch1', clientId: 'c1', from: 'client', text: 'ขอบคุณครับครู เดี๋ยวโอนให้เย็นนี้นะครับ', at: dayIn(periodBack(1), 30) },
       { id: 'ch2', clientId: 'c1', from: 'provider', text: 'ได้เลยครับ ขอบคุณมากครับ 🙏', at: dayIn(periodBack(1), 30) },
       { id: 'ch3', clientId: 'c2', from: 'client', text: 'ขอโทษนะคะครู เดือนนี้ช้าหน่อย', at: dayIn(periodBack(1), 31) },
+    ],
+  }
+  // การบ้านตัวอย่าง: หนึ่งรายการเลยกำหนดที่ทวงไปแล้วเมื่อวาน + หนึ่งรายการรอถึงกำหนด
+  // ข้อความทั้งหมดเป็น "ส่งแล้ว" เพื่อไม่เพิ่มร่างใหม่ในคิวเดโม (จำนวนร่างเริ่มต้นคงเดิม)
+  const today = s.today
+  const overdue = { id: 'hw-1', subjectId: 's2', clientId: 'c2', text: 'แบบฝึกหัดบทที่ 3 ข้อ 1–10', assignedAt: addDays(today, -5), dueAt: addDays(today, -2) }
+  const pending = { id: 'hw-2', subjectId: 's1', clientId: 'c1', text: 'อ่านสรุปเรื่องเศษส่วน หน้า 12–15', assignedAt: addDays(today, -1), dueAt: addDays(today, 2) }
+  s = { ...s, homework: [overdue, pending] }
+  const seedSent = (id: string, kind: 'homework' | 'homework_reminder', item: typeof overdue, at: string, draft: string | null, key: string): Message => ({
+    id, clientId: item.clientId, subjectId: item.subjectId, kind, draft: draft ?? '', status: 'sent',
+    createdAt: at, sentAt: at, dedupeKey: key, meta: { homeworkId: item.id },
+  })
+  s = {
+    ...s,
+    messages: [
+      ...s.messages,
+      seedSent('m-seed-hw-1', 'homework', overdue, overdue.assignedAt, homeworkAssignText(s, overdue), 'hw:hw-1'),
+      seedSent('m-seed-hwrem-1', 'homework_reminder', overdue, addDays(today, -1), homeworkReminderText({ ...s, today: addDays(today, -1) }, overdue), 'hwrem:hw-1'),
+      seedSent('m-seed-hw-2', 'homework', pending, pending.assignedAt, homeworkAssignText(s, pending), 'hw:hw-2'),
     ],
   }
   return markOverdue(s)

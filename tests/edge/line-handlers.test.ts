@@ -163,9 +163,17 @@ Deno.test('LINE webhook verification must report success even with HTTP 200', as
 
 Deno.test('malformed and unknown webhook payloads are acknowledged without external calls', async () => {
   const malformed = await webhookHandler(new Request('https://local/webhook', {
-    method: 'POST', body: 'not-json',
+    method: 'POST', headers: { 'x-line-signature': 'c2lnbmF0dXJl' }, body: 'not-json',
   }))
   equal(malformed.status, 200)
+})
+
+Deno.test('webhook without a LINE signature header is refused before parsing or tenant lookup (C-02)', async () => {
+  // No SUPABASE_URL in this test runtime: reaching admin() would surface as 500, never 401.
+  const unsigned = await webhookHandler(new Request('https://local/webhook', {
+    method: 'POST', body: JSON.stringify({ destination: 'U1234', events: [] }),
+  }))
+  equal(unsigned.status, 401)
 })
 
 Deno.test('public LINE webhook rejects declared and streamed oversized bodies before parsing', async () => {

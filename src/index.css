@@ -286,6 +286,18 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 .tagk--reminder{background:var(--danger-soft);color:var(--danger)}
 .tagk--renewal,.tagk--renewal_exhausted{background:var(--warn-soft);color:var(--warn)}
 .tagk--receipt{background:var(--ok-soft);color:var(--ok)}
+.tagk--nudge{background:var(--danger-soft);color:var(--danger)}
+.tagk--homework_reminder{background:var(--warn-soft);color:var(--warn)}
+/* แท็บทวงเงิน/การบ้าน — ป้ายสถานะเล็กและกล่องผลส่งชุด ใช้ token เดิมทั้งหมด */
+.pill{display:inline-block;padding:2px 9px;border-radius:999px;font-size:var(--fs-micro);font-weight:700;background:var(--line);color:var(--muted)}
+.pill--ok{background:var(--ok-soft);color:var(--ok)}
+.pill--warn{background:var(--warn-soft);color:var(--warn)}
+.pill--danger{background:var(--danger-soft);color:var(--danger)}
+.msg__meta{display:flex;flex-wrap:wrap;gap:var(--space-2) var(--space-3);font-size:var(--fs-small);color:var(--muted);margin:0 0 var(--space-2)}
+.msg__preview{font-size:var(--fs-small);white-space:pre-wrap;background:var(--bg);border-radius:var(--radius-sm);padding:var(--space-2) var(--space-3);margin:0 0 var(--space-2)}
+.bulk{margin:var(--space-3) 0;padding:var(--space-3);border-radius:var(--radius-sm);background:var(--brand-soft);color:var(--brand-ink);font-size:var(--fs-small)}
+.bulk ul{margin:var(--space-2) 0 0;padding-left:var(--space-4)}
+.hwform .chips{margin-bottom:var(--space-2)}
 .tag-neutral{display:inline-block;background:var(--line);color:var(--muted);padding:2px 6px;
   border-radius:5px;font-size:var(--fs-micro);font-style:normal}
 

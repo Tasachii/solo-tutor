@@ -39,14 +39,19 @@ export function PlanCard() {
   const [ask, setAsk] = useState<null | 'pause' | 'cancel'>(null)
   const pending = rows.find((r) => r.status === 'pending')
   const approved = rows.filter((r) => r.status === 'approved')
+  // คำขอที่ไม่ผ่านต้องเห็น ไม่ใช่หายเงียบ — ครูจะได้รู้ว่าต้องส่งใหม่หรือติดต่อทีม (D-03)
+  const rejected = rows.filter((r) => r.status === 'rejected')
+  const [loadFailed, setLoadFailed] = useState(false)
   const price = PLANS.find((x) => x.months === months)?.price ?? 0
 
   const reload = async (): Promise<PlanRequestRow[] | null> => {
     try {
       const next = await listPlanRequests()
       setRows(next)
+      setLoadFailed(false)
       return next
     } catch {
+      setLoadFailed(true)
       return null
     }
   }
@@ -97,7 +102,9 @@ export function PlanCard() {
     <section className="card" data-testid="plan-card">
       <h2 className="h2">{p.title}</h2>
       <p role="status">{statusLine}</p>
-      {plan?.plan === 'pro' && (!!plan.pausedAt || (daysLeft(plan, state.today) ?? 0) > 0) && <>
+      {loadFailed && <p className="warnbar" role="status">{p.loadFailed}</p>}
+      {/* พักได้ตราบที่ยัง Pro — วันสุดท้าย (เหลือ 0 วันแต่ isPro ยังจริง) ก็พักได้ (D-04) */}
+      {plan?.plan === 'pro' && (!!plan.pausedAt || pro) && <>
         <p className="hint">{p.pauseBody}</p>
         {plan.pausedAt
           ? <button className="btn btn--secondary btn--sm" onClick={() => void toggle()}>{p.resume}</button>
@@ -127,13 +134,19 @@ export function PlanCard() {
         <button className="btn btn--primary" disabled={busy}>{p.submit} · {money(price)} {copy.common.baht}</button>
       </form>}
 
-      {approved.length > 0 && <>
+      {(approved.length > 0 || rejected.length > 0) && <>
         <h3 className="h2" style={{ marginTop: 'var(--space-4)' }}>{p.history}</h3>
-        <ul className="rows">{approved.map((r) => <li key={r.id} className="srow">
-          <span className="srow__main"><span className="srow__name">{p.receiptItem.replace('{months}', String(r.months))} · {money(r.amount)} {copy.common.baht}</span>
-            <span className="srow__meta">{r.receipt_no} · {stamp(r.decided_at)}</span></span>
-          <button className="btn btn--ghost btn--sm" onClick={() => setReceipt(r)}>{p.receipt}</button>
-        </li>)}</ul>
+        <ul className="rows">
+          {approved.map((r) => <li key={r.id} className="srow">
+            <span className="srow__main"><span className="srow__name">{p.receiptItem.replace('{months}', String(r.months))} · {money(r.amount)} {copy.common.baht}</span>
+              <span className="srow__meta">{r.receipt_no} · {stamp(r.decided_at)}</span></span>
+            <button className="btn btn--ghost btn--sm" onClick={() => setReceipt(r)}>{p.receipt}</button>
+          </li>)}
+          {rejected.map((r) => <li key={r.id} className="srow" data-testid="plan-rejected">
+            <span className="srow__main"><span className="srow__name">{p.receiptItem.replace('{months}', String(r.months))} · {money(r.amount)} {copy.common.baht}</span>
+              <span className="srow__meta">{p.status.rejected} · {stamp(r.decided_at)}{SUPPORT_CONTACT ? ` · ${p.contact.replace('{contact}', SUPPORT_CONTACT)}` : ''}</span></span>
+          </li>)}
+        </ul>
       </>}
     </section>
 
