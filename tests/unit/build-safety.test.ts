@@ -11,12 +11,12 @@ describe('release build safety', () => {
     expect(contentPolicy('http://127.0.0.1:54321')).toContain('http://127.0.0.1:54321')
   })
   it('hashes lazy chunks, unhashed fonts and the worker so a changed release cannot overwrite the active cache', () => {
-    const files = [{ path: 'index.html', bytes: Buffer.from('shell') }, { path: 'assets/lazy.js', bytes: Buffer.from('lazy') }, { path: 'fonts/font.ttf', bytes: Buffer.from('font') }]
+    const files = [{ path: 'index.html', bytes: new TextEncoder().encode('shell') }, { path: 'assets/lazy.js', bytes: new TextEncoder().encode('lazy') }, { path: 'fonts/font.ttf', bytes: new TextEncoder().encode('font') }]
     const first = makeRelease(files, 'worker')
     expect(first.assets.map(x => x.path)).toEqual(['./', 'assets/lazy.js', 'fonts/font.ttf'])
     expect(first.assets.every(x => x.integrity.startsWith('sha256-'))).toBe(true)
     expect(makeRelease([...files].reverse(), 'worker').version).toBe(first.version)
-    expect(makeRelease(files.map(x => x.path.endsWith('.ttf') ? { ...x, bytes: Buffer.from('changed') } : x), 'worker').version).not.toBe(first.version)
+    expect(makeRelease(files.map(x => x.path.endsWith('.ttf') ? { ...x, bytes: new TextEncoder().encode('changed') } : x), 'worker').version).not.toBe(first.version)
     expect(makeRelease(files, 'new worker').version).not.toBe(first.version)
   })
   it('supports a dedicated site root while rejecting unsafe base paths', () => {
