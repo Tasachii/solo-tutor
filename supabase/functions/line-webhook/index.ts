@@ -25,7 +25,9 @@ export async function readLineWebhookBody(req: Request, maxBytes = 1_000_000): P
     if (done) break
     size += value.byteLength
     if (size > maxBytes) {
-      await reader.cancel().catch(() => undefined)
+      // Some managed request streams do not settle cancel() until the proxy
+      // closes the upload. Return 413 immediately instead of holding the response.
+      void reader.cancel().catch(() => undefined)
       throw new Response('payload too large', { status: 413 })
     }
     chunks.push(value)

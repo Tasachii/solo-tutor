@@ -56,6 +56,18 @@ Deno.test('jsonBody enforces declared and streamed byte limits', async () => {
     equal(error instanceof Response ? error.status : null, 413)
   }
 
+  const cancelNeverSettles = new ReadableStream<Uint8Array>({
+    start(controller) { controller.enqueue(new TextEncoder().encode('x'.repeat(65))) },
+    cancel() { return new Promise<void>(() => undefined) },
+  })
+  let timeout = 0
+  const prompt = await Promise.race([
+    jsonBody(new Request('https://edge.example', { method: 'POST', body: cancelNeverSettles }), 64)
+      .then(() => 0).catch(error => error instanceof Response ? error.status : 0),
+    new Promise<number>(resolve => { timeout = setTimeout(() => resolve(-1), 100) }),
+  ]).finally(() => clearTimeout(timeout))
+  equal(prompt, 413)
+
   equal(await jsonBody(new Request('https://edge.example', { method: 'POST', body: '{"ok":true}' }), 64), { ok: true })
 })
 

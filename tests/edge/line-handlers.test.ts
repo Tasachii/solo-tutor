@@ -184,6 +184,18 @@ Deno.test('public LINE webhook rejects declared and streamed oversized bodies be
     }), 10)
   } catch (error) { rejectedStream = error instanceof Response && error.status === 413 }
   equal(rejectedStream, true)
+
+  const cancelNeverSettles = new ReadableStream<Uint8Array>({
+    start(controller) { controller.enqueue(new TextEncoder().encode('x'.repeat(11))) },
+    cancel() { return new Promise<void>(() => undefined) },
+  })
+  let timeout = 0
+  const prompt = await Promise.race([
+    readLineWebhookBody(new Request('https://local/webhook', { method: 'POST', body: cancelNeverSettles }), 10)
+      .then(() => 0).catch(error => error instanceof Response ? error.status : 0),
+    new Promise<number>(resolve => { timeout = setTimeout(() => resolve(-1), 100) }),
+  ]).finally(() => clearTimeout(timeout))
+  equal(prompt, 413)
 })
 
 Deno.test('crypto helpers fail closed on empty or malformed secrets', async () => {

@@ -189,7 +189,9 @@ export async function jsonBody(req: Request, maxBytes = 65_536): Promise<Record<
       if (done) break
       size += value.byteLength
       if (size > maxBytes) {
-        await reader.cancel().catch(() => undefined)
+        // Managed request streams may keep cancel() pending until their proxy
+        // closes the upload. Reject now; cancellation remains best-effort.
+        void reader.cancel().catch(() => undefined)
         throw new Response(JSON.stringify({ ok: false, error: 'payload-too-large' }), {
           status: 413, headers: { 'Content-Type': 'application/json' },
         })

@@ -38,28 +38,23 @@ one teacher can appear as multiple IDs. Do not present it as an exact teacher co
    allow anonymous web apps, use a Google account/domain where this deployment
    setting is available or leave the optional mirror disabled.
 6. Copy the deployed `/exec` URL. A `/dev` test URL is intentionally rejected.
-7. Keep the URL and secret outside the repository in a private file:
+7. On this Mac, a generated secret already exists in the private file
+   `~/.config/solo-tutor/usage-sheets.env` and the matching Supabase secret is set.
+   **Do not overwrite that file with example values.** Use the existing value
+   after `USAGE_SHEETS_WEBHOOK_SECRET=` for the Apps Script property in step 4.
+8. In Supabase Dashboard → Edge Functions → Secrets, set
+   `USAGE_SHEETS_WEBHOOK_URL` to the real `/exec` URL. The current `usage` function
+   is already deployed; no frontend rebuild is needed.
 
-   ```sh
-   mkdir -p ~/.config/solo-tutor
-   umask 077
-   cat > ~/.config/solo-tutor/usage-sheets.env <<'EOF'
-   USAGE_SHEETS_WEBHOOK_URL='https://script.google.com/macros/s/REPLACE_WITH_DEPLOYMENT_ID/exec'
-   USAGE_SHEETS_WEBHOOK_SECRET='replace-with-the-generated-secret'
-   EOF
-   ```
+For a new environment, generate a fresh random secret, store the same value on
+Apps Script and Supabase, and retain it outside the repository. If using CLI,
+edit the private env file with the actual values and load it directly so the
+secret is not placed in shell history or command arguments:
 
-8. Load that private file and store both values as Supabase Edge Function secrets:
-
-   ```sh
-   set -a
-   source ~/.config/solo-tutor/usage-sheets.env
-   set +a
-   supabase secrets set \
-     USAGE_SHEETS_WEBHOOK_URL="$USAGE_SHEETS_WEBHOOK_URL" \
-     USAGE_SHEETS_WEBHOOK_SECRET="$USAGE_SHEETS_WEBHOOK_SECRET"
-   supabase functions deploy usage
-   ```
+```sh
+supabase secrets set --env-file ~/.config/solo-tutor/usage-sheets.env
+supabase functions deploy usage
+```
 
 The receiver validates the exact payload shape, holds a script lock while
 appending, ignores duplicate rows for six hours, and caps each random ID at 120
