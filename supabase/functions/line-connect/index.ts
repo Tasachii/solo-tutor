@@ -1,4 +1,4 @@
-/** Connect the authenticated provider's LINE OA. Intentionally undeployed. */
+/** Connect the authenticated provider's LINE OA. */
 import { admin, jsonBody, jsonError, ok, requireEnv, requireUserId, seal, serveErrors, withCors } from '../_shared/db.ts'
 
 interface ConnectInput { providerId: string; channelSecret: string; accessToken: string }

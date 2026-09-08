@@ -1,6 +1,6 @@
 import { authenticatedConnectInput, configureLineChannel, handler as connectHandler } from '../../supabase/functions/line-connect/index.ts'
 import { authenticatedSendAuthority, claimedBodyIssue, chooseClaimedDelivery, handler as sendHandler, interactiveOutboxId } from '../../supabase/functions/line-send/index.ts'
-import { handler as webhookHandler } from '../../supabase/functions/line-webhook/index.ts'
+import { handler as webhookHandler, readLineWebhookBody } from '../../supabase/functions/line-webhook/index.ts'
 import { open, seal } from '../../supabase/functions/_shared/db.ts'
 
 const equal = (actual: unknown, expected: unknown) => {
@@ -166,6 +166,24 @@ Deno.test('malformed and unknown webhook payloads are acknowledged without exter
     method: 'POST', body: 'not-json',
   }))
   equal(malformed.status, 200)
+})
+
+Deno.test('public LINE webhook rejects declared and streamed oversized bodies before parsing', async () => {
+  let rejectedDeclared = false
+  try {
+    await readLineWebhookBody(new Request('https://local/webhook', {
+      method: 'POST', headers: { 'content-length': '11' }, body: 'small',
+    }), 10)
+  } catch (error) { rejectedDeclared = error instanceof Response && error.status === 413 }
+  equal(rejectedDeclared, true)
+
+  let rejectedStream = false
+  try {
+    await readLineWebhookBody(new Request('https://local/webhook', {
+      method: 'POST', body: 'x'.repeat(11),
+    }), 10)
+  } catch (error) { rejectedStream = error instanceof Response && error.status === 413 }
+  equal(rejectedStream, true)
 })
 
 Deno.test('crypto helpers fail closed on empty or malformed secrets', async () => {

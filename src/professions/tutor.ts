@@ -20,7 +20,7 @@ const tutor: ProfessionTemplate = {
     { minDaysOverdue: 4, key: 'clear' },
     { minDaysOverdue: 8, key: 'final' },
   ],
-  conciergeAvailable: true,
+  conciergeAvailable: false,
   messages: tutorTemplates,
   modeLabels: { per_unit: 'รายครั้ง', flat_monthly: 'เหมารายเดือน', package: 'แพ็ก' },
   faq: [

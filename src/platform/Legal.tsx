@@ -27,7 +27,9 @@ export default function Legal({ kind }: { kind: 'privacy' | 'terms' }) {
         ))}
         {PROVIDER_LEGAL_NAME && <p className="hint">{l.ownerLabel}: {PROVIDER_LEGAL_NAME}</p>}
         {SUPPORT_CONTACT
-          ? <p className="hint">{l.contactLabel}: {SUPPORT_CONTACT}</p>
+          ? <p className="hint">{l.contactLabel}: <a href={SUPPORT_CONTACT.startsWith('https://') ? SUPPORT_CONTACT
+            : SUPPORT_CONTACT.startsWith('@') ? `https://line.me/R/ti/p/${encodeURIComponent(SUPPORT_CONTACT)}` : `mailto:${SUPPORT_CONTACT}`}
+            target="_blank" rel="noreferrer">{SUPPORT_CONTACT}</a></p>
           : <p className="warnbar" role="alert">{l.contactMissing}</p>}
         <p className="hint">{l.reviewPending}</p>
         <p className="legal__x">

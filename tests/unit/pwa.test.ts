@@ -3,7 +3,10 @@ import manifestRaw from '../../public/manifest.webmanifest?raw'
 import { copy } from '../../src/copy'
 import { isStandalone } from '../../src/core/present'
 
-const manifest = JSON.parse(manifestRaw) as { start_url: string; display: string; scope: string }
+const manifest = JSON.parse(manifestRaw) as {
+  id: string; start_url: string; display: string; scope: string
+  icons: { src: string; sizes: string; type: string; purpose: string }[]
+}
 
 /** แอปที่ติดตั้งแล้วต้องเปิดเข้าหน้างาน ไม่ใช่หน้าขาย */
 describe('manifest', () => {
@@ -11,6 +14,26 @@ describe('manifest', () => {
   it('เปิดแบบ standalone ในขอบเขตแอป', () => {
     expect(manifest.display).toBe('standalone')
     expect(manifest.scope).toBe('./')
+    expect(manifest.id).toBe('./')
+  })
+  it('มีไอคอนติดตั้งและ maskable ครบขนาดหลัก', () => {
+    expect(manifest.icons).toEqual(expect.arrayContaining([
+      expect.objectContaining({ src: './icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' }),
+      expect.objectContaining({ src: './icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' }),
+      expect.objectContaining({ src: './icon-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' }),
+    ]))
+  })
+})
+
+describe('pitch contract', () => {
+  it('มีราคา 4 แพ็กตามที่เสนอและไม่มี Concierge ในติวเตอร์', async () => {
+    const { PLANS } = await import('../../src/platform/plans')
+    const { default: tutor } = await import('../../src/professions/tutor')
+    expect(PLANS).toEqual([{ months: 0, price: 0 }, { months: 1, price: 299 }, { months: 3, price: 799 }, { months: 12, price: 2490 }])
+    expect(tutor.conciergeAvailable).toBe(false)
+    expect(copy.pricing.plans[0].features).toContain('สูงสุด 5 นักเรียน')
+    expect(copy.landing.h1).toBe('ระบบออกบิลและจัดการเงินให้ครูที่สอนคนเดียว')
+    expect(JSON.stringify(copy.pricing.plans)).toContain('ครูตรวจสลิปแล้วบันทึกรับเงิน')
   })
 })
 

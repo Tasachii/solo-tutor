@@ -1,4 +1,22 @@
-# Solo Tutor — สถานะล่าสุดสำหรับ paid pilot และ pitching
+# Solo Tutor — สถานะล่าสุดสำหรับ pitching
+
+## ขอบเขตล่าสุด: A → B → C + LINE OA วันนี้
+
+ผู้ใช้ให้พัก Omise และงาน production ใหม่หลังพิทช์ เก็บงานที่ยังไม่เผยแพร่ไว้ใน `.omx/deferred-omise/` และ `.omx/deferred-production/` ครบพร้อม patch/snapshot ไม่มี migration 0011 เป็นต้นไปถูกนำขึ้นฐานจริง
+
+รุ่นสำหรับรอบนี้ปิด Concierge ของติวเตอร์ รักษา 4 ราคา, ตรวจนำเข้า 25 คนและ JSON backup/restore, เพิ่ม manifest ID, มี LINE pairing แบบจำลอง, แก้กดรับเงินบางส่วนซ้ำ และเตรียม mirror 4 usage events เข้า Google Sheets เฉพาะข้อมูลจริงแบบไม่ส่งชื่อหรือ account ID
+
+ผลตรวจ local รอบสุดท้าย: **unit 473 ผ่าน**, **browser 194 ผ่าน / 40 conditional skips**, **Supabase/LINE mock 42 ผ่าน**, **Edge 29 ผ่าน**, SQL/concurrency contracts ผ่าน และ TypeScript/diff check ผ่าน ผู้รีวิวแยกอนุมัติ payment guard และการแยก Demo ออกจาก LINE จริง
+
+สื่อพร้อมใน `Downloads/Solo-Pitch-Kit-20260908`: JSON ครูพลอย 5 คน, วิดีโอ MP4 90 วินาที (ทดสอบเปิดจากไฟล์), เดโมครบ 3 รอบผ่านโดยไม่มี external requests, PDF สไลด์ฉบับตรวจทาน 22 หน้า ไม่มีช่อง `[` ค้าง และ QR OA จริง สไลด์ไม่แต่งยอด traction รูปทีม หรือคำรับรองขึ้นเอง
+
+LINE ฝั่งเซิร์ฟเวอร์เป็น **active** สำหรับ `@458gfbxa`; ยังต้องเปิด Use webhook จากบัญชีเจ้าของและทดสอบผู้รับที่อนุญาต Google Sheets มี receiver/server code และ export CSV แล้ว แต่ยังไม่มี URL Apps Script ที่เจ้าของ deploy ส่วน USB/Drive และการทดสอบมือถือเครื่องจริงยังต้องใช้อุปกรณ์/บัญชีของทีม
+
+รายการครบทั้ง 12 ข้อ: [pitch-week-checklist.md](pitch-week-checklist.md) · ขั้นตอน LINE: [line-demo-runbook.md](line-demo-runbook.md) · ตัวนับ: [usage-sheets/README.md](usage-sheets/README.md)
+
+ผลเผยแพร่ให้ดู [Verify and deploy](https://github.com/Tasachii/solo-tutor/actions/workflows/deploy.yml) ของ commit ล่าสุด; รายงานด้านล่างเป็นประวัติรุ่นก่อนหน้า
+
+---
 
 ปรับจากโจทย์ Demo มาเป็นการหาลูกค้าจ่ายเงินจริง โดยใช้ Supabase Free และรักษา Demo/mock แยกไว้ เอกสารนี้อัปเดตรายการต่อจากรายงาน QA รอบแรก; ไม่ใช้จำนวนเทสหรือยอดสมมติเป็นหลักฐานรายได้
 

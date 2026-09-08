@@ -8,6 +8,7 @@ import { copy } from '../../src/copy'
 test('เพิ่มหลายคนจากหน้ารายชื่อ: ตัดซ้ำ ข้ามคนเดิม แล้วสร้างครบในคลิกเดียว', async ({ page }) => {
   await page.goto('?scenario=default#/app/subjects')
   await expect(page.locator('.skel')).toHaveCount(0)
+  await expect(page.locator('button.srow').first()).toBeVisible()
   const before = await page.locator('button.srow').count()
   const existing = await page.locator('button.srow .srow__name').first().innerText()
 
@@ -15,7 +16,7 @@ test('เพิ่มหลายคนจากหน้ารายชื่�
   const sheet = page.getByRole('dialog')
   await expect(sheet).toBeVisible()
 
-  const names = Array.from({ length: 20 }, (_, i) => `น้องใหม่${i + 1}, ผู้ปกครอง${i + 1}`)
+  const names = Array.from({ length: 25 }, (_, i) => `น้องใหม่${i + 1}, ผู้ปกครอง${i + 1}`)
   const pasted = [...names, '', 'น้องใหม่3, ผู้ปกครอง3', ' น้องใหม่7 , ผู้ปกครอง7', `${existing.replace(/ค้าง.*$/, '').trim()}, คุณแม่`].join('\n')
   await sheet.locator('textarea').fill(pasted)
   await sheet.getByRole('button', { name: copy.importer.readPaste }).click()
@@ -24,11 +25,11 @@ test('เพิ่มหลายคนจากหน้ารายชื่�
   const warn = sheet.locator('.warnbar')
   await expect(warn).toContainText('ตัดชื่อซ้ำในลิสต์ออก 2')
   await expect(warn).toContainText('ข้าม 1 คนที่มีอยู่แล้ว')
-  await expect(sheet.getByRole('button', { name: /นำเข้า \(20\)/ })).toBeVisible()
+  await expect(sheet.getByRole('button', { name: /นำเข้า \(25\)/ })).toBeVisible()
 
-  await sheet.getByRole('button', { name: /นำเข้า \(20\)/ }).click()
-  await expect(page.locator('button.srow')).toHaveCount(before + 20)
-  await expect(page.getByText('น้องใหม่20')).toBeVisible()
+  await sheet.getByRole('button', { name: /นำเข้า \(25\)/ }).click()
+  await expect(page.locator('button.srow')).toHaveCount(before + 25)
+  await expect(page.getByText('น้องใหม่25')).toBeVisible()
 })
 
 test('ค่าเริ่มต้นแบบแพ็กใช้ได้ และต้องใส่จำนวนครั้งก่อน', async ({ page }) => {

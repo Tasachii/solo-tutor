@@ -23,9 +23,83 @@ afterEach(() => {
 })
 
 beforeEach(() => {
-  mocks.dispatch.mockClear()
+  mocks.dispatch.mockReset().mockReturnValue(true)
   mocks.track.mockClear()
   mocks.push.mockClear()
+})
+
+describe('payment confirmation single-flight', () => {
+  const realInvoice = () => {
+    const state = { ...buildScenario('default'), mode: 'real' as const }
+    const invoice = state.invoices.find(row => row.status === 'sent' || row.status === 'overdue')!
+    mocks.state = state
+    return invoice
+  }
+
+  it('accepts only one full payment from two same-tick clicks', () => {
+    const invoice = realInvoice()
+    const onClose = vi.fn()
+    render(<SlipSheet invoice={invoice} onClose={onClose} />)
+    const confirm = screen.getByRole('button', { name: 'ยอดตรง รับเงินแล้ว' })
+
+    fireEvent.click(confirm)
+    fireEvent.click(confirm)
+
+    expect(mocks.dispatch).toHaveBeenCalledOnce()
+    expect(mocks.dispatch).toHaveBeenCalledWith(expect.objectContaining({
+      type: 'recordPayment', invoiceId: invoice.id, amount: invoice.total,
+    }))
+    expect(onClose).toHaveBeenCalledOnce()
+  })
+
+  it('accepts only one partial payment from two same-tick clicks', () => {
+    const invoice = realInvoice()
+    const onClose = vi.fn()
+    render(<SlipSheet invoice={invoice} onClose={onClose} />)
+    fireEvent.click(screen.getByRole('button', { name: 'ยอดไม่ตรง ใส่ยอดเอง' }))
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: '100' } })
+    const confirm = screen.getByRole('button', { name: 'ยืนยันรับยอด' })
+
+    fireEvent.click(confirm)
+    fireEvent.click(confirm)
+
+    expect(mocks.dispatch).toHaveBeenCalledOnce()
+    expect(mocks.dispatch).toHaveBeenCalledWith(expect.objectContaining({
+      type: 'recordPayment', invoiceId: invoice.id, amount: 100,
+    }))
+    expect(onClose).toHaveBeenCalledOnce()
+  })
+
+  it('releases the guard after a failed durable write so the teacher can retry', () => {
+    const invoice = realInvoice()
+    const onClose = vi.fn()
+    mocks.dispatch.mockReturnValueOnce(false).mockReturnValueOnce(true)
+    render(<SlipSheet invoice={invoice} onClose={onClose} />)
+    const confirm = screen.getByRole('button', { name: 'ยอดตรง รับเงินแล้ว' })
+
+    fireEvent.click(confirm)
+    fireEvent.click(confirm)
+
+    expect(mocks.dispatch).toHaveBeenCalledTimes(2)
+    expect(onClose).toHaveBeenCalledOnce()
+  })
+
+  it('does not carry the successful guard to a different invoice prop', () => {
+    const state = { ...buildScenario('default'), mode: 'real' as const }
+    const invoices = state.invoices.filter(row => row.status === 'sent' || row.status === 'overdue')
+    expect(invoices.length).toBeGreaterThanOrEqual(2)
+    mocks.state = state
+    const onClose = vi.fn()
+    const view = render(<SlipSheet invoice={invoices[0]} onClose={onClose} />)
+    fireEvent.click(screen.getByRole('button', { name: 'ยอดตรง รับเงินแล้ว' }))
+
+    view.rerender(<SlipSheet invoice={invoices[1]} onClose={onClose} />)
+    fireEvent.click(screen.getByRole('button', { name: 'ยอดตรง รับเงินแล้ว' }))
+
+    expect(mocks.dispatch).toHaveBeenCalledTimes(2)
+    expect(mocks.dispatch).toHaveBeenNthCalledWith(1, expect.objectContaining({ invoiceId: invoices[0].id }))
+    expect(mocks.dispatch).toHaveBeenNthCalledWith(2, expect.objectContaining({ invoiceId: invoices[1].id }))
+  })
 })
 
 describe('demo slip fallback', () => {

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useStore } from '../core/store'
 import { copy } from '../copy'
 import { money } from '../core/format'
@@ -30,6 +30,9 @@ export default function SlipSheet(
   // และพิมพ์ 1,200 มีลูกน้ำก็กลายเป็น NaN แล้วเงียบไปเฉย ๆ
   const [manual, setManual] = useState(false)
   const [manualText, setManualText] = useState('')
+  // A partial payment is a valid repeated reducer action, so two clicks before
+  // this sheet unmounts must be stopped at the interaction boundary.
+  const paymentPending = useRef<string | null>(null)
   const manualValue = Number(manualText.replace(/[,\s]/g, ''))
   const due = balanceDue(state, invoice.id)
   const manualOk = isMoney(manualValue) && manualValue <= due
@@ -50,7 +53,12 @@ export default function SlipSheet(
 
   const pay = (amount: number, verified: boolean) => {
     if (!isMoney(amount) || amount > due) return
-    if (!dispatch({ type: 'recordPayment', invoiceId: invoice.id, amount, slipVerified: verified, slipAmount })) return
+    if (paymentPending.current === invoice.id) return
+    paymentPending.current = invoice.id
+    if (!dispatch({ type: 'recordPayment', invoiceId: invoice.id, amount, slipVerified: verified, slipAmount })) {
+      paymentPending.current = null
+      return
+    }
     toast.push({ text: amount === due ? copy.toast.receiptIssued : copy.toast.saved, tone: 'ok' })
     onPaid?.(); onClose()
   }

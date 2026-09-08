@@ -9,9 +9,31 @@ import { ConfirmSheet } from './components'
 import { copyText } from './share'
 
 const statusText: Record<LineChannel['status'], string> = {
-  active: 'เชื่อมต่อแล้ว', pending: 'กำลังตั้งค่า', setup_failed: 'ตั้งค่า webhook ไม่สำเร็จ', invalid: 'สิทธิ์ LINE หมดอายุ', disabled: 'ยกเลิกการเชื่อมต่อแล้ว',
+  active: 'เชื่อมต่อแล้ว — ตรวจ token และ Webhook URL ผ่าน', pending: 'กำลังตั้งค่า', setup_failed: 'ตั้งค่า webhook ไม่สำเร็จ', invalid: 'สิทธิ์ LINE หมดอายุ', disabled: 'ยกเลิกการเชื่อมต่อแล้ว',
 }
 const readSessionSafely = () => { try { return getSession() } catch { return null } }
+
+/** Pitch-only walkthrough. It has no API calls and never writes into the real ledger. */
+export function DemoLineWalkthrough({ clientName = 'ผู้ปกครองตัวอย่าง' }: { clientName?: string }) {
+  const [paired, setPaired] = useState(false)
+  const code = '482731'
+  return <section className="card" aria-label="ตัวอย่างการเชื่อม LINE OA">
+    <h2 className="h2">ตัวอย่างการเชื่อม LINE OA</h2>
+    <p className="warnbar" role="status">การจับคู่นี้เป็นข้อมูลจำลอง ไม่ผูกบัญชีและไม่ส่งข้อความไป LINE จริง</p>
+    <ol>
+      <li>ครูเปิด OA ของตัวเองและส่งลิงก์เพิ่มเพื่อนให้ {clientName}</li>
+      <li>ระบบสร้างรหัสใช้ครั้งเดียว <strong className="num">{code}</strong> ให้ผู้ปกครองพิมพ์ในแชท OA</li>
+      <li>เมื่อจับคู่แล้ว ครูตรวจข้อความและกดส่งบิลจากหน้าแอดมิน</li>
+    </ol>
+    <div className="kv"><span>{clientName}</span><b>{paired ? 'เชื่อมแล้ว (จำลอง)' : 'ยังไม่เชื่อม (จำลอง)'}</b></div>
+    <div className="btnrow">
+      <button className="btn btn--secondary btn--sm" onClick={() => setPaired(value => !value)}>
+        {paired ? 'เริ่มตัวอย่างใหม่' : 'จำลองผู้ปกครองพิมพ์รหัส'}
+      </button>
+      <Link className="btn btn--primary btn--sm" to="/app/admin">ดูร่างบิลในหน้าแอดมิน</Link>
+    </div>
+  </section>
+}
 
 export default function LineSettings() {
   const { state, dispatch } = useStore()
@@ -76,7 +98,7 @@ export default function LineSettings() {
     <div className="rowhead"><h1 className="h1">เชื่อม LINE OA</h1><Link to="/app/admin">กลับหน้าแอดมิน</Link></div>
     <p className="hint">ส่งข้อความจาก LINE OA ของคุณถึงผู้ปกครองที่ผูกไว้ โดยครูตรวจข้อความและกดส่งเอง</p>
     {notice && <p className="warnbar" role="status">{notice}</p>}
-    {state.mode !== 'real' ? <p>ใช้การเชื่อม LINE OA ในโหมดข้อมูลจริง เปิดเมนูแล้วเลือกเริ่มใช้จริงก่อน</p>
+    {state.mode !== 'real' ? <DemoLineWalkthrough clientName={state.clients[0]?.name} />
       : !config ? <div className="card"><h2 className="h2">รอตั้งค่าระบบเชื่อมต่อ</h2><p>ผู้ดูแลต้องผูกโปรเจกต์สำหรับบัญชีครูก่อน จึงจะเข้าสู่ระบบและเชื่อม OA ได้</p><p className="hint">ระหว่างนี้ยังเปิด LINE เพื่อส่งข้อความเองจากหน้าแอดมินได้</p></div>
       : !session ? <AuthForm onSession={(next) => { setSession(next); cloud.refreshSession() }} /> : <>
         <div className="rowhead"><span className="dim">{session.user.email ?? 'บัญชีครู'}</span><button className="btn btn--ghost btn--sm" disabled={busy} onClick={() => { if (!cloud.signOutDevice()) { setNotice('ล้างสถานะเข้าสู่ระบบไม่สำเร็จ กรุณาตรวจสิทธิ์เก็บข้อมูลของเบราว์เซอร์'); return }; setSession(null); setChannel(null); setCodes({}); setLinked({}); setSecret(''); setToken('') }}>ออกจากระบบเครื่องนี้</button></div>
@@ -84,6 +106,11 @@ export default function LineSettings() {
         <section className="card">
           <h2 className="h2">{channel?.display_name ?? 'บัญชี LINE OA'}</h2>
           <p role="status">{channel ? statusText[channel.status] : 'ยังไม่ได้เชื่อมบัญชี'}</p>
+          {channel?.status === 'active' && <div className="hint">
+            <p><b>ตรวจใน LINE Developers ต่ออีก 2 จุด:</b> เปิด Use webhook และกด Verify ให้ขึ้น Success สถานะด้านบนยืนยันเฉพาะ token, URL และการทดสอบ endpoint จึงไม่ได้ยืนยันว่า Use webhook เปิดอยู่</p>
+            <p>ใน LINE OA Manager ให้ปิด Greeting message และ Auto-response เพื่อไม่ให้ข้อความระบบซ้ำกับข้อความจากครู</p>
+            <p>จากนั้นให้ผู้ปกครองเพิ่มเพื่อน OA พิมพ์รหัส 6 หลัก แล้วกลับมากด “ตรวจสถานะอีกครั้ง” ก่อนลองส่ง</p>
+          </div>}
           {channel && <><p>ใช้โควตาของ Solo Tutor {channel.quota_used} / {channel.quota_limit} ข้อความ · รอบ {channel.quota_month}</p><p className="hint">ไม่รวมข้อความที่ส่งจากเครื่องมืออื่น โควตาจริงตรวจได้ใน LINE OA Manager</p></>}
           {channel?.basic_id && <a className="btn btn--secondary" href={`https://line.me/R/ti/p/${encodeURIComponent(channel.basic_id)}`} target="_blank" rel="noreferrer">เปิดลิงก์เพิ่มเพื่อน OA</a>}
           <div className="btnrow"><button className="btn btn--ghost" disabled={busy} onClick={() => void run(refresh)}>ตรวจสถานะอีกครั้ง</button>

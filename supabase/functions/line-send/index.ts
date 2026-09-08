@@ -1,4 +1,4 @@
-/** Atomically claim and deliver LINE outbox rows. Intentionally undeployed. */
+/** Atomically claim and deliver LINE outbox rows. */
 import { classifyPush, nextSendWindow, pushRequest, retryDelayMs, withinSendWindow } from '../../../src/core/lineProtocol.ts'
 import { authorizeLineSend, chooseChannel } from '../../../src/core/lineDelivery.ts'
 import { admin, isCronRequest, jsonBody, jsonError, ok, open, requireUserId, serveErrors, withCors } from '../_shared/db.ts'

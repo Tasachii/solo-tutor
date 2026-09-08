@@ -1,16 +1,19 @@
 # เชื่อม LINE OA กับ Solo Tutor
 
-สถานะตรวจ 2026-09-08: Supabase จริงมี `line-connect`, `line-webhook`, `line-send` และ server secrets ครบ ค่า webhook/origin ตรงกับเว็บที่เผยแพร่ แต่ยังไม่มีแถวใน `line_channels` จึงยังไม่ถือว่าเชื่อม OA จริง ไม่มี LINE credential รวมใน repository
+สถานะตรวจ 2026-09-08: OA **Solo Tutor (`@458gfbxa`)** มีแถว `line_channels` บน Supabase จริง สถานะฝั่งเซิร์ฟเวอร์เป็น `active` และการเชื่อมก่อนหน้านี้ตรวจ token, ตั้ง Webhook URL และทดสอบ endpoint ผ่านแล้ว credential ถูกเก็บแบบเข้ารหัสบนเซิร์ฟเวอร์และไม่มีค่า secret/token อยู่ใน repository
 
-ตรวจระบบรอบนี้: Edge tests 26 ผ่าน; อัปเดต LINE Functions ทั้ง 3 แล้ว; live readiness probes 7 ผ่าน (preflight/auth/origin/method) ไม่ได้ส่งข้อความหรือจำลอง webhook event ลงฐานจริง หลักฐาน: [LINE readiness probes](qa-evidence/2026-09-08/followup/line-readiness.json)
+สถานะ `active` ไม่ได้ยืนยันสวิตช์ **Use webhook** ใน LINE Developers เจ้าของยังต้องเปิดสวิตช์และกด Verify ตามขั้นตอนด้านล่าง รอบนี้ยังไม่ได้จับคู่ LINE ของผู้ปกครองจริงและยังไม่ได้ส่งข้อความจริง
+
+ตรวจระบบรอบนี้: LINE unit tests 60 ผ่าน; Edge tests 29 ผ่าน; live endpoint ตอบตามสัญญา (`line-connect`, `line-send`, `line-webhook`) โดยไม่ได้ส่งข้อความหรือสร้าง webhook event จริง หลักฐานเดิม: [LINE readiness probes](qa-evidence/2026-09-08/followup/line-readiness.json)
 
 ## ขั้นตอนที่เหลือสำหรับเจ้าของ OA
 
-1. เปิด [หน้าตั้งค่า LINE OA](https://tasachii.github.io/solo-tutor/#/app/settings/line) ในโหมดข้อมูลจริง แล้วเข้าสู่บัญชีครูที่ต้องเป็นเจ้าของการเชื่อมต่อ ข้อมูล Demo ยังอยู่ในโหมด Demo
-2. เปิด Messaging API จาก LINE Official Account Manager ของ OA ที่ต้องการ แล้วเปิด channel ที่สร้างขึ้นใน LINE Developers
-3. คัดลอก **Channel secret** จากแท็บ **Basic settings** และ **Channel access token** จากแท็บ **Messaging API** มาใส่ฟอร์มในแอปโดยตรง ไม่ส่งผ่านแชทหรือใส่ใน GitHub Variables
-4. กด **เชื่อมบัญชี OA** แอปจะอ่านชื่อ bot, เก็บสิทธิ์แบบเข้ารหัส, ตั้ง webhook และเรียกทดสอบ webhook โดยไม่ส่งข้อความหาผู้ปกครอง ตรวจว่าชื่อ OA ที่แสดงตรงกับบัญชีที่ต้องการ
-5. ใน LINE Developers เปิด **Use webhook** และกด **Verify** ให้สำเร็จ การเชื่อมหนึ่ง channel ใช้ webhook ได้หนึ่ง URL; การเชื่อมจากแอปจะเปลี่ยน URL ของ channel นั้น จึงควรใช้ OA ที่ตั้งใจให้ Solo Tutor รับ webhook
+1. เปิด [LINE Developers Console ของ channel Solo Tutor](https://developers.line.biz/console/channel/2011503954) แล้วเลือกแท็บ **Messaging API**
+2. เลื่อนลงหัวข้อ **Webhook settings** ตรวจว่า Webhook URL เป็น URL ด้านล่างทุกตัวอักษร หากไม่ตรงให้วาง URL แล้วกด **Update**
+3. กด **Verify** ที่ Webhook URL ต้องเห็นผล **Success** หากไม่สำเร็จ อย่าเริ่มจับคู่ผู้ปกครอง ให้ตรวจ URL แล้วลองอีกครั้ง
+4. เปิดสวิตช์ **Use webhook** ให้แสดง Enabled/On สวิตช์นี้แยกจากผล Verify และแยกจากสถานะ `active` ใน Solo Tutor
+5. เปิด [LINE OA Manager ของ `@458gfbxa`](https://manager.line.biz/account/@458gfbxa/) ไปที่ **Settings → Response settings** เปิด Webhook และปิด Greeting message/Auto-response ระหว่างทดสอบ เพื่อไม่ให้ผู้ปกครองได้รับข้อความซ้ำ
+6. กลับ [หน้าตั้งค่า LINE OA ใน Solo Tutor](https://tasachii.github.io/solo-tutor/#/app/settings/line) ในโหมดข้อมูลจริงและบัญชีครูเดิม กด **ตรวจสถานะอีกครั้ง** ชื่อที่แสดงต้องเป็น Solo Tutor ไม่ต้องกรอก token ซ้ำหากสถานะยัง active
 
 Webhook ของโปรเจกต์นี้:
 
@@ -20,7 +23,7 @@ https://qbuafdbmpkffzbkqoysb.supabase.co/functions/v1/line-webhook
 
 URL เดียวรองรับหลาย OA โดยเลือก secret จาก `destination` ใน body และตรวจ signature ก่อนประมวลผล ไม่ต้องใส่ channel ID ใน query string
 
-หลังเชื่อมสำเร็จจึงทดสอบจับคู่กับ LINE ของทีมที่ได้รับอนุญาตก่อน การกดส่งบิลจริงยังเป็นการกดเองจากหน้าแอดมิน
+หลังเชื่อมสำเร็จจึงทดสอบจับคู่กับ LINE ของทีมที่ได้รับอนุญาตก่อน การกดส่งบิลจริงยังเป็นการกดเองจากหน้าแอดมิน ดูลำดับเดโมที่ [LINE demo runbook](line-demo-runbook.md)
 
 ## เตรียมระบบ
 
@@ -65,6 +68,16 @@ VITE_SUPABASE_URL=https://line-qa.supabase.co VITE_SUPABASE_PUBLISHABLE_KEY=sb_p
 
 หลัง deploy ให้ตรวจด้วยบัญชี LINE ทดสอบที่เจ้าของอนุญาต: ชื่อ bot ตรงบัญชี, webhook Verify และ follow ผ่าน, รหัสหมดอายุ/ใช้ซ้ำถูกปฏิเสธ, ผู้ปกครองผูกถูกคน, ส่งหนึ่งข้อความผ่านและไม่มีซ้ำเมื่อ retry, ผู้ใช้ต่างบัญชีอ่านข้อมูลกันไม่ได้, ยกเลิก OA แล้วส่งไม่ได้ เก็บผลตรวจโดยไม่บันทึก secret/token ลง log หรือ screenshot
 
-ยังไม่รวมในรอบการเชื่อมนี้: นำแชท OA มาแสดงในแอป, ส่งตามเวลา/cron และการจับคู่ผู้ปกครองด้วยมือ ส่วนสมัครบัญชีและ cloud sync มีแล้ว; password reset ผ่านอีเมลยังไม่เปิดเป็น flow ให้ผู้ใช้ และต้องดูแลไฟล์กู้คืนกุญแจตามหน้าบัญชี
+ยังไม่รวมในรอบการเชื่อมนี้: นำแชท OA มาแสดงในแอป, ส่งตามเวลา/cron และการจับคู่ผู้ปกครองด้วยมือ
+
+## สิ่งที่เจ้าของต้องกดให้เสร็จก่อนสาธิต LINE จริง
+
+- [ ] LINE Developers → channel Solo Tutor → Messaging API → Webhook URL ตรงกับ URL ในเอกสารนี้
+- [ ] กด **Verify** แล้วผลเป็น **Success**
+- [ ] เปิด **Use webhook** เป็น Enabled/On
+- [ ] LINE OA Manager `@458gfbxa` → Settings → Response settings → เปิด Webhook
+- [ ] ปิด Greeting message และ Auto-response ระหว่างการทดสอบ
+- [ ] ใช้เฉพาะบัญชี LINE ของทีมที่อนุญาตเพิ่มเพื่อนและพิมพ์รหัสทดลอง
+- [ ] ก่อนเชิญผู้ปกครองจริง ให้ออก Channel secret/token ใหม่และเชื่อมแอปใหม่ เพราะค่าเดิมเคยปรากฏนอกฟอร์มลับระหว่างการตั้งค่า
 
 อ้างอิง: [LINE Messaging API](https://developers.line.biz/en/docs/messaging-api/getting-started/), [Webhook signature](https://developers.line.biz/en/docs/messaging-api/verify-webhook-signature/), [Retry key](https://developers.line.biz/en/docs/messaging-api/retrying-api-request/), [Supabase API keys](https://supabase.com/docs/guides/getting-started/api-keys), [Edge Function secrets](https://supabase.com/docs/guides/functions/secrets)

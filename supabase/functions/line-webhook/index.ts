@@ -1,4 +1,4 @@
-/** Verify and persist LINE webhook events. Intentionally undeployed. */
+/** Verify and persist LINE webhook events. */
 import { verifyLineSignature } from '../../../src/core/lineDelivery.ts'
 import { parseWebhook, planWebhookEvent, replyRequest } from '../../../src/core/lineProtocol.ts'
 import { admin, ok, open, serveErrors } from '../_shared/db.ts'
@@ -10,9 +10,35 @@ const REPLIES = {
   'opted-out': 'หยุดส่งข้อความให้แล้วค่ะ หากต้องการรับอีกครั้งแจ้งได้เลย',
 }
 
+/** Bound public webhook memory use before parsing or tenant lookup. */
+export async function readLineWebhookBody(req: Request, maxBytes = 1_000_000): Promise<string> {
+  const declared = Number(req.headers.get('content-length'))
+  if (Number.isFinite(declared) && declared > maxBytes) {
+    throw new Response('payload too large', { status: 413 })
+  }
+  if (!req.body) return ''
+  const reader = req.body.getReader()
+  const chunks: Uint8Array[] = []
+  let size = 0
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) break
+    size += value.byteLength
+    if (size > maxBytes) {
+      await reader.cancel().catch(() => undefined)
+      throw new Response('payload too large', { status: 413 })
+    }
+    chunks.push(value)
+  }
+  const bytes = new Uint8Array(size)
+  let offset = 0
+  for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.byteLength }
+  return new TextDecoder().decode(bytes)
+}
+
 export const handler = serveErrors(async (req) => {
   if (req.method !== 'POST') return new Response('method not allowed', { status: 405 })
-  const raw = await req.text()
+  const raw = await readLineWebhookBody(req)
   const signature = req.headers.get('x-line-signature') ?? ''
 
   // Destination must be decoded to select the tenant secret. No event is processed before verification.
