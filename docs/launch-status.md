@@ -11,6 +11,9 @@
 - Unit **459 ผ่าน**, browser **194 ผ่าน / 40 skips ตามเงื่อนไข**, Supabase/LINE mock **42 ผ่าน**, Edge **26 ผ่าน**, SQL contracts + concurrency ผ่าน PostgreSQL **17**
 - ทดสอบ isolation เพิ่ม **19 ผ่าน / 26 skips** ยืนยันว่าคำสั่ง QA ไม่ดึงค่าฐานจริงจาก `.env.local`; build และ TypeScript ผ่าน ไม่มี service-role key ในไฟล์ตั้งค่าหน้าเว็บ
 - เว็บแยกโหลด route: initial JS ประมาณ **433 kB / gzip 127 kB** จากเดิม 572/161; root build สำหรับ dedicated host ทดสอบเปิดครั้งแรก offline, Help ที่ไม่เคยเปิด และกดดาวน์โหลด PDF จริงผ่าน
+- ตั้ง Supabase Cron `solo-public-rate-limit-cleanup` ให้ทำงานรายชั่วโมงแล้ว; ตรวจพบ job active ถูกต้อง และ [Operations run 34195607931](https://github.com/Tasachii/solo-tutor/actions/runs/34195607931) ตรวจฐานข้อมูล/อายุ backup ผ่าน
+- ย้ายภาพหลักฐาน LINE จาก path เฉพาะเครื่องไปเป็น Playwright attachment และบังคับ mock endpoint แม้เรียก Playwright ตรงด้วย `SOLO_LINE_QA=1`; targeted Chromium mobile/desktop/WebKit ผ่านทั้ง 3
+- CI พบ Node type declarations ที่เครื่องพัฒนามีจาก parent directory แต่ clean runner ไม่มี; เพิ่ม `@types/node` เฉพาะ devDependency และตรวจ npm ci/typecheck/build ในโฟลเดอร์สะอาดผ่าน โดยเก็บโค้ด build เป็น TypeScript ให้ตรวจได้ครบ
 - ผู้รีวิวอิสระอนุมัติการลบบัญชี paid และ financial evidence หลังแก้เวลาเกิดธุรกรรม/คืนเงินพร้อมกัน; รายการที่ยังต้องใช้ข้อมูลหรือบัญชีเจ้าของอยู่ด้านล่าง
 
 หลักฐานรอบนี้อยู่ใน [qa-evidence/2026-09-08/followup](qa-evidence/2026-09-08/followup/) รวม log และ HTTP probe results ส่วนการเผยแพร่เว็บผ่าน [workflow deploy](https://github.com/Tasachii/solo-tutor/actions/workflows/deploy.yml); ใช้สถานะ Actions ของรุ่นล่าสุดเป็นหลักฐาน ไม่เอาผล local มาแทนผล deploy

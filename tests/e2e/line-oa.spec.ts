@@ -180,7 +180,7 @@ test('เชื่อม OA ล้าง credentials สร้างรหัส
   await page.getByRole('button', { name: 'ตรวจสถานะอีกครั้ง' }).click()
   await expect(parent).toContainText('เชื่อมแล้ว')
   const screenshot = (page.viewportSize()?.width ?? 1280) < 700 ? 'line-settings-mobile.png' : 'line-settings.png'
-  await page.screenshot({ path: `/Users/tasachi/Documents/solo-tutor-qa-20260907/${screenshot}`, fullPage: true })
+  await test.info().attach(screenshot, { body: await page.screenshot({ fullPage: true }), contentType: 'image/png' })
 
   await page.goto('#/app/admin')
   const card = page.locator('.msg').filter({ hasText: messageText })

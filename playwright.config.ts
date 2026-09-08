@@ -25,9 +25,13 @@ export default defineConfig({
       ? [{ name: 'webkit', use: { ...devices['iPhone 13'] } }] : []),
   ],
   webServer: {
-    // Never let the default suite inherit a real project from .env.local.
-    // The separate mock command supplies its own intercepted API configuration.
-    env: process.env.SOLO_LINE_QA === '1' ? undefined : {
+    // Neither invocation may inherit a real project from .env.local.
+    // Direct Playwright commands get the same synthetic settings as e2e:mock.
+    env: process.env.SOLO_LINE_QA === '1' ? {
+      VITE_SUPABASE_URL: 'https://line-qa.supabase.co', VITE_SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_qa',
+      VITE_SUPABASE_ANON_KEY: '', VITE_SUPPORT_CONTACT: 'https://support.solo-tutor.test',
+      VITE_PROVIDER_LEGAL_NAME: 'Solo Tutor QA (ข้อมูลสมมติ)', VITE_SOLO_PROMPTPAY: '0812345678',
+    } : {
       VITE_SUPABASE_URL: '', VITE_SUPABASE_PUBLISHABLE_KEY: '', VITE_SUPABASE_ANON_KEY: '',
       VITE_SUPPORT_CONTACT: '', VITE_PROVIDER_LEGAL_NAME: '', VITE_SOLO_PROMPTPAY: '',
     },
