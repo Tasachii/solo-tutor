@@ -1,27 +1,28 @@
-import { lazy, Suspense, useEffect, useRef } from 'react'
+import { Suspense, useEffect, useRef } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { useStore } from './core/store'
+import { lazyRoute } from './core/lazyRoute'
 import { sendUsage } from './core/usage'
 
 import Landing from './platform/Landing'
 import { CloudSyncProvider } from './app/CloudSync'
 
-const Pricing = lazy(() => import('./platform/Pricing'))
-const StylePicker = lazy(() => import('./platform/StylePicker'))
-const Legal = lazy(() => import('./platform/Legal'))
-const AppShell = lazy(() => import('./app/AppShell'))
-const Today = lazy(() => import('./app/Today'))
-const Subjects = lazy(() => import('./app/Subjects'))
-const SubjectDetail = lazy(() => import('./app/SubjectDetail'))
-const Billing = lazy(() => import('./app/Billing'))
-const Admin = lazy(() => import('./app/Admin'))
-const ReceiptList = lazy(() => import('./app/ReceiptList'))
-const Onboarding = lazy(() => import('./app/Onboarding'))
-const Receipt = lazy(() => import('./app/Receipt'))
-const ClientPreview = lazy(() => import('./app/ClientPreview'))
-const LineSettings = lazy(() => import('./app/LineSettings'))
-const Account = lazy(() => import('./app/Account'))
-const Help = lazy(() => import('./app/Help'))
+const Pricing = lazyRoute(() => import('./platform/Pricing'))
+const StylePicker = lazyRoute(() => import('./platform/StylePicker'))
+const Legal = lazyRoute(() => import('./platform/Legal'))
+const AppShell = lazyRoute(() => import('./app/AppShell'))
+const Today = lazyRoute(() => import('./app/Today'))
+const Subjects = lazyRoute(() => import('./app/Subjects'))
+const SubjectDetail = lazyRoute(() => import('./app/SubjectDetail'))
+const Billing = lazyRoute(() => import('./app/Billing'))
+const Admin = lazyRoute(() => import('./app/Admin'))
+const ReceiptList = lazyRoute(() => import('./app/ReceiptList'))
+const Onboarding = lazyRoute(() => import('./app/Onboarding'))
+const Receipt = lazyRoute(() => import('./app/Receipt'))
+const ClientPreview = lazyRoute(() => import('./app/ClientPreview'))
+const LineSettings = lazyRoute(() => import('./app/LineSettings'))
+const Account = lazyRoute(() => import('./app/Account'))
+const Help = lazyRoute(() => import('./app/Help'))
 
 function RouteLoading() {
   return <main className="pane" role="status" aria-live="polite" aria-busy="true">
