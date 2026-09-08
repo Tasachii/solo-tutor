@@ -1,5 +1,7 @@
 import { useState } from 'react'
-import { Link, Navigate } from 'react-router-dom'
+import { Link, Navigate, useLocation } from 'react-router-dom'
+import { useStore } from '../core/store'
+import { shouldEnterApp } from '../core/entry'
 import { professions } from '../professions'
 import { copy } from '../copy'
 import { DemoBadge, Icon, Mascot, PenguinMark } from '../app/components'
@@ -15,8 +17,12 @@ import { isStandalone } from '../core/present'
  */
 export default function Landing() {
   const [lead, setLead] = useState<string | null>(null)
-  // ครูที่ติดตั้งเป็นแอปแล้วไม่ควรเจอหน้าขายทุกเช้า — เข้าหน้าวันนี้ตรง ๆ (สลับผ่านเมนู "มุมมอง" ได้เสมอ)
-  if (isStandalone()) return <Navigate to="/app/today" replace />
+  const { state } = useStore()
+  const loc = useLocation()
+  // ครูที่ติดตั้งเป็นแอปแล้ว หรือใช้จริงอยู่แล้ว ไม่ควรเจอหน้าขายทุกเช้า — เข้าหน้าวันนี้ตรง ๆ (?stay=1 = ขอดูหน้าแรก)
+  if (shouldEnterApp({ standalone: isStandalone(), mode: state.mode, onboarded: state.onboarded, hasSubjects: state.subjects.length > 0, search: loc.search })) {
+    return <Navigate to="/app/today" replace />
+  }
   const soon = professions.filter((p) => p.status !== 'live')
   const h = copy.landing.hero
   // การ์ดตัวอย่างเดินตามปฏิทินเหมือนตัวแอป ไม่งั้นหน้าแรกจะโชว์วันของปีที่แล้ว
@@ -32,7 +38,8 @@ export default function Landing() {
       <header className="land__hero">
         <div className="land__bar">
           <b className="land__brand"><PenguinMark size={34} />{copy.brand.name}</b>
-          <span className="land__tools"><DemoBadge /><ThemeToggle /><AppearanceButton /></span>
+          <span className="land__tools"><DemoBadge /><ThemeToggle /><AppearanceButton />
+            <Link className="btn btn--ghost btn--sm land__signin" to="/login">{copy.landing.signIn}</Link></span>
         </div>
         <div>
           <p className="land__money"><Icon name="shield" size={16} />{copy.landing.moneyLine}</p>

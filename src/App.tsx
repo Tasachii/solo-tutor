@@ -10,6 +10,7 @@ import { CloudSyncProvider } from './app/CloudSync'
 const Pricing = lazyRoute(() => import('./platform/Pricing'))
 const StylePicker = lazyRoute(() => import('./platform/StylePicker'))
 const Legal = lazyRoute(() => import('./platform/Legal'))
+const Login = lazyRoute(() => import('./platform/Login'))
 const AppShell = lazyRoute(() => import('./app/AppShell'))
 const Today = lazyRoute(() => import('./app/Today'))
 const Subjects = lazyRoute(() => import('./app/Subjects'))
@@ -54,6 +55,8 @@ export default function App() {
         <Route path="/privacy" element={<Legal kind="privacy" />} />
         <Route path="/terms" element={<Legal kind="terms" />} />
         <Route path="/start" element={<StylePicker />} />
+        {/* ห่อ CloudSyncProvider เพื่อรอผลดึงข้อมูลจากคลาวด์ก่อนพาเข้าแอป */}
+        <Route path="/login" element={<CloudSyncProvider><Login /></CloudSyncProvider>} />
         <Route path="/receipt/:id" element={<Receipt />} />
         <Route path="/client/:clientId" element={<ClientPreview />} />
         <Route path="/app" element={<CloudSyncProvider><AppShell /></CloudSyncProvider>}>

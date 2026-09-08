@@ -110,3 +110,12 @@
 | G-04 | **การบ้าน** ledger (`AppState.homework` optional) มอบหมายหลายคน/กำหนดส่ง/ได้รับแล้ว/ลบ + ข้อความ `homework` | `src/core/homework.ts` · `AdminHomework.tsx` · unit `homework-ledger.test.ts` · validation ผูกกับนักเรียน/ผู้จ่าย | ไฟล์เก่าไม่มี homework เปิดได้ · backup/cloud sync รวม homework · ลบนักเรียนล้างการบ้าน | ผ่าน local/mock | Solo-Master §5/§17 จัดเป็นฟีเจอร์นอกแกน "ออกบิลและจัดการเงิน" — เจ้าของขอเพิ่ม 8 ก.ย.; แนะนำไม่ใส่ในเรื่องเล่าหลักบนเวที |
 | G-05 | **ทวงการบ้าน** (`homework_reminder`) derive เมื่อเลยกำหนด ถอนเมื่อได้รับแล้ว ทวงซ้ำด้วยมือวันละใบ template ทุกอาชีพ | `deriveDrafts`/`stillStands` ใน `messages.ts` · template `homeworkAssign`/`homeworkReminder` | ไม่มีคำต้องห้าม/ตัวแปรค้าง · จำนวนวันสะกิดตามวัน · นักเรียนหยุดเรียนไม่ถูกทวง | ผ่าน local/mock | |
 | G-06 | ชุดเดโม default มีการบ้าน 2 รายการโดยไม่เพิ่มร่าง (badge ยัง 3) | `scenarios.ts` · e2e demo-flow ผ่าน | เทสเดิมทุกตัวยังผ่าน | ผ่าน local/mock | |
+
+## H. หน้าแรก: เดโมก่อน + เข้าสู่ระบบ/สมัคร เป็นประตูที่สอง (เพิ่ม 8 ก.ย. ค่ำ ตามคำขอเจ้าของ)
+
+| ID | งาน | หลักฐาน / ไฟล์ | เกณฑ์ผ่าน | สถานะ | ผล/ข้อค้าง |
+|---|---|---|---|---|---|
+| H-01 | ลิงก์ **เข้าสู่ระบบ** บนแถบบนหน้าแรก · hero ยังมีทางเข้าเดียวคือเดโม | `Landing.tsx` · e2e `login.spec.ts` (เทส 1) + `demo-flow.spec.ts` เดิม | ไม่มีฟอร์มขวางเดโม · privacy copy "ไม่ต้องสมัคร" ไม่เปลี่ยน | ผ่าน local/mock | ตาม Solo-Master §11: signup ไม่ใช่ yes ที่นับ — ไม่เล่าเป็นผู้ใช้จริงบนเวที |
+| H-02 | หน้า `/login` สมัคร/เข้าสู่ระบบ → เริ่มโหมดจริง → รอผลคลาวด์ก่อนเข้าแอป (synced→today · conflict/locked→บัญชีครู · error→ปุ่มเข้าแอป) | `platform/Login.tsx` · `AuthForm` (`initialMode`) · route ห่อ `CloudSyncProvider` | ครูเปลี่ยนเครื่องได้ข้อมูลเดิม ไม่ผ่าน onboarding และไม่ push ทับคลาวด์ · ครูใหม่ไป onboarding โดยไม่มีข้อมูลเดโมหลุด | ผ่าน local/mock | **Supabase Auth "Confirm email" ต้องปิด** ไม่งั้นสมัครแล้วไม่ได้ session (รอเจ้าของตรวจใน Dashboard) |
+| H-03 | Onboarding กันกรอกทับข้อมูลที่กำลังดึงจากคลาวด์ (ปิดปุ่มระหว่าง syncing · เด้ง today เมื่อ pull เสร็จ) | `Onboarding.tsx` (`cloudPulling`) | เทส H-02 ผ่านโดยไม่เห็น onboarding | ผ่าน local/mock | |
+| H-04 | ครูโหมดจริงที่ onboarded แล้วเปิด `/` → `/app/today` · `?stay=1` ดูหน้าขาย · ลิงก์กลับหน้าแรกทุกหน้าใช้ `?stay=1` | `core/entry.ts` · unit `entry.test.ts` · e2e `login.spec.ts` (เทส 2) · `pwa.spec.ts` เดิม | เดโมไม่ถูกเด้ง · standalone เหมือนเดิม | ผ่าน local/mock | |

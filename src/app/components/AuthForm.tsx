@@ -2,16 +2,18 @@ import { useState, type FormEvent } from 'react'
 import { signIn, signUp, SupabaseRestError, type SupabaseSession } from '../../integrations/supabaseRest'
 import { rememberKeyFromPassword } from '../../core/cloudKey'
 
+export type AuthMode = 'signin' | 'signup'
+
 /**
- * ฟอร์มเดียวใช้ทั้งสมัครและเข้าสู่ระบบ — หน้าเชื่อม LINE และหน้าบัญชีครูใช้ร่วมกัน
+ * ฟอร์มเดียวใช้ทั้งสมัครและเข้าสู่ระบบ — หน้าเชื่อม LINE หน้าบัญชีครู และหน้า /login ใช้ร่วมกัน
  * รหัสผ่านถูกใช้สองอย่างก่อนถูกล้าง: ส่งให้ Supabase และสร้างกุญแจเข้ารหัสสมุดบัญชีบนเครื่องนี้
  */
-export function AuthForm({ onSession, hint }: { onSession: (session: SupabaseSession) => void; hint?: string }) {
+export function AuthForm({ onSession, hint, initialMode = 'signin' }: { onSession: (session: SupabaseSession) => void; hint?: string; initialMode?: AuthMode }) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [busy, setBusy] = useState(false)
   const [notice, setNotice] = useState('')
-  const [mode, setMode] = useState<'signin' | 'signup'>('signin')
+  const [mode, setMode] = useState<AuthMode>(initialMode)
 
   const submit = (e: FormEvent) => {
     e.preventDefault()

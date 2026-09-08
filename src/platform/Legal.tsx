@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import { copy } from '../copy'
+import { LANDING_STAY_HREF } from '../core/entry'
 import { DemoBadge, PenguinMark } from '../app/components'
 import { AppearanceButton, ThemeToggle } from './ThemeToggle'
 import { PROVIDER_LEGAL_NAME, SUPPORT_CONTACT } from './config'
@@ -12,7 +13,7 @@ export default function Legal({ kind }: { kind: 'privacy' | 'terms' }) {
     <div className="land">
       <header className="land__hero land__hero--sm">
         <div className="land__bar">
-          <Link className="backlink" to="/">‹ <PenguinMark size={28} />{copy.brand.name}</Link>
+          <Link className="backlink" to={LANDING_STAY_HREF}>‹ <PenguinMark size={28} />{copy.brand.name}</Link>
           <span className="land__tools"><DemoBadge /><ThemeToggle /><AppearanceButton /></span>
         </div>
         <h1 className="land__h1">{kind === 'privacy' ? l.privacyTitle : l.termsTitle}</h1>
@@ -38,7 +39,7 @@ export default function Legal({ kind }: { kind: 'privacy' | 'terms' }) {
         </p>
       </section>
       <footer className="land__foot">
-        <Link to="/">{copy.brand.name}</Link>
+        <Link to={LANDING_STAY_HREF}>{copy.brand.name}</Link>
         <span>{copy.landing.footerTeam}</span>
       </footer>
     </div>

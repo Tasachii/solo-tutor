@@ -616,6 +616,9 @@ body:has(.land){background:radial-gradient(45% 45% at 8% 0%,var(--glow-a),transp
 
 /* ปุ่มสลับธีมบนหน้าที่ไม่มีเมนู */
 .land__tools{display:inline-flex;align-items:center;gap:var(--space-2)}
+.land__signin{white-space:nowrap}
+.login__pane{max-width:560px;margin:0 auto}
+.login__pane .card{margin-bottom:var(--space-3)}
 .themetoggle{display:inline-grid;place-items:center;width:var(--tap-sm);height:var(--tap-sm);border-radius:999px;
   border:1px solid var(--line);background:var(--surface);color:var(--ink);box-shadow:var(--shadow)}
 .themetoggle:hover{border-color:var(--brand);color:var(--brand)}

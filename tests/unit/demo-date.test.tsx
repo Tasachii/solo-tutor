@@ -105,7 +105,8 @@ describe('เดโมที่ค้างในเครื่อง', () => {
 describe('การ์ดตัวอย่างบนหน้าแรก', () => {
   const renderLanding = async () => {
     const { default: Landing } = await import('../../src/platform/Landing')
-    render(<MemoryRouter><Landing /></MemoryRouter>)
+    const { StoreProvider } = await import('../../src/core/store')
+    render(<StoreProvider><MemoryRouter><Landing /></MemoryRouter></StoreProvider>)
     return document.body.innerText || document.body.textContent || ''
   }
 

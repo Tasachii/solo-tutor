@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useStore } from '../core/store'
 import { professionById, fillVocab } from '../professions'
@@ -11,6 +11,7 @@ import { parseMoneyInput } from './SubjectSheet'
 import { readPlanInfo, studentCapIssue, type CapIssue } from '../core/plan'
 import { PlanSheet } from './PlanSheet'
 import { readPlanIntent, validPaidPlanMonths } from '../platform/plans'
+import { useCloudSync } from './CloudSync'
 
 interface Row { name: string; clientName: string; lineId?: string; error?: string }
 
@@ -27,10 +28,21 @@ export function parseRoster(text: string): Row[] {
 
 export default function Onboarding() {
   const { state, dispatch, resetDemo, track } = useStore()
+  const cloud = useCloudSync()
   const prof = professionById(state.professionId)
   const v = prof.vocab
   const nav = useNavigate()
   const loc = useLocation()
+  // ครูที่เข้าสู่ระบบบนเครื่องใหม่: ระหว่างคลาวด์กำลังดึงข้อมูล ห้ามให้กรอกทับ และเมื่อดึงเสร็จแล้วมีข้อมูล → เข้าแอปเลย
+  const pulling = cloud.status === 'syncing'
+  const wasPulling = useRef(false)
+  useEffect(() => {
+    if (pulling) { wasPulling.current = true; return }
+    if (wasPulling.current && cloud.status === 'synced' && state.onboarded && state.subjects.length > 0) {
+      nav('/app/today', { replace: true })
+    }
+    if (cloud.status !== 'syncing') wasPulling.current = false
+  }, [pulling, cloud.status, state.onboarded, state.subjects.length, nav])
   const [step, setStep] = useState(1)
   const [name, setName] = useState(state.provider.name)
   const [pp, setPp] = useState(state.provider.promptpayId)
@@ -110,7 +122,8 @@ export default function Onboarding() {
               ? <span id="promptpay-error" className="fld__err">ใส่เบอร์มือถือไทย 10 หลัก หรือเลขบัตรประชาชน 13 หลักที่ถูกต้อง</span>
               : <span id="promptpay-hint" className="hint">{copy.onboarding.promptpayHint}</span>}
           </label>
-          <button className="btn btn--primary btn--block" disabled={!name.trim() || !particle} onClick={() => {
+          {pulling && <p className="hint" role="status" data-testid="onboarding-pulling">{copy.onboarding.cloudPulling}</p>}
+          <button className="btn btn--primary btn--block" disabled={!name.trim() || !particle || pulling} onClick={() => {
             if (!promptpayOk) { setPromptpayError(true); return }
             setStep(2)
           }}>{copy.onboarding.next}</button>
@@ -195,7 +208,7 @@ export default function Onboarding() {
 
           {!priceOk && <span className="hint hint--bad" role="alert">{copy.common.numberPositive}</span>}
           {badCount > 0 && <p className="warnbar" role="alert">มี {badCount} แถวข้อมูลไม่ครบ ระบบจะไม่นำเข้าแถวเหล่านี้ กดอีกครั้งเพื่อยืนยัน</p>}
-          <button className="btn btn--primary btn--block" disabled={good.length === 0 || !priceOk || !promptpayOk} onClick={finish}>
+          <button className="btn btn--primary btn--block" disabled={good.length === 0 || !priceOk || !promptpayOk || pulling} onClick={finish}>
             {confirmBadRows && badCount > 0 ? `ยืนยันข้าม ${badCount} แถว` : copy.onboarding.finish} ({good.length})
           </button>
           {/* ครูที่ไม่มีลิสต์อยู่ในมือ ต้องออกไปเพิ่มทีละคนได้ ไม่ใช่ถูกขังหรือถูกพากลับเดโม */}

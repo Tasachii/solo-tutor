@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { copy } from '../copy'
+import { LANDING_STAY_HREF } from '../core/entry'
 import { money } from '../core/format'
 import { DemoBadge, PenguinMark } from '../app/components'
 import { MONTHS, PRICES } from './plans'
@@ -29,7 +30,7 @@ export default function Pricing() {
     <div className="land">
       <header className="land__hero land__hero--sm">
         <div className="land__bar">
-          <Link className="backlink" to="/">‹ <PenguinMark size={28} />{copy.brand.name}</Link>
+          <Link className="backlink" to={LANDING_STAY_HREF}>‹ <PenguinMark size={28} />{copy.brand.name}</Link>
           <span className="land__tools"><DemoBadge /><ThemeToggle /><AppearanceButton /></span>
         </div>
         <h1 className="land__h1">{copy.pricing.title}</h1>
@@ -91,7 +92,7 @@ export default function Pricing() {
       </section>
 
       <footer className="land__foot">
-        <Link to="/">{copy.brand.name}</Link>
+        <Link to={LANDING_STAY_HREF}>{copy.brand.name}</Link>
         <span>{copy.landing.footerTeam}</span>
         <Link to="/privacy">{copy.legal.footerPrivacy}</Link>
         <Link to="/terms">{copy.legal.footerTerms}</Link>

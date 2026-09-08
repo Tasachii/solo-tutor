@@ -2,6 +2,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useStore } from '../core/store'
 import { professionById, fillVocab } from '../professions'
 import { copy } from '../copy'
+import { LANDING_STAY_HREF } from '../core/entry'
 import { STYLES, scenarioForStyle } from '../core/style'
 import type { WorkStyle } from '../core/types'
 import { DemoBadge, PenguinMark } from '../app/components'
@@ -34,7 +35,7 @@ export default function StylePicker() {
     <div className="land start">
       <header className="land__hero land__hero--sm">
         <div className="land__bar">
-          <Link className="land__brand" to="/">‹ <PenguinMark size={28} />{copy.brand.name}</Link>
+          <Link className="land__brand" to={LANDING_STAY_HREF}>‹ <PenguinMark size={28} />{copy.brand.name}</Link>
           <span className="land__tools">{!real && <DemoBadge />}<ThemeToggle /><AppearanceButton /></span>
         </div>
         <h1 className="land__h1">{copy.start.title}</h1>
