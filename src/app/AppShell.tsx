@@ -27,7 +27,7 @@ import { readPlanIntent } from '../platform/plans'
 type MenuTab = 'general' | 'display' | 'demo'
 
 export default function AppShell() {
-  const { state, dispatch, resetDemo, track, didReset } = useStore()
+  const { state, dispatch, resetDemo, backToDemo, track, didReset, writeStatus } = useStore()
   const prof = professionById(state.professionId)
   const nav = useNavigate()
   const loc = useLocation()
@@ -50,7 +50,7 @@ export default function AppShell() {
     return () => document.removeEventListener('fullscreenchange', sync)
   }, [])
   // ask = สิ่งที่กำลังถามยืนยันอยู่ (แทน window.confirm ที่ใช้ไม่ได้บน PWA)
-  const [ask, setAsk] = useState<null | 'toDemo' | 'toReal' | { restore: AppState; cross: boolean }>(null)
+  const [ask, setAsk] = useState<null | 'toDemo' | 'toReal' | 'resetDemo' | { restore: AppState; cross: boolean }>(null)
   const real = state.mode === 'real'
   const toast = useToast()
   const drafts = draftCount(state)
@@ -127,7 +127,8 @@ export default function AppShell() {
   if (didReset) return <StorageStatus />
 
   return (
-    <div className="shell">
+    // สลับ workspace ต้องรอสิทธิ์เขียนของช่องใหม่ — ประกาศสถานะไว้บนราก เพื่อให้ทั้ง CSS และเทสรู้ว่าตอนนี้บันทึกได้หรือยัง
+    <div className="shell" data-write-status={writeStatus}>
       <header className="shell__hd">
         <b className="shell__brand"><PenguinMark size={28} />{copy.brand.name}</b>
         {/* ครูต้องรู้ตลอดว่ากำลังแตะข้อมูลจริงหรือข้อมูลสมมติ */}
@@ -137,6 +138,10 @@ export default function AppShell() {
           <button className="shell__menu" onClick={() => setMenu(true)} aria-label={copy.menu.title}>⋯</button>
         </div>
       </header>
+
+      {/* สลับ workspace ต้องขอสิทธิ์เขียนของช่องใหม่ก่อน ระหว่างนั้นแท็บบันทึกไม่ได้
+          ปุ่มที่กดแล้วเงียบแย่กว่าบั๊กเดิม — บอกสถานะและทางออกไว้เหนือเนื้อหาเสมอ */}
+      <StorageStatus />
 
       <main className="shell__main"><Outlet /></main>
 
@@ -162,6 +167,8 @@ export default function AppShell() {
 
           {menuTab === 'general' && (
             <>
+              {/* ครูต้องอ่านออกจากเมนูได้ว่ากำลังแตะช่องไหน และอีกช่องยังอยู่ครบ */}
+              <p className="hint menu__ws">{real ? copy.menu.workspaceReal : copy.menu.workspaceDemo}</p>
               <div className="rows rows--menu">
                 {real ? (
                   <>
@@ -201,7 +208,7 @@ export default function AppShell() {
                 <button className="row" onClick={() => { setMenu(false); nav('/app/settings/line') }}>เชื่อม LINE OA</button>
                 <button className="row" onClick={() => { setMenu(false); setSheetsOpen(true) }}>{copy.sheets.menu}</button>
                 <button className="row" onClick={() => { setMenu(false); nav('/app/help') }}>{copy.help.menu}</button>
-                {!real && <button className="row" onClick={() => { resetDemo(); setMenu(false) }}>{copy.menu.reset}</button>}
+                {!real && <button className="row" onClick={() => { setMenu(false); setAsk('resetDemo') }}>{copy.menu.reset}</button>}
               </div>
             </>
           )}
@@ -300,12 +307,23 @@ export default function AppShell() {
 
       {ask === 'toDemo' && (
         <ConfirmSheet title={copy.menu.backToDemo} body={copy.menu.backToDemoConfirm}
-          confirmLabel={copy.menu.backToDemo} danger
+          confirmLabel={copy.menu.backToDemo}
           onClose={() => setAsk(null)}
-          onConfirm={async () => {
-            // ต้องได้ไฟล์สำรองก่อน ไม่งั้นข้อมูลเดือนหนึ่งหายโดยไม่มีทางกู้
-            if (!(await saveBackup(state))) { toast.push({ text: copy.menu.backupFailed, tone: 'danger' }); return false }
-            if (!resetDemo('default')) return false
+          onConfirm={() => {
+            // สลับช่อง ไม่ใช่ลบ — สมุดบัญชีจริงยังอยู่ในช่องของมัน จึงไม่ต้องบังคับดาวน์โหลดไฟล์ก่อน
+            if (!backToDemo()) return false
+            track('back_to_demo')
+            setMenu(false); nav('/app/today')
+            return true
+          }} />
+      )}
+      {ask === 'resetDemo' && (
+        <ConfirmSheet title={copy.menu.reset} body={`${copy.menu.resetConfirm} — ${copy.menu.resetScope}`}
+          confirmLabel={copy.menu.reset}
+          onClose={() => setAsk(null)}
+          onConfirm={() => {
+            if (!resetDemo()) return false
+            track('demo_reset')
             setMenu(false); nav('/app/today')
             return true
           }} />
@@ -317,8 +335,9 @@ export default function AppShell() {
           onConfirm={() => {
             if (!dispatch({ type: 'startReal' })) return false
             track('start_real')
-            const requestedPlan = readPlanIntent()
-            setMenu(false); nav(`/app/onboarding${requestedPlan ? `?plan=${requestedPlan}` : ''}`)
+            // ครูที่เคยใช้จริงมาก่อนต้องกลับไปเจอสมุดบัญชีเดิม ไม่ใช่ onboarding ของบัญชีเปล่า
+            // ตัวเปลี่ยนเส้นทางด้านบนพาไป onboarding เองเมื่อ workspace ยังว่าง และพา ?plan ไปด้วย
+            setMenu(false); nav('/app/today')
             return true
           }} />
       )}

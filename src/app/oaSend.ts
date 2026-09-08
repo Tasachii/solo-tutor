@@ -3,6 +3,7 @@ import type { Action } from '../core/store'
 import { messageSendIssue } from '../core/messageDelivery'
 import { getSession, getSupabaseConfig } from '../integrations/supabaseRest'
 import { deliverOa, deliveryTarget, findDelivery, type OutboxRow } from '../integrations/lineApi'
+import { publishBlocks, secureDraft, type PublishSkip } from '../core/documentPublish'
 
 /**
  * ส่งข้อความหนึ่งใบผ่าน LINE OA — ใช้ร่วมกันระหว่างปุ่มบนการ์ดข้อความและการส่งเป็นชุดจากแท็บค้างจ่าย/การบ้าน
@@ -17,7 +18,7 @@ export type OaSendOutcome =
   | { status: 'sent' }
   | { status: 'pending'; notice: string }
   | { status: 'review'; notice: string; outboxId?: string }
-  | { status: 'blocked'; reason: 'no-session' | 'wrong-account' | 'no-workspace' | 'cancelled' | 'issue' | 'not-linked' | 'storage' | 'network'; notice: string }
+  | { status: 'blocked'; reason: 'no-session' | 'wrong-account' | 'no-workspace' | 'cancelled' | 'issue' | 'not-linked' | 'storage' | 'network' | 'publish'; notice: string }
 
 export const NOTICE = {
   noSession: 'กรุณาเข้าสู่ระบบที่หน้าตั้งค่า LINE OA ก่อน',
@@ -27,12 +28,20 @@ export const NOTICE = {
   notLinked: 'ยังส่งผ่าน OA ให้ผู้ปกครองนี้ไม่ได้ ตรวจการเชื่อมบัญชีและรหัสผู้ปกครอง หรือใช้ปุ่มเปิด LINE',
   storage: 'บันทึกรายการส่งไม่สำเร็จ จึงยังไม่ได้ส่งผ่าน OA',
   network: 'ติดต่อระบบ OA ไม่สำเร็จ หากรายการเริ่มส่งแล้วให้กดตรวจสอบอีกครั้ง ห้ามส่งข้อความเดิมซ้ำ',
+  publishFailed: 'สร้างลิงก์ที่ปิดได้ไม่สำเร็จ ยังไม่ได้ส่ง กรุณาลองอีกครั้ง',
+  publishSignedOut: 'ยังไม่ได้เข้าสู่ระบบบัญชีครู จึงยังออกลิงก์ที่ปิดได้ไม่ได้ ยังไม่ได้ส่ง',
+  publishStale: 'ลิงก์ในข้อความนี้ถูกปิดไปแล้ว ยังไม่ได้ส่ง กรุณาสร้างร่างจากยอดล่าสุดก่อน',
+  publishStoreFailed: 'บันทึกลิงก์ใหม่ลงข้อความไม่สำเร็จ จึงยังไม่ได้ส่ง',
   sentButLocal: 'LINE รับข้อความแล้ว แต่บันทึกในเครื่องไม่สำเร็จ กดตรวจสอบอีกครั้ง ห้ามส่งซ้ำ',
   review: 'รายการนี้ต้องตรวจสอบในระบบ OA ก่อนส่งซ้ำ ติดต่อผู้ดูแลพร้อมรหัสข้อความ ',
   pending: 'ยังยืนยันผลส่งไม่ได้ กดตรวจสอบอีกครั้ง ระบบจะใช้รายการเดิมเพื่อป้องกันการส่งซ้ำ',
 } as const
 
 /** ปุ่ม OA มีความหมายเฉพาะโหมดจริงที่ผูกโปรเจกต์แล้ว (หรือมีรายการค้างตรวจอยู่) */
+const publishNotice = (skipped: PublishSkip | null): string =>
+  skipped === 'signed-out' ? NOTICE.publishSignedOut
+    : skipped === 'stale' ? NOTICE.publishStale : NOTICE.publishFailed
+
 export const oaAvailable = (state: AppState, message?: Message): boolean =>
   state.mode === 'real' && (!!getSupabaseConfig() || !!message?.oaDelivery)
 
@@ -76,10 +85,26 @@ export async function sendMessageViaOa(
       if (!previous && (!target?.recipient_id || !target.eligible)) {
         return { status: 'blocked', reason: 'not-linked', notice: NOTICE.notLinked }
       }
+      // ส่งซ้ำต้องใช้ข้อความเดิมที่แช่ไว้ ไม่งั้นตัวกันส่งซ้ำจะมองว่าเป็นคนละใบ
+      let body = previous?.body
+      if (body === undefined) {
+        const secured = await secureDraft(state, message.draft)
+        if (publishBlocks(secured.skipped)) {
+          // ลิงก์เดิมถูกปิดไปแล้ว — ล้างธงแก้เองให้ refreshDrafts เขียนร่างใหม่พร้อมลิงก์ใหม่
+          if (secured.skipped === 'stale') dispatch({ type: 'refreshMessage', id: message.id })
+          return { status: 'blocked', reason: 'publish', notice: publishNotice(secured.skipped) }
+        }
+        body = secured.draft
+        // oaStart รับเฉพาะคิวที่ body ตรงกับร่างที่เก็บไว้ · ลิงก์ใหม่จึงต้องลงร่างก่อน ไม่ใช่แนบไปเฉย ๆ
+        // และนี่คือสิ่งที่ทำให้ข้อความที่เก็บไว้ตรงกับข้อความที่ผู้ปกครองได้รับจริง
+        if (body !== message.draft && !dispatch({ type: 'editMessage', id: message.id, draft: body })) {
+          return { status: 'blocked', reason: 'storage', notice: NOTICE.publishStoreFailed }
+        }
+      }
       intent = {
         providerId: session.user.id, workspaceId: state.lineWorkspaceId,
         recipientId: previous?.recipient_id ?? target!.recipient_id!, dedupeKey,
-        body: previous?.body ?? message.draft,
+        body,
       }
       // Nothing leaves this browser before the retry intent is stored successfully.
       if (!dispatch({ type: previous ? 'oaRecover' : 'oaStart', id: message.id, delivery: intent })) {

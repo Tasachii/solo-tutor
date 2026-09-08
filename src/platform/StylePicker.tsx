@@ -8,6 +8,7 @@ import type { WorkStyle } from '../core/types'
 import { DemoBadge, PenguinMark } from '../app/components'
 import { AppearanceButton, ThemeToggle } from './ThemeToggle'
 import { rememberPlanIntent, validPaidPlanMonths } from './plans'
+import { currentSessionId, sendUsage } from '../core/usage'
 
 /**
  * หน้าแรกก่อนเข้าใช้ — เลือกว่าเก็บเงินแบบไหน แตะเดียวเข้าแอป
@@ -28,6 +29,8 @@ export default function StylePicker() {
     else resetDemo(scenarioForStyle[style])
     rememberPlanIntent(paidPlan)
     track(`style_${style}`)
+    // เริ่มลอง Demo = กดเลือกวิธีเก็บเงินแล้วเข้าแอปด้วยข้อมูลตัวอย่าง หนึ่งครั้งต่อ session
+    if (!real) sendUsage('demo_started', 1, { mode: 'demo', route: 'start', key: `demo_started:${currentSessionId()}` })
     nav(real && paidPlan ? `/app/settings/account?plan=${paidPlan}` : '/app/today')
   }
 

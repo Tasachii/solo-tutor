@@ -196,7 +196,8 @@ test('สำรองข้อมูลแล้วได้ไฟล์ที�
     page.waitForEvent('download'),
     page.locator('.sheet .row').filter({ hasText: 'สำรองข้อมูล' }).click(),
   ])
-  expect(dl.suggestedFilename()).toMatch(/^solo-backup-\d{4}-\d{2}-\d{2}\.json$/)
+  // ชื่อไฟล์บอกช่องที่มา — ไฟล์ตัวอย่างต้องไม่ถูกเข้าใจผิดว่าเป็นสมุดบัญชีจริง
+  expect(dl.suggestedFilename()).toMatch(/^solo-demo-backup-\d{4}-\d{2}-\d{2}\.json$/)
 
   const stream = await dl.createReadStream()
   const text = await new Promise<string>((resolve) => {

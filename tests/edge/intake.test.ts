@@ -37,19 +37,16 @@ Deno.test('error report clips every field and never accepts unknown ones', () =>
 
 import { mirrorUsage, normalizeUsage, validUsageSheetsUrl } from '../../supabase/functions/usage/index.ts'
 
-Deno.test('usage accepts only the four agreed events with a uuid and a bounded count', () => {
+// The full v2 payload contract lives in tests/edge/usage.test.ts. This file keeps the
+// checks that guard what may leave the project: a v1-shaped body is simply refused.
+Deno.test('a body without the v2 identity fields is refused outright', () => {
   const id = '3fef1b5f-0dfd-4beb-8f4c-c779c07a2670'
-  equal(normalizeUsage({ teacher_id: id, event: 'invoice_issued', count: 3, mode: 'real', student: 'น้องปลา' }),
-    { teacher_id: id, event: 'invoice_issued', count: 3, mode: 'real' })
+  equal(normalizeUsage({ teacher_id: id, event: 'invoice_issued', count: 3, mode: 'real', student: 'น้องปลา' }), null)
   equal(normalizeUsage({ teacher_id: id, event: 'login', count: 1 }), null)
-  equal(normalizeUsage({ teacher_id: 'not-a-uuid', event: 'app_open', count: 1 }), null)
-  equal(normalizeUsage({ teacher_id: id, event: 'app_open', count: -1 }), null)
-  equal(normalizeUsage({ teacher_id: id, event: 'app_open', count: 1.5 }), null)
-  equal(normalizeUsage({ teacher_id: id, event: 'app_open', count: 1, mode: 'weird' })!.mode, null)
 })
 
 Deno.test('usage Sheet mirror sends only the agreed pseudonymous fields and is optional', async () => {
-  const row = { teacher_id: '3fef1b5f-0dfd-4beb-8f4c-c779c07a2670', event: 'payment_recorded', count: 2, mode: 'real' }
+  const row = { teacher_id: '3fef1b5f-0dfd-4beb-8f4c-c779c07a2670', event: 'payment_recorded', count: 2, mode: 'real' as const }
   let body: Record<string, unknown> | null = null
   const send = (_url: string | URL | Request, init?: RequestInit) => {
     body = JSON.parse(String(init?.body))

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, render, waitFor } from '@testing-library/react'
-import { StoreProvider, STORAGE_KEY, useStore } from '../../src/core/store'
+import { DEMO_SLOT_KEY as STORAGE_KEY, StoreProvider, useStore } from '../../src/core/store'
 import { buildScenario } from '../../src/core/scenarios'
 
 let store: ReturnType<typeof useStore>

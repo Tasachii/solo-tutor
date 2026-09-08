@@ -14,11 +14,15 @@ select
   count(*) filter (where p.plan = 'pro' and p.plan_until >= public.thai_today() and p.paused_at is null) as active_pro,
   count(*) filter (where exists (
     select 1 from public.usage_events u where u.provider_id = p.id and u.mode = 'real'
-      and u.event = 'app_open' and u.at >= now() - interval '30 days'
+      and u.event = 'app_open' and u.audience = 'public' and u.at >= now() - interval '30 days'
   )) as providers_opened_last_30_days,
   -- engagement only: "ever approved" includes legacy approvals, not verified cash
   count(*) filter (where exists (select 1 from public.plan_requests r where r.provider_id = p.id and r.status = 'approved')
     and exists (select 1 from public.usage_events u where u.provider_id = p.id and u.mode = 'real'
-      and u.event = 'app_open' and u.at >= now() - interval '30 days')) as ever_approved_unverified_and_opened_last_30_days
+      and u.event = 'app_open' and u.audience = 'public' and u.at >= now() - interval '30 days')) as ever_approved_unverified_and_opened_last_30_days
 from public.providers p;
+-- Acquisition and activation counts, with team/QA traffic kept off the public axis.
+select 'public' as audience, day, mode, visitors, sessions, landing_views, pricing_views,
+       demo_started, demo_completed, signup_started, onboarding_completed
+from public.usage_funnel_daily where audience = 'public' order by day desc;
 commit;

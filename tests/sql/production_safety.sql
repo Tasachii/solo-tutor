@@ -126,7 +126,8 @@ insert into public.usage_events(teacher_id, event, count, provider_id) values
    '10000000-0000-0000-0000-000000000001');
 do $$
 begin
-  if (select count(*) from public.usage_events where provider_id is null) <> 1
+  if (select count(*) from public.usage_events where provider_id is null
+        and teacher_id = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa') <> 1
      or (select count(*) from public.usage_events where provider_id =
        '10000000-0000-0000-0000-000000000001') <> 1 then
     raise exception 'usage provider attribution did not preserve anonymous and verified rows';

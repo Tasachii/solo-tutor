@@ -8,4 +8,5 @@ create function auth.uid() returns uuid language sql stable as $$
 $$;
 grant usage on schema auth to authenticated, service_role;
 grant execute on function auth.uid() to authenticated, service_role;
-grant service_role, authenticated to postgres;
+grant usage on schema auth to anon;
+grant service_role, authenticated, anon to postgres;

@@ -1,8 +1,9 @@
 import { Suspense, useEffect, useRef } from 'react'
-import { Navigate, Route, Routes } from 'react-router-dom'
+import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { useStore } from './core/store'
 import { lazyRoute } from './core/lazyRoute'
-import { sendUsage } from './core/usage'
+import { adoptAudience, currentSessionId, routeCategory, sendUsage } from './core/usage'
+import { countDemoSteps, demoLoopComplete, earnedSteps, type DemoLoopStep, type StepCounts } from './core/funnel'
 
 import Landing from './platform/Landing'
 import { CloudSyncProvider } from './app/CloudSync'
@@ -33,9 +34,45 @@ function RouteLoading() {
 
 export default function App() {
   const { state, track, ledgerReplacements } = useStore()
-  const initialMode = useRef(state.mode)
+  const loc = useLocation()
+  // หมวดหน้า ไม่ใช่ path จริง — /document/:token, /receipt/:id, /client/:id ได้ null คือไม่ส่งอะไรเลย
+  const route = routeCategory(loc.pathname)
+  const inApp = route === 'app'
 
-  useEffect(() => { track('app_open'); sendUsage('app_open', 1, initialMode.current) }, [track])
+  useEffect(() => { track('app_open') }, [track])
+
+  // แกน QA/ทีม: ?qa=1 ติดเครื่องไว้จนกว่าจะ ?qa=0 — Demo ของผู้สนใจยังนับเป็น acquisition ตามเดิม
+  useEffect(() => { adoptAudience(window.location.search); adoptAudience(loc.search) }, [loc.search])
+
+  // Pageview ผูกกับการเปลี่ยนหน้าใน history — re-render ที่ไม่เปลี่ยนหน้าไม่เข้าเงื่อนไขนี้
+  // และ key ของ history ทำให้ effect ที่รันซ้ำบนหน้าเดิมได้ event_id เดิม เซิร์ฟเวอร์จึงไม่นับซ้ำ
+  useEffect(() => {
+    if (route !== 'landing' && route !== 'pricing') return
+    const event = route === 'landing' ? 'landing_view' : 'pricing_view'
+    sendUsage(event, 1, { route, key: `view:${loc.key}:${route}` })
+  }, [route, loc.key])
+
+  // เปิดแอปจริง = เข้าพื้นที่ /app ไม่ใช่เปิดหน้าขาย — หนึ่งครั้งต่อ session ต่อโหมด
+  useEffect(() => {
+    if (!inApp) return
+    sendUsage('app_open', 1, { route: 'app', mode: state.mode, key: `app_open:${currentSessionId()}:${state.mode}` })
+  }, [inApp, state.mode])
+
+  // ครบลูป Demo = ผู้ใช้กดบันทึกคาบและปิดยอดออกบิลจริงในเครื่องนี้ ไม่ใช่มีรายการยาวขึ้น
+  const demo = useRef<{ counts: StepCounts; earned: DemoLoopStep[]; replacements: number } | null>(null)
+  useEffect(() => {
+    const counts = countDemoSteps(state.events)
+    const prev = demo.current
+    // ครั้งแรกและทุกครั้งที่สมุดบัญชีถูกยกมาทั้งก้อน — ตั้งฐานใหม่เงียบ ๆ ไม่รายงานขั้นที่ติดมากับก้อนนั้น
+    if (!prev || ledgerReplacements !== prev.replacements) {
+      demo.current = { counts, earned: [], replacements: ledgerReplacements }
+      return
+    }
+    const earned = earnedSteps(prev.counts, counts, prev.earned)
+    demo.current = { counts, earned, replacements: ledgerReplacements }
+    if (state.mode !== 'demo' || !demoLoopComplete(earned)) return
+    sendUsage('demo_completed', 1, { mode: 'demo', key: `demo_completed:${currentSessionId()}` })
+  }, [state.events, state.mode, ledgerReplacements])
 
   // ตัวนับ 3 เหตุการณ์สำหรับทีม — ดูจากความยาวรายการที่เปลี่ยน ไม่ต้องแตะ reducer
   // นับได้เฉพาะงานที่ครูลงมือทำในเครื่องนี้: กู้คืนไฟล์ ดึงคลาวด์ เริ่มใช้จริง หรืออ่านก้อนใหม่จากเครื่อง
@@ -49,9 +86,9 @@ export default function App() {
     seen.current = next
     // ยกสมุดบัญชีทั้งก้อน — ตั้งฐานใหม่เงียบ ๆ เพื่อให้งานจริงชิ้นถัดไปยังรายงานส่วนต่างที่ถูกต้อง
     if (next.replacements !== prev.replacements) return
-    if (next.subjects !== prev.subjects) sendUsage('students_changed', next.subjects, state.mode)
-    if (next.invoices > prev.invoices) sendUsage('invoice_issued', next.invoices - prev.invoices, state.mode)
-    if (next.payments > prev.payments) sendUsage('payment_recorded', next.payments - prev.payments, state.mode)
+    if (next.subjects !== prev.subjects) sendUsage('students_changed', next.subjects, { mode: state.mode })
+    if (next.invoices > prev.invoices) sendUsage('invoice_issued', next.invoices - prev.invoices, { mode: state.mode })
+    if (next.payments > prev.payments) sendUsage('payment_recorded', next.payments - prev.payments, { mode: state.mode })
   }, [state.subjects.length, state.invoices.length, state.payments.length, state.mode, ledgerReplacements])
   return (
     <Suspense fallback={<RouteLoading />}>

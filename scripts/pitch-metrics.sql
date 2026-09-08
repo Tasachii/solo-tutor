@@ -43,7 +43,7 @@ select count(distinct r.provider_id) as linked_net_positive_verified_customers,
        count(distinct r.provider_id) filter (where exists (
          select 1 from public.usage_events u
          where u.provider_id = r.provider_id and u.mode = 'real' and u.event = 'app_open'
-           and u.at >= now() - interval '30 days'
+           and u.audience = 'public' and u.at >= now() - interval '30 days'
        )) as opened_last_30_days
 from public.plan_requests r
 where r.provider_id is not null and exists (
@@ -54,5 +54,22 @@ where r.provider_id is not null and exists (
       from public.plan_financial_evidence refund
       where refund.payment_evidence_id = payment.id and refund.evidence_type = 'refund'), 0)
 );
+
+-- Acquisition funnel. Demo runs count as people trying the product, never as
+-- product usage or revenue; team/QA traffic sits on its own audience axis.
+-- A period with no rows means no data, not zero visitors inferred from nothing.
+select day, audience, mode, visitors, sessions, landing_views, pricing_views,
+       demo_started, demo_completed, signup_started, signup_completed, email_verified,
+       onboarding_completed, opened_app, invoices_issued, payments_recorded
+from public.usage_funnel_daily
+where day >= (public.thai_today() - 90)
+order by day desc, audience, mode;
+
+-- The end of the funnel comes from server transactions and bank evidence,
+-- never from a browser event: a client cannot claim it paid.
+select month, pro_requested, pro_requesting_providers,
+       subscription_payment_verified, refund_verified
+from public.plan_funnel_monthly
+order by month desc;
 
 commit;

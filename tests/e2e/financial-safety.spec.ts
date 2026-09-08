@@ -1,10 +1,11 @@
 import { expect, test, type Page } from './fixtures'
+import { ACTIVE_MODE, DEMO_SLOT, REAL_SLOT } from './workspace'
 
 async function realInvoice(page: Page, destination = '0812345678') {
   await page.goto('?scenario=empty#/app/onboarding')
   await expect(page.locator('.shell')).toBeVisible()
-  await page.evaluate((promptpayId) => {
-    const s = JSON.parse(localStorage.getItem('solo-demo-v3')!)
+  await page.evaluate(({ promptpayId, demo, real, pointer }) => {
+    const s = JSON.parse(localStorage.getItem(demo)!)
     const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Bangkok' }).format(new Date())
     const sent = new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10)
     const due = new Date(Date.now() - 4 * 86400000).toISOString().slice(0, 10)
@@ -14,8 +15,10 @@ async function realInvoice(page: Page, destination = '0812345678') {
       invoices: [{ id: 'qa-invoice', clientId: 'qa-client', subjectId: 'qa-subject', kind: 'monthly', period: today.slice(0, 7), createdAt: sent,
         sentAt: sent, dueAt: due, status: 'sent', total: 3000, lines: [{ description: 'ค่าบริการทดสอบ', qty: 1, unitPrice: 3000, amount: 3000 }] }],
     })
-    localStorage.setItem('solo-demo-v3', JSON.stringify(s))
-  }, destination)
+    // สมุดบัญชีจริงลงช่องของมันเอง ช่องเดโมยังเป็นของเดโม
+    localStorage.setItem(real, JSON.stringify(s))
+    localStorage.setItem(pointer, 'real')
+  }, { promptpayId: destination, demo: DEMO_SLOT, real: REAL_SLOT, pointer: ACTIVE_MODE })
   await page.goto('#/app/billing')
   await page.reload()
   await expect(page.locator('.srow').filter({ hasText: 'ผู้เรียนทดสอบ' })).toBeVisible()
@@ -36,7 +39,7 @@ test('installments agree across balances, reminder, client, receipt and fresh re
   const fresh = await recipient.newPage()
   await fresh.goto(invoiceUrl)
   await expect(fresh.getByText('คงเหลือ', { exact: false }).first()).toContainText('2,000')
-  expect(await fresh.evaluate(() => localStorage.getItem('solo-demo-v3'))).toBeNull()
+  expect(await fresh.evaluate(([demo, real]) => [localStorage.getItem(demo), localStorage.getItem(real)], [DEMO_SLOT, REAL_SLOT])).toEqual([null, null])
   await page.goto('#/client/qa-client')
   await expect(page.locator('.page--client')).toContainText('คงเหลือ 2,000')
   await expect(page.locator('.qr__box')).toHaveCount(0)
@@ -52,7 +55,7 @@ test('installments agree across balances, reminder, client, receipt and fresh re
   await expect(fresh.getByRole('heading', { name: 'ใบเสร็จรับเงิน' })).toBeVisible()
   await expect(fresh.locator('tfoot')).toContainText('3,000')
   await expect(fresh.getByText('คงเหลือ', { exact: false }).first()).toContainText('0 บาท')
-  expect(await fresh.evaluate(() => localStorage.getItem('solo-demo-v3'))).toBeNull()
+  expect(await fresh.evaluate(([demo, real]) => [localStorage.getItem(demo), localStorage.getItem(real)], [DEMO_SLOT, REAL_SLOT])).toEqual([null, null])
   await recipient.close()
 })
 
@@ -64,15 +67,15 @@ test('quota failure cannot acknowledge or commit a payment', async ({ page }) =>
   await expect(page.getByRole('alert')).toContainText('บันทึกไม่สำเร็จ')
   await expect(page.getByRole('dialog')).toBeVisible()
   await expect(page.locator('.toast')).toHaveCount(0)
-  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('solo-demo-v3')!).payments)).toHaveLength(0)
+  expect(await page.evaluate((real) => JSON.parse(localStorage.getItem(real)!).payments, REAL_SLOT)).toHaveLength(0)
 })
 
 test('corrupt storage is preserved and requires recovery', async ({ page }) => {
-  await page.addInitScript(() => localStorage.setItem('solo-demo-v3', '{broken'))
+  await page.addInitScript((demo) => localStorage.setItem(demo, '{broken'), DEMO_SLOT)
   await page.goto('#/app/today')
   await expect(page.getByRole('heading', { name: 'ข้อมูลเดิมต้องกู้คืน' })).toBeVisible()
   await expect(page.locator('.shell')).toHaveCount(0)
-  expect(await page.evaluate(() => localStorage.getItem('solo-demo-v3'))).toBe('{broken')
+  expect(await page.evaluate((demo) => localStorage.getItem(demo), DEMO_SLOT)).toBe('{broken')
 })
 
 test('missing payment destination prevents sending and keeps queue empty', async ({ page }) => {
@@ -80,14 +83,14 @@ test('missing payment destination prevents sending and keeps queue empty', async
   await page.goto('#/app/admin')
   await page.getByRole('button', { name: 'ส่งใน LINE', exact: true }).first().click()
   await expect(page.locator('.toast')).toContainText('พร้อมเพย์ที่ถูกต้อง')
-  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('solo-demo-v3')!).sending)).toBeUndefined()
+  expect(await page.evaluate((real) => JSON.parse(localStorage.getItem(real)!).sending, REAL_SLOT)).toBeUndefined()
 })
 
 test('issued receipt keeps the original payee after profile changes and reload', async ({ page }) => {
   await realInvoice(page)
   await openPayment(page)
   await page.getByRole('button', { name: 'ยอดตรง รับเงินแล้ว' }).click()
-  const receipt = await page.evaluate(() => JSON.parse(localStorage.getItem('solo-demo-v3')!).receipts[0])
+  const receipt = await page.evaluate((real) => JSON.parse(localStorage.getItem(real)!).receipts[0], REAL_SLOT)
   expect(receipt.snapshot.provider).toBe('ผู้ให้บริการทดสอบ')
   await page.getByRole('button', { name: 'เมนู' }).click()
   await page.getByRole('dialog', { name: 'เมนู' }).getByRole('button', { name: 'ชื่อและบัญชีรับเงิน' }).click()
@@ -101,5 +104,5 @@ test('issued receipt keeps the original payee after profile changes and reload',
   await expect(page.locator('.paper')).not.toContainText('ผู้รับเงินชื่อใหม่')
   await page.reload()
   await expect(page.locator('.paper__meta')).toContainText('ผู้ให้บริการทดสอบ')
-  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('solo-demo-v3')!).receipts[0].snapshot)).toEqual(receipt.snapshot)
+  expect(await page.evaluate((real) => JSON.parse(localStorage.getItem(real)!).receipts[0].snapshot, REAL_SLOT)).toEqual(receipt.snapshot)
 })

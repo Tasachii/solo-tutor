@@ -4,6 +4,7 @@ import { deriveKey } from '../../src/core/cloudCrypto'
 import { packSnapshot } from '../../src/core/cloudSync'
 import type { AppState } from '../../src/core/types'
 import { installCloud, providerId } from './cloudMock'
+import { DEMO_SLOT, REAL_SLOT, ACTIVE_MODE } from './workspace'
 
 /** ตัวนับการใช้งานยิงจากทุกหน้า — build ของคำสั่ง QA ชี้ไป host ที่ไม่มีจริง ต้องรับไว้ */
 test.beforeEach(async ({ page }) => {
@@ -15,14 +16,16 @@ test.beforeEach(async ({ page }) => {
 const becomeRealTeacher = async (page: Page): Promise<AppState> => {
   await page.goto('?scenario=default#/app/today')
   await expect(page.locator('.skel')).toHaveCount(0)
-  await expect.poll(() => page.evaluate(() => localStorage.getItem('solo-demo-v3'))).not.toBeNull()
-  return page.evaluate(() => {
-    const saved = JSON.parse(localStorage.getItem('solo-demo-v3')!)
+  await expect.poll(() => page.evaluate((demo) => localStorage.getItem(demo), DEMO_SLOT)).not.toBeNull()
+  return page.evaluate(([demo, real, pointer]) => {
+    const saved = JSON.parse(localStorage.getItem(demo)!)
     saved.mode = 'real'; saved.scenarioId = 'real'; saved.onboarded = true
     saved.provider = { name: 'ครู QA', promptpayId: '0812345678' }
-    localStorage.setItem('solo-demo-v3', JSON.stringify(saved))
+    // สมุดบัญชีจริงอยู่ช่องของมันเอง เดโมยังอยู่ในช่องเดโมเหมือนเดิม
+    localStorage.setItem(real, JSON.stringify(saved))
+    localStorage.setItem(pointer, 'real')
     return saved
-  }) as Promise<AppState>
+  }, [DEMO_SLOT, REAL_SLOT, ACTIVE_MODE]) as Promise<AppState>
 }
 
 test('หน้าแรกยังมีทางเข้าเดียวคือเดโม และมีประตูที่สอง "เข้าสู่ระบบ" บนแถบบน', async ({ page }) => {
@@ -90,7 +93,7 @@ test.describe('เข้าสู่ระบบจากหน้าแรก�
 
     await expect(page).toHaveURL(/#\/app\/today$/, { timeout: 15_000 })
     await expect(page.getByRole('heading', { name: copy.onboarding.step1 })).toHaveCount(0)
-    const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('solo-demo-v3')!)) as AppState
+    const saved = await page.evaluate((real) => JSON.parse(localStorage.getItem(real)!), REAL_SLOT) as AppState
     expect(saved.mode).toBe('real')
     expect(saved.provider.name).toBe('ครูจากอีกเครื่อง')
     expect(saved.subjects.length).toBe(other.subjects.length)
@@ -110,7 +113,7 @@ test.describe('เข้าสู่ระบบจากหน้าแรก�
 
     await expect(page).toHaveURL(/#\/app\/onboarding/, { timeout: 15_000 })
     await expect(page.getByRole('heading', { name: copy.onboarding.step1 })).toBeVisible()
-    const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('solo-demo-v3')!)) as AppState
+    const saved = await page.evaluate((real) => JSON.parse(localStorage.getItem(real)!), REAL_SLOT) as AppState
     expect(saved.mode).toBe('real')
     expect(saved.subjects).toEqual([])
     // สมุดว่างของเครื่องใหม่ถูกส่งขึ้นเป็นรอบแรก (revision 1) — ไม่มีชื่อนักเรียนสมมติหลุดไป

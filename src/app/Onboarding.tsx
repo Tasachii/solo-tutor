@@ -12,6 +12,7 @@ import { readPlanInfo, studentCapIssue, type CapIssue } from '../core/plan'
 import { PlanSheet } from './PlanSheet'
 import { readPlanIntent, validPaidPlanMonths } from '../platform/plans'
 import { useCloudSync } from './CloudSync'
+import { currentSessionId, sendUsage } from '../core/usage'
 
 interface Row { name: string; clientName: string; lineId?: string; error?: string }
 
@@ -72,6 +73,10 @@ export default function Onboarding() {
   const good = rows.filter((r) => !r.error)
   const badCount = rows.length - good.length
 
+  /** count = จำนวนรายชื่อที่นำเข้าได้จริง (0 เมื่อครูข้ามไปเพิ่มทีละคน) หนึ่งครั้งต่อ session */
+  const completedOnboarding = (count: number) =>
+    sendUsage('onboarding_completed', count, { mode: state.mode, route: 'app', key: `onboarding_completed:${currentSessionId()}` })
+
   const finish = () => {
     if (!priceOk || !promptpayOk) return
     const billing: BillingMode =
@@ -89,6 +94,8 @@ export default function Onboarding() {
       ...(mode === 'package' ? { packageIntent } : {}),
     })) return
     track('onboarding_finish', { count: good.length })
+    // นับหลัง dispatch คืน true เท่านั้น — ตั้งค่าที่บันทึกไม่สำเร็จไม่ใช่ครูที่ตั้งค่าเสร็จ
+    completedOnboarding(good.length)
     nav(afterOnboarding)
   }
 
@@ -224,7 +231,8 @@ export default function Onboarding() {
                   : { mode: 'package', total: parseMoneyInput(packTotal)!, price: parseMoneyInput(packPrice)!, purchasedAt: state.today },
               ...(mode === 'package' ? { packageIntent } : {}),
             })) return
-            track('onboarding_skip'); nav(afterOnboarding === '/app/today' ? '/app/subjects' : afterOnboarding)
+            track('onboarding_skip'); completedOnboarding(0)
+            nav(afterOnboarding === '/app/today' ? '/app/subjects' : afterOnboarding)
           }}>{copy.onboarding.skip}</button>
           <button className="linkbtn" onClick={() => setStep(1)}>{copy.common.back}แก้ข้อมูลผู้ให้บริการ</button>
           {state.mode !== 'real' && (

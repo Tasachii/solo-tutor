@@ -1,5 +1,6 @@
 import type { AppState } from './types'
 import { fromBackup, toBackup, type RestoreResult } from './backup'
+import { LEGACY_RESCUE_KEY, WORKSPACE_MODES, parkedKey } from './workspace'
 import { open, seal, type Sealed } from './cloudCrypto'
 import { KDF_ID } from './cloudCrypto'
 
@@ -123,8 +124,12 @@ export const writeSyncMeta = (m: SyncMeta | null): void => {
   } catch { /* ไม่มีที่เก็บ = รอบหน้าถามใหม่ ปลอดภัยกว่าเดาว่าซิงก์แล้ว */ }
 }
 
-/** Last local ledger before a cloud pull. It is deliberately separate from the live storage key. */
+/**
+ * Last local ledger before a cloud pull. It is deliberately separate from the live storage key.
+ * คลาวด์เป็นของ workspace จริงเท่านั้น — ข้อมูลสมมติต้องไม่ถูกเก็บเป็นสำเนาของบัญชีครู
+ */
 export function writePrePullBackup(state: AppState, at: string): boolean {
+  if (state.mode !== 'real') return false
   try {
     localStorage.setItem(PRE_PULL_BACKUP_KEY, toBackup(state, at))
     return true
@@ -133,19 +138,26 @@ export function writePrePullBackup(state: AppState, at: string): boolean {
   }
 }
 
-/** Clear account-linked browser artifacts while preserving unrelated storage and UI preferences. */
+/**
+ * Clear account-linked browser artifacts while preserving unrelated storage and UI preferences.
+ * สำเนาก่อนเขียนทับมีช่องละใบ และอาจมีก้อนที่ย้ายมาจากคีย์เดิมค้างอยู่ — ต้องเก็บให้ครบทุกใบ
+ */
 export function clearAccountLocalArtifacts(
   persistent: Pick<Storage, 'removeItem'> = localStorage,
   temporary: Pick<Storage, 'removeItem'> = sessionStorage,
 ): void {
-  for (const key of [PRE_PULL_BACKUP_KEY, 'solo-demo-v3-before-restore', 'solo-sheets', 'solo-usage-id']) {
+  for (const key of [PRE_PULL_BACKUP_KEY, ...WORKSPACE_MODES.map(parkedKey), LEGACY_RESCUE_KEY, 'solo-sheets', 'solo-usage-id']) {
     try { persistent.removeItem(key) } catch { /* best effort after confirmed server deletion */ }
   }
   try { temporary.removeItem('solo-tutor:requested-plan') } catch { /* best effort */ }
 }
 
-/** ห่อ state เป็นไฟล์สำรองแล้วเข้ารหัส — ใช้ format เดียวกับไฟล์ที่ครูดาวน์โหลด จึง validate ด้วยตัวเดียวกัน */
+/**
+ * ห่อ state เป็นไฟล์สำรองแล้วเข้ารหัส — ใช้ format เดียวกับไฟล์ที่ครูดาวน์โหลด จึง validate ด้วยตัวเดียวกัน
+ * ด่านสุดท้ายกันข้อมูลสมมติขึ้นคลาวด์: โยนทิ้งดังกว่าปล่อยให้ไปนอนอยู่ในบัญชีครู
+ */
 export async function packSnapshot(state: AppState, key: CryptoKey, at: string): Promise<Sealed> {
+  if (state.mode !== 'real') throw new Error('ซิงก์ได้เฉพาะข้อมูลจริง ไม่ใช่ข้อมูลตัวอย่างของเดโม')
   return seal(key, toBackup(state, at))
 }
 

@@ -1,9 +1,15 @@
 import { act, cleanup, render, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it } from 'vitest'
 import {
-  ACCOUNT_DELETED_KEY, StoreProvider, STORAGE_KEY, useStore,
+  ACCOUNT_DELETED_KEY, ACTIVE_MODE_KEY, REAL_SLOT_KEY, StoreProvider, useStore,
 } from '../../src/core/store'
 import { buildScenario } from '../../src/core/scenarios'
+
+/** ลบบัญชีเป็นเรื่องของสมุดบัญชีจริงเท่านั้น — เทสต้องเริ่มจากช่องของโหมดจริง */
+const seedRealWorkspace = (): void => {
+  localStorage.setItem(REAL_SLOT_KEY, JSON.stringify({ ...buildScenario('default'), mode: 'real', scenarioId: 'real' }))
+  localStorage.setItem(ACTIVE_MODE_KEY, 'real')
+}
 
 afterEach(() => { cleanup(); localStorage.clear() })
 
@@ -24,7 +30,7 @@ describe('account deletion local transaction', () => {
   })
 
   it('clears every mounted tab and prevents a follower from resurrecting stale student data', async () => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(buildScenario('default')))
+    seedRealWorkspace()
     const tabs: Record<string, ReturnType<typeof useStore>> = {}
     function Tab({ id }: { id: string }) { tabs[id] = useStore(); return null }
     const leader = render(<StoreProvider><Tab id="leader" /></StoreProvider>)
@@ -41,7 +47,7 @@ describe('account deletion local transaction', () => {
     })
 
     expect(result).toBe('cleared')
-    expect(JSON.parse(localStorage.getItem(STORAGE_KEY)!).subjects).toEqual([])
+    expect(JSON.parse(localStorage.getItem(REAL_SLOT_KEY)!).subjects).toEqual([])
     expect(localStorage.getItem(ACCOUNT_DELETED_KEY)).toBeTruthy()
     await waitFor(() => expect(tabs.follower.state.subjects).toEqual([]))
     leader.unmount()
@@ -49,6 +55,6 @@ describe('account deletion local transaction', () => {
     let wrote = false
     act(() => { wrote = tabs.follower.dispatch({ type: 'track', name: 'after-delete' }) })
     expect({ wrote, status: tabs.follower.writeStatus, error: tabs.follower.persistenceError }).toEqual({ wrote: true, status: 'writable', error: null })
-    expect(JSON.parse(localStorage.getItem(STORAGE_KEY)!).subjects).toEqual([])
+    expect(JSON.parse(localStorage.getItem(REAL_SLOT_KEY)!).subjects).toEqual([])
   })
 })

@@ -83,6 +83,20 @@ smoke ที่ไม่มีผลข้างเคียงหลัง depl
 ## 5.1 ยังไม่มี (ต้องเจ้าของลงมือ)
 
 - ตั้ง Secret `OPERATIONS_ALERT_WEBHOOK` ถ้าอยากได้ alert เข้า LINE/Slack ด้วย
-- role อ่านอย่างเดียวสำหรับ operations (E-05) และ offsite backup (E-04) — ดู `docs/backup-restore.md`
+- offsite backup (E-04) — ดู `docs/backup-restore.md`
+- **สลับ `operations.yml` ไปใช้บทบาทสิทธิ์ต่ำ (E-05)** — โค้ดพร้อมแล้ว เหลือสองคำสั่งที่ต้องรันด้วยบัญชีเจ้าของ
+
+  ```sql
+  -- 1) ตั้งรหัสผ่านให้บทบาทที่ migration 0013 สร้างไว้ (สุ่มยาว ๆ อย่าใช้ซ้ำกับ backup)
+  alter role solo_operations login password '…';
+  ```
+
+  จากนั้นตั้ง Secret `OPERATIONS_DB_PASSWORD` ใน GitHub แล้วแก้ `operations.yml` ให้ต่อด้วย
+  `postgresql://solo_operations.<project-ref>:<encoded>@<pooler-host>:5432/postgres?sslmode=require`
+  แทน `postgres.<project-ref>` · `scripts/check-operations.sql` ใช้ `public.operations_snapshot()` อยู่แล้ว
+  จึงรันได้ทั้งบัญชีเดิมและบัญชีใหม่ สลับได้โดยไม่มีช่วงที่งานตรวจหยุด
+
+  บทบาทนี้ **อ่านตารางตรง ๆ ไม่ได้เลย** เรียกได้แค่ฟังก์ชันนับกับฟังก์ชันล้างตัวนับ rate limit
+  ถ้า secret ของงานตรวจหลุด ผู้ที่ได้ไปจะเห็นได้แค่ตัวเลขห้าค่า ไม่เห็นสมุดบัญชีหรือข้อมูลนักเรียน
 - ซ้อม rollback Edge Function จริงหนึ่งครั้ง (ต้อง login Supabase CLI ด้วยบัญชีเจ้าของ) — บันทึกเวลาที่ใช้ลงในเอกสารนี้
 - ซ้อมกู้จาก artifact จริงหนึ่งครั้ง (ต้องมี `BACKUP_PASSPHRASE`) — กู้ในฐานแยกเท่านั้น ห้ามทับ production

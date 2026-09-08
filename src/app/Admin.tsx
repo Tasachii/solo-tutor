@@ -20,13 +20,22 @@ import AdminCollect from './AdminCollect'
 import AdminHomework from './AdminHomework'
 import { collectionRows } from '../core/collections'
 import { homeworkSummary } from '../core/homework'
+import { hasDocumentLink, publishBlocks, secureDraft, type PublishSkip } from '../core/documentPublish'
+import { getSupabaseConfig } from '../integrations/supabaseRest'
+import { DEFAULT_SHARE_DAYS } from '../core/documentShare'
 
 type AdminTab = 'drafts' | 'chat' | 'collect' | 'homework'
 const readTab = (raw: string | null): AdminTab =>
   raw === 'chat' || raw === 'collect' || raw === 'homework' ? raw : 'drafts'
 
-function MessageCard({ m, awaiting, queueActive, left, onSend, onSent, onCancel, onSkipQueue, onCopy, onSkip, onEdit }: {
-  m: Message; awaiting: boolean; left: number; queueActive: boolean
+/** เหตุผลที่ครูทำอะไรต่อได้ ไม่ใช่แค่บอกว่าล้มเหลว */
+const publishNotice = (skipped: PublishSkip | null): string =>
+  skipped === 'signed-out' ? copy.sharedLinks.publishSignedOut
+    : skipped === 'stale' ? copy.sharedLinks.publishStale
+      : copy.sharedLinks.publishFailed
+
+function MessageCard({ m, awaiting, queueActive, left, linkOnly, onSend, onSent, onCancel, onSkipQueue, onCopy, onSkip, onEdit }: {
+  m: Message; awaiting: boolean; left: number; queueActive: boolean; linkOnly: boolean
   onSend: () => void; onSent: () => void; onCancel: () => void; onSkipQueue: () => void; onCopy: () => void
   onSkip: () => void; onEdit: (t: string) => boolean
 }) {
@@ -42,7 +51,8 @@ function MessageCard({ m, awaiting, queueActive, left, onSend, onSent, onCancel,
       <div className="msg__hd">
         <span className={`tagk tagk--${m.kind}`}>{copy.admin.kinds[m.kind]}</span>
         <span className="dim">{client?.name}</span>
-        {m.edited && <span className="tag-neutral">{copy.admin.editedTag}</span>}
+        {/* ใส่ลิงก์ที่ปิดได้ให้ ไม่ใช่ครูแก้ข้อความ — ป้าย "แก้ไขแล้ว" ตรงนี้จะทำให้ครูเข้าใจผิด */}
+        {m.edited && !linkOnly && <span className="tag-neutral">{copy.admin.editedTag}</span>}
       </div>
       {editing ? (
         <>
@@ -124,11 +134,56 @@ export default function Admin() {
   const nextDraft = (ids: string[]): Message | undefined =>
     ids.map(byId).find((m): m is Message => m?.status === 'draft')
 
+  // เดโมไม่เกี่ยว เพราะเดโมไม่ได้ส่งถึงใครจริง · แยกสองกรณีที่ผลต่างกันคนละแบบ
+  // ไม่มีโปรเจกต์ = ส่งได้แต่ลิงก์ปิดไม่ได้ · มีโปรเจกต์แต่ยังไม่เข้าสู่ระบบ = การส่งจะถูกหยุดไว้
+  const configured = !!getSupabaseConfig()
+  const signedIn = (() => { try { return !!getSession() } catch { return false } })()
+  const inlineLinksOnly = state.mode === 'real' && !configured
+  const needsSignIn = state.mode === 'real' && configured && !signedIn
+  // ร่างที่เราเป็นคนใส่ลิงก์ให้ ไม่ใช่ร่างที่ครูแก้เอง
+  const [linkEdited, setLinkEdited] = useState<string[]>([])
+
+  /**
+   * เผยแพร่ลิงก์ที่ปิดได้ แล้วบันทึกกลับลงร่างก่อนส่ง
+   * คืน null = ห้ามส่ง (แจ้งเหตุผลแล้ว) · คืนข้อความ = ข้อความที่จะออกไปจริง และตรงกับร่างที่เก็บไว้
+   */
+  const publishFor = async (m: Message, popup: Window | null): Promise<string | null> => {
+    const secured = await secureDraft(state, m.draft)
+    if (publishBlocks(secured.skipped)) {
+      popup?.close()
+      // ลิงก์เดิมถูกปิดไปแล้ว: ล้างธงแก้เอง แล้ว refreshDrafts จะเขียนร่างใหม่พร้อมลิงก์ใหม่ในรอบเดียวกัน
+      // ครูจึงกดส่งซ้ำได้เลย ไม่ต้องไปหาปุ่มที่ยังไม่ขึ้นให้กด
+      if (secured.skipped === 'stale') dispatch({ type: 'refreshMessage', id: m.id })
+      toast.push({ text: publishNotice(secured.skipped), tone: 'warn' })
+      return null
+    }
+    if (secured.draft !== m.draft) {
+      const teacherEdited = !!m.edited
+      if (!commit({ type: 'editMessage', id: m.id, draft: secured.draft })) {
+        popup?.close()
+        toast.push({ text: copy.sharedLinks.publishStoreFailed, tone: 'warn' })
+        return null
+      }
+      if (!teacherEdited) setLinkEdited(prev => prev.includes(m.id) ? prev : [...prev, m.id])
+    }
+    return secured.draft
+  }
+
+  /** คัดลอกก็คือการส่งออกจากเครื่องเหมือนกัน ต้องผ่านการเผยแพร่ลิงก์ชุดเดียวกัน */
+  const copySecured = async (m: Message) => {
+    const outgoing = await publishFor(m, null)
+    if (outgoing === null) return
+    const ok = await copyText(outgoing)
+    toast.push({ text: ok ? copy.toast.copied : copy.toast.copyFailed, tone: ok ? 'ok' : 'danger' })
+  }
+
   const openFor = async (m: Message, rest: string[] = queue) => {
     if (m.oaDelivery) { toast.push({ text: 'กรุณาตรวจสอบผลส่ง LINE OA ก่อน ห้ามแชร์ซ้ำ', tone: 'warn' }); return }
     const issue = messageSendIssue(state, m)
     if (issue) { toast.push({ text: issue, tone: 'warn' }); return }
     let popup: Window | null = null
+    // จะต้องรอเครือข่ายก่อนเปิด LINE ไหม — ถ้าใช่ ต้องจองหน้าต่างตั้งแต่ยังอยู่ในคลิกเดิม
+    const willAwait = state.mode === 'real' && hasDocumentLink(m.draft)
     if (state.lineWorkspaceId) {
       let signedIn = false
       try { signedIn = getSession()?.user.id === state.lineProviderId } catch { /* refuse without verified local session */ }
@@ -146,13 +201,20 @@ export default function Admin() {
           toast.push({ text: 'มีรายการนี้ใน LINE OA แล้ว กดตรวจสอบผ่านปุ่มส่งด้วย LINE OA เพื่อป้องกันการส่งซ้ำ', tone: 'warn' }); return
         }
       } catch { popup.close(); toast.push({ text: 'ตรวจผลส่ง LINE OA ไม่สำเร็จ กรุณาลองใหม่ก่อนแชร์ซ้ำ', tone: 'warn' }); return }
+    } else if (willAwait) {
+      // Reserve a window in the original click, before network awaits lose user activation on Safari.
+      popup = window.open('about:blank', '_blank')
+      if (popup) popup.opener = null
     }
+    // เผยแพร่ลิงก์ที่ปิดได้ก่อนข้อความออกจากเบราว์เซอร์ — ลิงก์ที่ส่งไปแล้วตามกลับมาเปลี่ยนไม่ได้
+    const outgoing = await publishFor(m, popup)
+    if (outgoing === null) return
     // Commit the queue while the tab is still active, before LINE can suspend it.
     if (!dispatch({ type: 'sendingStart', awaiting: m.id, queue: rest })) { popup?.close(); return }
-    if (popup) popup.location.replace(lineShareUrl(m.draft))
-    else if (!openLine(m.draft)) {
+    if (popup) popup.location.replace(lineShareUrl(outgoing))
+    else if (!openLine(outgoing)) {
       // popup โดนบล็อก (มักบนเดสก์ท็อป) — คัดลอกให้แทน ครูวางเองได้
-      const copied = await copyText(m.draft)
+      const copied = await copyText(outgoing)
       toast.push({
         text: copied ? 'เปิด LINE ไม่สำเร็จ แต่คัดลอกข้อความไว้แล้ว' : 'เปิด LINE และคัดลอกข้อความไม่สำเร็จ กรุณาลองอีกครั้ง',
         tone: copied ? 'warn' : 'danger',
@@ -234,6 +296,12 @@ export default function Admin() {
             <StatCard label={copy.admin.tabDrafts} value={`${drafts.length}`} tone={drafts.length ? 'warn' : undefined} />
           </div>
 
+          {/* บิลด์ที่ไม่มีโปรเจกต์ยังส่งได้ แต่ต้องบอกก่อนส่งว่าลิงก์นั้นปิดไม่ได้ ไม่ใช่ปล่อยผ่านเงียบ ๆ */}
+          {inlineLinksOnly && <p className="warnbar" role="status" data-testid="insecure-link-notice">{copy.sharedLinks.insecureNotice}</p>}
+          {needsSignIn && <p className="warnbar" role="status" data-testid="signed-out-link-notice">
+            {copy.sharedLinks.signedOutNotice.replace('{days}', String(DEFAULT_SHARE_DAYS))}
+          </p>}
+
           {drafts.length === 0 ? (
             <EmptyState icon="✓" title={copy.admin.emptyDrafts} />
           ) : (
@@ -247,6 +315,7 @@ export default function Admin() {
               <ul className="msgs">
                 {drafts.map((m) => (
                   <MessageCard key={m.id} m={m}
+                    linkOnly={linkEdited.includes(m.id)}
                     awaiting={awaiting === m.id}
                     queueActive={!!awaiting}
                     left={queue.filter((id) => byId(id)?.status === 'draft').length}
@@ -254,7 +323,7 @@ export default function Admin() {
                     onSend={() => { void openFor(m) }}
                     onSent={confirmSent}
                     onCancel={cancelSend}
-                    onCopy={() => { void copyText(m.draft).then((ok) => toast.push({ text: ok ? copy.toast.copied : copy.toast.copyFailed, tone: ok ? 'ok' : 'danger' })) }}
+                    onCopy={() => { void copySecured(m) }}
                     onSkip={() => { if (!commit({ type: 'skipMessage', id: m.id })) return; track('skip_message', { kind: m.kind }); toast.push({ text: copy.toast.messageSkipped }) }}
                     onEdit={(t) => { if (!commit({ type: 'editMessage', id: m.id, draft: t })) return false; track('edit_message', { kind: m.kind }); return true }} />
                 ))}

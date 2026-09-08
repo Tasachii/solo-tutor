@@ -9,7 +9,8 @@ import type { AppState } from '../core/types'
  */
 export async function saveBackup(state: AppState): Promise<boolean> {
   const text = toBackup(state, new Date().toISOString())
-  const name = `solo-backup-${state.today}.json`
+  // ชื่อไฟล์ต้องบอกว่ามาจาก workspace ไหน — ครูต้องไม่กู้คืนไฟล์ตัวอย่างโดยนึกว่าเป็นสมุดบัญชีตัวเอง
+  const name = `solo-${state.mode === 'real' ? 'backup' : 'demo-backup'}-${state.today}.json`
   try {
     const file = new File([text], name, { type: 'application/json' })
     if (typeof navigator.canShare === 'function' && navigator.canShare({ files: [file] })) {

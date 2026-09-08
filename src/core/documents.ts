@@ -12,7 +12,11 @@ const string = (x: unknown, max = 300): x is string => typeof x === 'string' && 
 const amount = (x: unknown): x is number => Number.isSafeInteger(x) && Number(x) >= 0
 const date = (x: unknown): x is string => string(x) && /^\d{4}-\d{2}-\d{2}$/.test(x) &&
   Number.isFinite(Date.parse(x)) && new Date(x).toISOString().slice(0, 10) === x
-function valid(x: unknown): x is SharedDocument {
+/**
+ * ตรวจโครงสร้างและความสอดคล้องของยอด — ไม่ใช่ลายเซ็นความแท้
+ * ใช้ทั้งกับลิงก์รุ่นเดิมที่ถอดจาก URL และกับ plaintext ที่เพิ่งถอดรหัสจากลิงก์รุ่นใหม่
+ */
+export function isSharedDocument(x: unknown): x is SharedDocument {
   if (!x || typeof x !== 'object') return false
   const d = x as SharedDocument
   return d.v === 1 && ['invoice', 'receipt'].includes(d.kind) && date(d.asOf) &&
@@ -51,7 +55,7 @@ export function receiptDocument(state: AppState, receiptId: string): SharedDocum
   }
 }
 export function documentUrl(doc: SharedDocument): string {
-  if (!valid(doc)) throw new Error('ข้อมูลเอกสารไม่ครบหรือยอดไม่ตรงกัน')
+  if (!isSharedDocument(doc)) throw new Error('ข้อมูลเอกสารไม่ครบหรือยอดไม่ตรงกัน')
   const bytes = new TextEncoder().encode(JSON.stringify(doc))
   const token = btoa(Array.from(bytes, b => String.fromCharCode(b)).join('')).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
   if (token.length > MAX_TOKEN) throw new Error('เอกสารยาวเกินไป กรุณาพิมพ์หรือบันทึกเป็น PDF')
@@ -62,6 +66,6 @@ export function readDocument(token: string): SharedDocument | null {
   try {
     const raw = atob(token.replace(/-/g, '+').replace(/_/g, '/'))
     const doc: unknown = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(Uint8Array.from(raw, c => c.charCodeAt(0))))
-    return valid(doc) ? doc : null
+    return isSharedDocument(doc) ? doc : null
   } catch { return null }
 }

@@ -17,8 +17,21 @@ import { issueReceipt } from './receipts'
 import { isUuid, isBillingMode, isISODate, isMoney, isNonNegativeMoney, isTime } from './validation'
 import { financialRevision, messageSendIssue } from './messageDelivery'
 import { migrateCanonical } from './migrations'
+import {
+  ACTIVE_MODE_KEY, DEMO_SLOT_KEY, REAL_SLOT_KEY, parkedKey, readSlot, resolveActiveMode,
+  slotKey, writeActiveMode, writerLockName, type WorkspaceMode,
+} from './workspace'
 
-const KEY = 'solo-demo-v3'
+/**
+ * คีย์ของ workspace ที่แท็บนี้ใช้อยู่ตอนนี้
+ *
+ * ส่งออกเป็น STORAGE_KEY และ "ตั้งค่าใหม่" ตอนสลับโหมดโดยตั้งใจ — ES module binding เป็นแบบ live
+ * ผู้ import จึงเห็นค่าล่าสุด จอ ErrorBoundary อ่านค่านี้ตอนแอปพัง และต้องล้าง workspace
+ * ที่ครูอยู่จริง ไม่ใช่ช่องที่โมดูลนี้บังเอิญเปิดมาตอนโหลด
+ *
+ * เป็นค่าระดับเอกสาร (หนึ่งแท็บ = หนึ่ง StoreProvider) — ตัวจริงที่ provider ใช้เขียนคือ activeKey ใน ref
+ */
+let KEY: string = DEMO_SLOT_KEY
 const ACCOUNT_DELETED_KEY = 'solo-tutor:account-deleted'
 const ACCOUNT_DELETED_EVENT = 'solo-tutor:account-deleted'
 const SCHEMA = 5
@@ -579,30 +592,53 @@ function refreshDemoDay(saved: AppState): AppState {
   return { ...saved, today: now }
 }
 
-function hydrate(scenarioFromUrl: string | null): { state: AppState; didReset: boolean; recoveryRaw: string | null; savedRaw: string | null; applyInitialScenario: boolean } {
+interface Hydrated {
+  mode: WorkspaceMode
+  state: AppState
+  didReset: boolean
+  recoveryRaw: string | null
+  savedRaw: string | null
+  applyInitialScenario: boolean
+}
+
+function hydrate(scenarioFromUrl: string | null): Hydrated {
   let raw: string | null = null
+  let mode: WorkspaceMode = 'demo'
   try {
     const deleted = readDeletedMarker(localStorage.getItem(ACCOUNT_DELETED_KEY))
     if (deleted) {
+      // บัญชีถูกลบแล้ว = เรื่องของ workspace จริงเท่านั้น เดโมในเครื่องไม่เกี่ยวและต้องไม่ถูกแตะ
+      mode = 'real'
+      KEY = slotKey(mode)
       const serialized = JSON.stringify(deleted)
       try { localStorage.setItem(KEY, serialized); raw = serialized } catch { raw = localStorage.getItem(KEY) }
-      return { state: normalize(deleted), didReset: false, recoveryRaw: null, savedRaw: raw, applyInitialScenario: false }
+      writeActiveMode(mode)
+      return { mode, state: normalize(deleted), didReset: false, recoveryRaw: null, savedRaw: raw, applyInitialScenario: false }
     }
+    mode = resolveActiveMode()
+    KEY = slotKey(mode)
     raw = localStorage.getItem(KEY)
     if (raw) {
       const saved = migrate(JSON.parse(raw))
       if (!saved) throw new Error('invalid saved state')
+      // ช่องนี้ต้องเก็บ workspace ของโหมดนี้เท่านั้น ของโหมดอื่นที่หลงมาแปลว่าการย้ายยังไม่จบ
+      // ห้ามเขียนทับ ให้ไปเส้นทางกู้คืนที่เก็บ raw ไว้ครบ
+      if (saved.mode !== mode) throw new Error('foreign workspace in slot')
       // A demo query parameter must never overwrite an existing real workspace.
       const chosen = saved.mode === 'demo' && scenarioFromUrl && isScenario(scenarioFromUrl)
         ? buildScenario(scenarioFromUrl) : saved
       const dated = chosen.mode === 'real' ? { ...chosen, today: todayISO() } : refreshDemoDay(chosen)
-      return { state: normalize(dated), didReset: false, recoveryRaw: null, savedRaw: raw,
+      return { mode, state: normalize(dated), didReset: false, recoveryRaw: null, savedRaw: raw,
         applyInitialScenario: saved.mode === 'demo' && !!scenarioFromUrl && isScenario(scenarioFromUrl) }
     }
-    return { state: normalize(buildScenario(scenarioFromUrl && isScenario(scenarioFromUrl) ? scenarioFromUrl : 'default')), didReset: false, recoveryRaw: null, savedRaw: null, applyInitialScenario: false }
+    const fresh = mode === 'real'
+      ? buildReal()
+      : buildScenario(scenarioFromUrl && isScenario(scenarioFromUrl) ? scenarioFromUrl : 'default')
+    return { mode, state: normalize(fresh), didReset: false, recoveryRaw: null, savedRaw: null, applyInitialScenario: false }
   } catch {
     // Preserve even syntactically broken JSON. Recovery is explicit; never autosave demo over it.
-    return { state: normalize(buildScenario('empty')), didReset: true, recoveryRaw: raw, savedRaw: raw, applyInitialScenario: false }
+    return { mode, state: normalize(mode === 'real' ? buildReal() : buildScenario('empty')),
+      didReset: true, recoveryRaw: raw, savedRaw: raw, applyInitialScenario: false }
   }
 }
 
@@ -620,7 +656,15 @@ export interface StoreValue {
   /** Synchronous durable transition. False means no state change was committed. */
   dispatch: (action: Action) => boolean
   track: (name: string, props?: Record<string, unknown>) => void
+  /** workspace ที่แท็บนี้กำลังใช้ — เท่ากับ state.mode เสมอ และเป็นตัวเลือกช่องเก็บข้อมูล */
+  mode: WorkspaceMode
+  /**
+   * รีเซ็ตเดโม — แตะได้เฉพาะช่องเดโม
+   * เรียกจากโหมดใช้จริงจะคืน false เสมอ สมุดบัญชีจริงไม่มีทางถูกเขียนทับด้วยข้อมูลสมมติ
+   */
   resetDemo: (scenarioId?: string) => boolean
+  /** สลับกลับไปช่องเดโม — สมุดบัญชีจริงยังอยู่ในช่องของมัน กลับมาเมื่อไหร่ก็เจอเหมือนเดิม */
+  backToDemo: (scenarioId?: string) => boolean
   didReset: boolean
   hydrated: boolean
   persistenceError: string | null
@@ -644,11 +688,19 @@ const Ctx = createContext<StoreValue | null>(null)
 export function StoreProvider({ children }: { children: ReactNode }) {
   const initial = useMemo(() => hydrate(urlParam('scenario')), [])
   const [state, setState] = useState(initial.state)
+  const [mode, setMode] = useState<WorkspaceMode>(initial.mode)
   const current = useRef(state)
+  // ช่องที่แท็บนี้เขียน — ref ไม่ใช่ state เพราะทุกเส้นทางเขียนต้องอ่านค่าล่าสุดทันทีแบบ synchronous
+  const activeKey = useRef(slotKey(initial.mode))
   const savedRaw = useRef(initial.savedRaw)
   const initialScenarioPending = useRef(initial.applyInitialScenario)
   const blocked = useRef(initial.didReset)
-  const leader = useRef(false)
+  /**
+   * ใครถือสิทธิ์เขียนอยู่ตอนนี้ — เก็บเป็น token ไม่ใช่ boolean
+   * ตอนสลับ workspace ล็อกใบใหม่ถูกจับก่อนที่ callback ของใบเก่าจะเดินต่อจนจบ
+   * ถ้าใช้ boolean ใบเก่าจะรีเซ็ตธงทิ้งทีหลัง แล้วแท็บที่ถือสิทธิ์จริงกลายเป็นอ่านอย่างเดียว
+   */
+  const leaseHolder = useRef<object | null>(null)
   const accountDeletionPending = useRef(false)
   const writeStatusRef = useRef<WriteStatus>('acquiring')
   const releaseLeadership = useRef<(() => void) | null>(null)
@@ -667,11 +719,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const rehydrateLatest = useCallback((): boolean => {
     try {
-      const deleted = readDeletedMarker(localStorage.getItem(ACCOUNT_DELETED_KEY))
+      // หลุมฝังศพของบัญชีเป็นเรื่องของ workspace จริง แท็บที่อยู่เดโมต้องไม่เอามาเขียนทับช่องเดโม
+      const deleted = activeKey.current === REAL_SLOT_KEY
+        ? readDeletedMarker(localStorage.getItem(ACCOUNT_DELETED_KEY)) : null
       if (deleted) {
         const normalized = normalize(deleted)
         const serialized = JSON.stringify(normalized)
-        localStorage.setItem(KEY, serialized)
+        localStorage.setItem(activeKey.current, serialized)
         savedRaw.current = serialized
         current.current = normalized
         blocked.current = false
@@ -684,7 +738,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         setWriteStatus('writable')
         return true
       }
-      const raw = localStorage.getItem(KEY)
+      const raw = localStorage.getItem(activeKey.current)
       if (raw === null) {
         savedRaw.current = null
         setWriteStatus('writable')
@@ -692,11 +746,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       }
       const migrated = migrate(JSON.parse(raw))
       if (!migrated) throw new Error('invalid saved state')
+      if (slotKey(migrated.mode) !== activeKey.current) throw new Error('foreign workspace in slot')
       // อ่านซ้ำหลังได้สิทธิ์เขียนก็ต้องเดินวันเหมือนตอน hydrate ไม่งั้นทับวันที่รีเฟรชไปแล้ว
       const dated = migrated.mode === 'real' ? { ...migrated, today: todayISO() } : refreshDemoDay(migrated)
       const normalized = normalize(dated)
       const canonical = JSON.stringify(normalized)
-      if (canonical !== raw) localStorage.setItem(KEY, canonical)
+      if (canonical !== raw) localStorage.setItem(activeKey.current, canonical)
       savedRaw.current = canonical
       current.current = normalized
       blocked.current = false
@@ -714,27 +769,100 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     }
   }, [markLedgerReplaced, setWriteStatus])
 
+  /**
+   * ย้ายแท็บนี้ไปอีก workspace หนึ่ง — ไม่ใช่การเขียนทับข้อมูล
+   *
+   * ช่องปลายทางมีของอยู่แล้ว: หยิบของเดิมมาใช้ ไม่เขียนอะไรทับ (นี่คือเหตุผลที่ "กลับไปเดโม"
+   * แล้วกลับมาใช้จริง เจอสมุดบัญชีเดิมครบ) · ช่องปลายทางว่างหรือเป็นการกู้คืนข้ามโหมด:
+   * เก็บสำเนาของเดิมไว้ที่ parked key ก่อน แล้วค่อยเขียน seed ลงไป
+   *
+   * หลังจากนี้แท็บเข้าสถานะ acquiring จนกว่าจะได้ล็อกของช่องใหม่ — การเขียนระหว่างนั้นถูกปฏิเสธ
+   * ไม่ใช่เขียนลงช่องที่ยังไม่มีสิทธิ์
+   */
+  const switchWorkspace = useCallback((target: WorkspaceMode, seed: AppState, overwrite: boolean): boolean => {
+    if (accountDeletionPending.current) {
+      setPersistenceError('กำลังลบบัญชี ระบบหยุดการแก้ข้อมูลชั่วคราว')
+      return false
+    }
+    if (leaseHolder.current === null || writeStatusRef.current !== 'writable') {
+      setPersistenceError('แท็บนี้เป็นโหมดอ่านอย่างเดียว กรุณาปิดแท็บที่กำลังแก้ข้อมูลหรือกดลองใหม่')
+      return false
+    }
+    const key = slotKey(target)
+    let next: AppState
+    let nextRaw: string
+    try {
+      const existing = readSlot(target)
+      if (existing && !overwrite) {
+        // ของเดิมในช่องปลายทางชนะเสมอ — ไม่แตะ storage ตรงนี้ ให้ rehydrate ใต้ล็อกใหม่ทำให้เป็น canonical
+        const dated = target === 'real' ? { ...existing.state, today: todayISO() } : refreshDemoDay(existing.state)
+        next = normalize(dated)
+        nextRaw = existing.raw
+      } else {
+        const previous = localStorage.getItem(key)
+        if (previous !== null) localStorage.setItem(parkedKey(target), previous)
+        next = normalize({ ...seed, schemaVersion: SCHEMA as 5, revision: (existing?.state.revision ?? -1) + 1 })
+        nextRaw = JSON.stringify(next)
+        localStorage.setItem(key, nextRaw)
+      }
+    } catch {
+      setPersistenceError('สลับโหมดไม่สำเร็จ ข้อมูลทั้งสองชุดยังอยู่ครบ กรุณาตรวจพื้นที่ว่างแล้วลองใหม่')
+      return false
+    }
+    writeActiveMode(target)
+    KEY = key
+    activeKey.current = key
+    savedRaw.current = nextRaw
+    current.current = next
+    blocked.current = false
+    // ยกสมุดบัญชีมาทั้งก้อนจากอีกช่อง — ตัวนับการใช้งานต้องตั้งฐานใหม่ ไม่ใช่รายงานว่ามีงานเกิดขึ้น
+    markLedgerReplaced()
+    setState(next)
+    setDidReset(false)
+    setRecoveryRaw(null)
+    setPersistenceError(null)
+    setWriteStatus('acquiring')
+    setMode(target)
+    return true
+  }, [markLedgerReplaced, setWriteStatus])
+
   const dispatch = useCallback((action: Action): boolean => {
     if (accountDeletionPending.current) {
       setPersistenceError('กำลังลบบัญชี ระบบหยุดการแก้ข้อมูลชั่วคราว')
       return false
     }
-    if (!leader.current || writeStatusRef.current !== 'writable') {
+    if (leaseHolder.current === null || writeStatusRef.current !== 'writable') {
       setPersistenceError(writeStatusRef.current === 'conflict'
         ? 'พบข้อมูลจากแท็บหรือโปรแกรมรุ่นอื่น กรุณาโหลดข้อมูลล่าสุดแล้วลองใหม่'
         : 'แท็บนี้เป็นโหมดอ่านอย่างเดียว กรุณาปิดแท็บที่กำลังแก้ข้อมูลหรือกดลองใหม่')
       return false
     }
     if (blocked.current && action.type !== 'restore') return false
+    if (action.type === 'startReal') {
+      if (current.current.mode !== 'demo') return false
+      // ให้ reducer ตัดสินก่อน — กติกาเดิมยังอยู่ครบ (คิว OA ค้างอยู่ห้ามสลับ)
+      const seed = reducer(current.current, action)
+      if (seed === current.current) return false
+      return switchWorkspace('real', seed, false)
+    }
+    // ไฟล์สำรองคนละโหมดกับที่ใช้อยู่ ต้องลงช่องของมันเอง ไม่ใช่ทับ workspace ที่เปิดอยู่
+    if (action.type === 'restore' && isWellFormed(action.state) && action.state.mode !== current.current.mode) {
+      const restored = reducer(current.current, action)
+      if (restored === current.current) return false
+      return switchWorkspace(action.state.mode, restored, true)
+    }
+    // ลบบัญชีเป็นเรื่องของ workspace จริง — ห้าม buildReal() ไปนอนอยู่ในช่องเดโม
+    if (action.type === 'deleteAccountLocal' && current.current.mode !== 'real') return false
     const next = reducer(current.current, action)
     if (next === current.current) return false
     try {
-      if (action.type === 'restore' || action.type === 'replace' || action.type === 'startReal') {
-        const previous = localStorage.getItem(KEY)
-        if (previous !== null) localStorage.setItem(`${KEY}-before-restore`, previous)
+      // สลับช่อง (startReal / กู้คืนข้ามโหมด) ไม่ผ่านทางนี้ — switchWorkspace เก็บสำเนาของช่องปลายทางเอง
+      if (action.type === 'restore' || action.type === 'replace') {
+        const previous = localStorage.getItem(activeKey.current)
+        if (previous !== null) localStorage.setItem(parkedKey(current.current.mode), previous)
       }
       // localStorage is synchronous. On quota/security error keep the last committed state.
-      const durableRaw = localStorage.getItem(KEY)
+      const durableRaw = localStorage.getItem(activeKey.current)
       if (durableRaw !== savedRaw.current) {
         setPersistenceError('ข้อมูลในเครื่องเปลี่ยนจากอีกแท็บ ระบบปฏิเสธการเขียนครั้งนี้ กรุณาโหลดข้อมูลล่าสุดแล้วลองใหม่')
         setWriteStatus('conflict')
@@ -742,7 +870,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       }
       const committed = { ...next, schemaVersion: SCHEMA as 5, revision: current.current.revision + 1 }
       const serialized = JSON.stringify(committed)
-      localStorage.setItem(KEY, serialized)
+      localStorage.setItem(activeKey.current, serialized)
       try { localStorage.removeItem(ACCOUNT_DELETED_KEY) } catch { /* live state is already durable */ }
       savedRaw.current = serialized
       current.current = committed
@@ -758,17 +886,24 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       setPersistenceError('บันทึกไม่สำเร็จ การเปลี่ยนแปลงล่าสุดยังไม่ถูกเก็บ กรุณาสำรองข้อมูล ตรวจพื้นที่ว่าง แล้วลองอีกครั้ง')
       return false
     }
-  }, [markLedgerReplaced, setWriteStatus])
+  }, [markLedgerReplaced, setWriteStatus, switchWorkspace])
 
   const prepareAccountDeletion = useCallback((): boolean => {
-    if (accountDeletionPending.current || blocked.current || !leader.current || writeStatusRef.current !== 'writable') {
+    // การลบบัญชีล้างสมุดบัญชีจริง — ต้องเริ่มจากแท็บที่ถือช่องนั้นอยู่
+    // ด่านนี้ต้องอยู่ "ก่อน" การลบบนเซิร์ฟเวอร์ที่ย้อนไม่ได้ ไม่ใช่ตอน commit
+    // ไม่งั้นบัญชีถูกลบไปแล้วแต่ข้อมูลในเครื่องยังอยู่ ซึ่งแย่กว่าการไม่ให้เริ่ม
+    if (current.current.mode !== 'real') {
+      setPersistenceError('บัญชีและสมุดบัญชีจริงของคุณอยู่ในโหมดใช้จริง ตอนนี้หน้าจอกำลังอยู่ที่ข้อมูลตัวอย่าง กรุณากด "เริ่มใช้จริง" ในเมนูเพื่อกลับไปสมุดบัญชีของคุณ แล้วลบบัญชีจากตรงนั้น')
+      return false
+    }
+    if (accountDeletionPending.current || blocked.current || leaseHolder.current === null || writeStatusRef.current !== 'writable') {
       setPersistenceError(writeStatusRef.current === 'conflict'
         ? 'พบข้อมูลจากแท็บอื่น กรุณาโหลดข้อมูลล่าสุดก่อนลบบัญชี'
         : 'ลบบัญชีจากแท็บนี้ไม่ได้ กรุณาปิดแท็บที่กำลังแก้ข้อมูลแล้วลองใหม่')
       return false
     }
     try {
-      if (localStorage.getItem(KEY) !== savedRaw.current) {
+      if (localStorage.getItem(activeKey.current) !== savedRaw.current) {
         setPersistenceError('ข้อมูลในเครื่องเปลี่ยนจากอีกแท็บ กรุณาโหลดข้อมูลล่าสุดก่อนลบบัญชี')
         setWriteStatus('conflict')
         return false
@@ -797,7 +932,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }, [markLedgerReplaced])
 
   const commitAccountDeletion = useCallback((): 'cleared' | 'local-retained' => {
-    if (!accountDeletionPending.current || !leader.current || writeStatusRef.current !== 'writable') {
+    // ด่านซ้ำของ prepareAccountDeletion — ถึงตรงนี้ต้องเป็นโหมดจริงเสมอ กันไว้เผื่อมีทางเรียกใหม่
+    if (!accountDeletionPending.current || leaseHolder.current === null || writeStatusRef.current !== 'writable'
+      || current.current.mode !== 'real') {
       accountDeletionPending.current = false
       return 'local-retained'
     }
@@ -807,7 +944,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     let markerSaved = false
     let ledgerSaved = false
     try { localStorage.setItem(ACCOUNT_DELETED_KEY, marker); markerSaved = true } catch { /* reported below */ }
-    try { localStorage.setItem(KEY, serialized); ledgerSaved = true } catch { /* memory is still purged below */ }
+    try { localStorage.setItem(activeKey.current, serialized); ledgerSaved = true } catch { /* memory is still purged below */ }
     applyAccountDeletion(clean, ledgerSaved ? serialized : savedRaw.current, markerSaved && ledgerSaved)
     window.dispatchEvent(new CustomEvent(ACCOUNT_DELETED_EVENT, { detail: marker }))
     if (markerSaved && ledgerSaved) {
@@ -820,7 +957,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }, [applyAccountDeletion, setWriteStatus])
 
   const retryPersistence = useCallback((): boolean => {
-    if (leader.current) return rehydrateLatest()
+    if (leaseHolder.current !== null) return rehydrateLatest()
     if (!navigator.locks?.request) return false
     setPersistenceError(null)
     setWriteStatus('acquiring')
@@ -838,9 +975,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       return
     }
     setWriteStatus('acquiring')
-    void locks.request(`${KEY}:writer`, { mode: 'exclusive', signal: controller.signal }, async () => {
+    // ล็อกคนละดอกต่อช่อง — แท็บเดโมกับแท็บใช้จริงเป็นผู้เขียนของตัวเองได้พร้อมกัน
+    const lease = {}
+    void locks.request(writerLockName(mode), { mode: 'exclusive', signal: controller.signal }, async () => {
       if (!mounted) return
-      leader.current = true
+      leaseHolder.current = lease
       try {
         if (blocked.current) setWriteStatus('writable')
         else {
@@ -848,13 +987,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           if (initialScenarioPending.current) {
             initialScenarioPending.current = false
             try {
-              const raw = localStorage.getItem(KEY)
+              const raw = localStorage.getItem(activeKey.current)
               if (raw === initial.savedRaw) {
                 const durable = raw === null ? null : migrate(JSON.parse(raw))
                 if (durable?.mode === 'demo') {
                   const committed = { ...current.current, revision: durable.revision + 1 }
                   const serialized = JSON.stringify(committed)
-                  localStorage.setItem(KEY, serialized)
+                  localStorage.setItem(activeKey.current, serialized)
                   savedRaw.current = serialized
                   current.current = committed
                   setState(committed)
@@ -873,11 +1012,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         }
         await new Promise<void>(resolve => { releaseLeadership.current = resolve })
       } finally {
-        leader.current = false
+        // ปล่อยเฉพาะสิทธิ์ของรอบนี้ — รอบใหม่ที่จับไปแล้วต้องไม่ถูกรอบเก่าลบทิ้ง
+        if (leaseHolder.current === lease) leaseHolder.current = null
       }
     }).catch(() => {
       if (!mounted) return
-      leader.current = false
+      if (leaseHolder.current === lease) leaseHolder.current = null
       setPersistenceError('ขอสิทธิ์เขียนข้อมูลไม่สำเร็จ แท็บนี้เปิดแบบอ่านอย่างเดียว')
       setWriteStatus('readonly')
     })
@@ -886,14 +1026,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       controller.abort()
       releaseLeadership.current?.()
       releaseLeadership.current = null
-      leader.current = false
+      if (leaseHolder.current === lease) leaseHolder.current = null
     }
-  }, [initial.savedRaw, lockAttempt, rehydrateLatest, setWriteStatus])
+  }, [initial.savedRaw, lockAttempt, mode, rehydrateLatest, setWriteStatus])
 
   useEffect(() => {
     const sync = (event: StorageEvent) => {
-      if (event.key !== KEY || event.newValue === savedRaw.current) return
-      if (leader.current) {
+      if (event.key !== activeKey.current || event.newValue === savedRaw.current) return
+      if (leaseHolder.current !== null) {
         setPersistenceError('ข้อมูลในเครื่องเปลี่ยนจากอีกแท็บ ระบบหยุดเขียนเพื่อป้องกันข้อมูลหาย')
         setWriteStatus('conflict')
         return
@@ -902,6 +1042,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       try {
         const migrated = migrate(JSON.parse(event.newValue))
         if (!migrated) throw new Error('invalid state')
+        if (slotKey(migrated.mode) !== activeKey.current) throw new Error('foreign workspace in slot')
         savedRaw.current = event.newValue
         current.current = normalize(migrated)
         // ก้อนนี้มาจากแท็บอื่น แท็บนั้นนับให้แล้ว — นับซ้ำที่นี่คือรายงานงานที่ไม่มีใครทำเพิ่ม
@@ -919,10 +1060,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const acceptDeletion = (markerRaw: string | null) => {
+      // การลบบัญชีล้างเฉพาะ workspace จริง — แท็บที่กำลังดูเดโมต้องไม่ถูกดึงไปเป็นหลุมฝังศพ
+      if (activeKey.current !== REAL_SLOT_KEY) return
       const clean = readDeletedMarker(markerRaw)
       if (!clean) return
       let durableRaw: string | null = null
-      try { durableRaw = localStorage.getItem(KEY) } catch { /* remain blocked below */ }
+      try { durableRaw = localStorage.getItem(activeKey.current) } catch { /* remain blocked below */ }
       let durableIsClean = false
       try {
         const durable = durableRaw ? migrate(JSON.parse(durableRaw)) : null
@@ -930,7 +1073,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       } catch { /* remain blocked below */ }
       applyAccountDeletion(normalize(clean), durableRaw, durableIsClean)
       setPersistenceError(null)
-      if (leader.current) {
+      if (leaseHolder.current !== null) {
         setWriteStatus('readonly')
         releaseLeadership.current?.()
         releaseLeadership.current = null
@@ -969,12 +1112,22 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const track = useCallback((name: string, props?: Record<string, unknown>) => {
     dispatch({ type: 'track', name, props })
   }, [dispatch])
-  const resetDemo = useCallback((scenarioId?: string) =>
-    dispatch({ type: 'replace', state: normalize(buildScenario(scenarioId ?? current.current.scenarioId)) }), [dispatch])
-  const value = useMemo<StoreValue>(() => ({ state, dispatch, track, resetDemo, didReset,
+  /**
+   * รีเซ็ตเดโม = เขียนทับ "ช่องเดโม" เท่านั้น
+   * เรียกจากโหมดใช้จริงคืน false — สมุดบัญชีจริงไม่มีทางถูกข้อมูลสมมติทับ แม้ UI จะเผลอเรียก
+   */
+  const resetDemo = useCallback((scenarioId?: string) => {
+    if (current.current.mode !== 'demo') return false
+    return dispatch({ type: 'replace', state: normalize(buildScenario(scenarioId ?? current.current.scenarioId)) })
+  }, [dispatch])
+  const backToDemo = useCallback((scenarioId?: string) => {
+    if (current.current.mode !== 'real') return false
+    return switchWorkspace('demo', normalize(buildScenario(scenarioId ?? 'default')), false)
+  }, [switchWorkspace])
+  const value = useMemo<StoreValue>(() => ({ state, dispatch, track, mode, resetDemo, backToDemo, didReset,
     hydrated: true, persistenceError, recoveryRaw, writeStatus, ledgerReplacements, retryPersistence,
     prepareAccountDeletion, commitAccountDeletion, cancelAccountDeletion }),
-  [state, dispatch, track, resetDemo, didReset, persistenceError, recoveryRaw, writeStatus, ledgerReplacements,
+  [state, dispatch, track, mode, resetDemo, backToDemo, didReset, persistenceError, recoveryRaw, writeStatus, ledgerReplacements,
     retryPersistence, prepareAccountDeletion, commitAccountDeletion, cancelAccountDeletion])
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
 }
@@ -986,3 +1139,4 @@ export function useStore(): StoreValue {
 }
 
 export { KEY as STORAGE_KEY, ACCOUNT_DELETED_KEY, ACCOUNT_DELETED_EVENT, SCHEMA }
+export { ACTIVE_MODE_KEY, DEMO_SLOT_KEY, REAL_SLOT_KEY, parkedKey, slotKey, type WorkspaceMode }

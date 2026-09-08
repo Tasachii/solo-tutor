@@ -1,10 +1,11 @@
 import { expect, test, type Page } from './fixtures'
+import { ACTIVE_MODE, DEMO_SLOT, REAL_SLOT } from './workspace'
 
 async function prepareWorkspace(page: Page) {
   await page.goto('?scenario=empty#/app/onboarding')
-  await expect.poll(() => page.evaluate(() => localStorage.getItem('solo-demo-v3'))).not.toBeNull()
-  const dates = await page.evaluate(() => {
-    const state = JSON.parse(localStorage.getItem('solo-demo-v3')!)
+  await expect.poll(() => page.evaluate((demo) => localStorage.getItem(demo), DEMO_SLOT)).not.toBeNull()
+  const dates = await page.evaluate(([demo, real, pointer]) => {
+    const state = JSON.parse(localStorage.getItem(demo)!)
     const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Bangkok' }).format(new Date())
     const [year, month] = today.split('-').map(Number)
     const prior = `${month === 1 ? year - 1 : year}-${String(month === 1 ? 12 : month - 1).padStart(2, '0')}`
@@ -21,9 +22,10 @@ async function prepareWorkspace(page: Page) {
       completions: [{ unitId: 'qa-old', completedAt: `${prior}-15`, unitPrice: 400 }],
       invoices: [], payments: [], receipts: [], messages: [], chats: [], events: [],
     })
-    localStorage.setItem('solo-demo-v3', JSON.stringify(state))
+    localStorage.setItem(real, JSON.stringify(state))
+    localStorage.setItem(pointer, 'real')
     return { today, prior }
-  })
+  }, [DEMO_SLOT, REAL_SLOT, ACTIVE_MODE])
   // Full navigation releases the old lifetime lock and loads the test fixture.
   await page.goto('./#/app/today')
   await expect(page.locator('.urow').filter({ hasText: 'QA A' })).toBeVisible()
@@ -38,14 +40,14 @@ test('two tabs preserve writes, follow updates, and transfer writer ownership on
   const b = follower.locator('.urow').filter({ hasText: 'QA B' })
   await expect(b).toBeVisible()
   await b.getByRole('button', { name: 'เช็คชื่อ', exact: true }).click()
-  expect(await follower.evaluate(() => JSON.parse(localStorage.getItem('solo-demo-v3')!).completions.some((c: { unitId: string }) => c.unitId === 'qa-unit-B'))).toBe(false)
+  expect(await follower.evaluate((real) => JSON.parse(localStorage.getItem(real)!).completions.some((c: { unitId: string }) => c.unitId === 'qa-unit-B'), REAL_SLOT)).toBe(false)
   await a.getByRole('button', { name: 'เช็คชื่อ', exact: true }).click()
   await expect(follower.locator('.urow').filter({ hasText: 'QA A' })).toHaveClass(/urow--done/)
   await page.close()
   await expect.poll(() => follower.evaluate(async () => (await navigator.locks.query()).pending?.length ?? 0)).toBe(0)
   await b.getByRole('button', { name: 'เช็คชื่อ', exact: true }).click()
   await expect(b).toHaveClass(/urow--done/)
-  const stored = await follower.evaluate(() => JSON.parse(localStorage.getItem('solo-demo-v3')!))
+  const stored = await follower.evaluate((real) => JSON.parse(localStorage.getItem(real)!), REAL_SLOT)
   expect(stored.completions.map((c: { unitId: string }) => c.unitId).sort()).toEqual(['qa-old', 'qa-unit-A', 'qa-unit-B'])
   await follower.reload()
   await expect(follower.locator('.urow--done')).toHaveCount(2)
@@ -58,34 +60,34 @@ test('past periods can be closed using the saved price after a rate change', asy
   await page.locator('.period-picker select').selectOption(prior)
   await page.getByRole('button', { name: /ปิดยอด.*\(1\)/ }).click()
   await page.getByRole('dialog').getByRole('button', { name: 'ยืนยัน', exact: true }).click()
-  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('solo-demo-v3')!).invoices.length)).toBe(1)
-  const invoice = await page.evaluate(() => JSON.parse(localStorage.getItem('solo-demo-v3')!).invoices[0])
+  await expect.poll(() => page.evaluate((real) => JSON.parse(localStorage.getItem(real)!).invoices.length, REAL_SLOT)).toBe(1)
+  const invoice = await page.evaluate((real) => JSON.parse(localStorage.getItem(real)!).invoices[0], REAL_SLOT)
   expect(invoice.period).toBe(prior)
   expect(invoice.total).toBe(400)
   await page.reload()
   await page.locator('.period-picker select').selectOption(prior)
-  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('solo-demo-v3')!).invoices.length)).toBe(1)
+  expect(await page.evaluate((real) => JSON.parse(localStorage.getItem(real)!).invoices.length, REAL_SLOT)).toBe(1)
 })
 
 test('opening an unknown chat cannot create orphan data or break reload', async ({ page }) => {
   await prepareWorkspace(page)
-  const before = await page.evaluate(() => JSON.parse(localStorage.getItem('solo-demo-v3')!).chats)
+  const before = await page.evaluate((real) => JSON.parse(localStorage.getItem(real)!).chats, REAL_SLOT)
   await page.goto('#/app/admin?tab=chat&chat=not-a-client')
   await expect(page.getByText('ไม่พบผู้จ่าย', { exact: false }).first()).toBeVisible()
-  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('solo-demo-v3')!).chats)).toEqual(before)
+  expect(await page.evaluate((real) => JSON.parse(localStorage.getItem(real)!).chats, REAL_SLOT)).toEqual(before)
   await page.reload()
   await expect(page.getByText('ข้อมูลเดิมต้องกู้คืน', { exact: true })).toHaveCount(0)
 })
 
 test('a version 4 backup restores through the file picker and upgrades to version 5', async ({ page }) => {
   await prepareWorkspace(page)
-  const backup = await page.evaluate(() => {
-    const app = JSON.parse(localStorage.getItem('solo-demo-v3')!)
+  const backup = await page.evaluate((real) => {
+    const app = JSON.parse(localStorage.getItem(real)!)
     app.schemaVersion = 4
     delete app.revision
     app.provider.name = 'Restored From Version Four'
     return JSON.stringify({ format: 'solo-backup-1', exportedAt: new Date().toISOString(), app })
-  })
+  }, REAL_SLOT)
   await page.getByRole('button', { name: 'เมนู' }).click()
   const picker = page.waitForEvent('filechooser')
   await page.getByRole('dialog', { name: 'เมนู' }).getByRole('button', { name: 'กู้คืนจากไฟล์', exact: true }).click()
@@ -93,7 +95,7 @@ test('a version 4 backup restores through the file picker and upgrades to versio
   await page.getByRole('dialog', { name: 'กู้คืนจากไฟล์', exact: true }).getByRole('button', { name: 'กู้คืนจากไฟล์', exact: true }).click()
   await expect(page.locator('.greet')).toContainText('Restored From Version Four')
   await page.reload()
-  const app = await page.evaluate(() => JSON.parse(localStorage.getItem('solo-demo-v3')!))
+  const app = await page.evaluate((real) => JSON.parse(localStorage.getItem(real)!), REAL_SLOT)
   expect(app.schemaVersion).toBe(5)
   expect(app.subjects).toHaveLength(2)
   expect(app.completions[0].unitPrice).toBe(400)
@@ -112,7 +114,7 @@ test('a new package price and quantity preserve only the actual old credits', as
   await sheet.getByLabel('ราคาแพ็กใหม่ (บาท)').fill('6000')
   await sheet.getByRole('button', { name: 'ยืนยัน', exact: true }).click()
   await expect(sheet).toHaveCount(0)
-  const state = await page.evaluate(() => JSON.parse(localStorage.getItem('solo-demo-v3')!))
+  const state = await page.evaluate((demo) => JSON.parse(localStorage.getItem(demo)!), DEMO_SLOT)
   const billing = state.subjects.find((subject: { id: string }) => subject.id === 'p1').billing
   expect(billing.total).toBe(20)
   expect(billing.carriedCredits).toBe(oldRemaining)
@@ -151,7 +153,7 @@ test('an explicit demo scenario change survives acquiring the writer lock', asyn
   await expect(page.locator('.urow').first()).toBeVisible()
   await page.goto('?scenario=package-heavy#/app/subjects/p1')
   await expect(page.getByRole('heading', { name: 'น้องอิง', exact: true })).toBeVisible()
-  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('solo-demo-v3')!).scenarioId)).toBe('package-heavy')
+  await expect.poll(() => page.evaluate((demo) => JSON.parse(localStorage.getItem(demo)!).scenarioId, DEMO_SLOT)).toBe('package-heavy')
   await page.reload()
   await expect(page.getByRole('heading', { name: 'น้องอิง', exact: true })).toBeVisible()
 })

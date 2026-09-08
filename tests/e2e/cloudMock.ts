@@ -10,13 +10,15 @@ export const providerId = '11111111-1111-4111-8111-111111111111'
 
 export const installCloud = async (page: Page, head: { revision: number; cipher?: string; iv?: string; kdf?: string } | null) => {
   const planRequests: Record<string, unknown>[] = []
+  /** ลิงก์เอกสารที่ครูจำลองเผยแพร่ไว้ — เก็บสถานะจริงเพื่อให้การตรวจว่ายังเปิดได้อยู่ไหมตอบถูก */
+  const sharedDocuments: Record<string, unknown>[] = []
   let snapshot: Record<string, unknown> | null = head
     ? { revision: head.revision, schema_version: 5, cipher: head.cipher ?? 'bm90LXJlYWw=', iv: head.iv ?? 'aXY=', kdf: head.kdf ?? 'pbkdf2-sha256-310000', updated_at: '2026-09-07T01:00:00Z', device: 'iPhone/iPad' }
     : null
   let providerPlan = { plan: 'free', plan_until: null as string | null, paused_at: null as string | null }
   const seen = {
     saves: [] as Record<string, unknown>[], reads: 0, planRequests,
-    deletions: 0, deletionStatus: 200,
+    deletions: 0, deletionStatus: 200, sharedDocuments,
     approveLatest() {
       const row = planRequests.find((request) => request.status === 'pending')
       if (!row) throw new Error('No pending plan request to approve')
@@ -75,6 +77,32 @@ export const installCloud = async (page: Page, head: { revision: number; cipher?
       return json([providerPlan])
     }
     if (url.pathname === '/rest/v1/line_channel_public') return json([])
+    // รายการลิงก์ของครู และการตรวจก่อนใช้ลิงก์เดิมซ้ำ (`?token=eq.<token>`) ใช้ปลายทางเดียวกัน
+    // RLS จริงกรองให้เหลือแต่ของครูคนนี้ ที่นี่จึงคืนทุกแถวที่ครูจำลองเผยแพร่ไว้
+    if (url.pathname === '/rest/v1/shared_documents') {
+      const wanted = url.searchParams.get('token')?.replace(/^eq\./, '')
+      return json(wanted ? sharedDocuments.filter((row) => row.token === wanted) : sharedDocuments)
+    }
+    // ลิงก์เอกสารที่ปิดได้ — ครูเผยแพร่ก่อนข้อความออกจากเบราว์เซอร์ ทุกการส่งบิลจึงผ่านทางนี้
+    if (url.pathname === '/rest/v1/rpc/publish_shared_document') {
+      const body = request.postDataJSON() as Record<string, unknown>
+      // token ต้องเป็น base64url 22 ตัวเหมือนของจริง ไม่งั้นฝั่งผู้รับจะปฏิเสธรูปแบบลิงก์
+      const token = `qa-token-${String(sharedDocuments.length + 1).padStart(3, '0')}`.padEnd(22, 'x')
+      const expires = typeof body.p_expires_at === 'string' ? body.p_expires_at : '2030-01-01T00:00:00Z'
+      sharedDocuments.push({
+        token, kind: body.p_kind, cipher: body.p_cipher, iv: body.p_iv,
+        label: body.p_label ?? null, label_iv: body.p_label_iv ?? null,
+        created_at: '2025-09-02T03:00:00Z', expires_at: expires, revoked_at: null,
+      })
+      return json([{ token, expires_at: expires }])
+    }
+    // เพิกถอน = ปิดการเปิดครั้งต่อไป · คืน false เมื่อไม่มีอะไรเปลี่ยน เหมือนฟังก์ชันจริง
+    if (url.pathname === '/rest/v1/rpc/revoke_shared_document') {
+      const wanted = (request.postDataJSON() as { p_token?: string } | null)?.p_token
+      const row = sharedDocuments.find((entry) => entry.token === wanted && entry.revoked_at === null)
+      if (row) row.revoked_at = '2025-09-02T04:00:00Z'
+      return json(!!row)
+    }
     throw new Error(`Unhandled mock Supabase request: ${request.method()} ${url.pathname}`)
   })
   return seen

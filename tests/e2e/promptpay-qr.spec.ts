@@ -15,6 +15,7 @@ test('the parent page shows a scannable PromptPay QR only in real mode', async (
   await expect(page.locator('.qr__code')).toHaveCount(0)
   await expect(page.getByText(copy.clientView.qrSample)).toBeVisible()
 
+  // เขียนสมุดบัญชีจริงทับคีย์เดิมแล้วโหลดใหม่ — เท่ากับเครื่องเก่าก่อนแยกช่อง จึงได้ทดสอบเส้นทางย้ายข้อมูลไปในตัว
   await page.evaluate((promptpayId) => {
     const key = 'solo-demo-v3'
     const state = JSON.parse(localStorage.getItem(key)!)

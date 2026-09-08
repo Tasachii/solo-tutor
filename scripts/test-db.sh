@@ -22,27 +22,38 @@ if [[ "$ready" != "1" ]]; then
   docker logs "$container_name" >&2 || true
   exit 1
 fi
+# Migrations are discovered from the directory in numeric order, so adding one needs no
+# edit here. Two files must run inside that sequence: pre_production_safety seeds rows that
+# 0007 has to survive, and post_production_safety checks the result before 0008 builds on it.
+migration_args=()
+for path in "$repo_dir"/supabase/migrations/*.sql; do
+  name=$(basename "$path")
+  case "$name" in
+    0007_*) migration_args+=(-f /work/tests/sql/pre_production_safety.sql) ;;
+  esac
+  migration_args+=(-f "/work/supabase/migrations/$name")
+  case "$name" in
+    0007_*) migration_args+=(-f /work/tests/sql/post_production_safety.sql) ;;
+  esac
+done
+if [[ ${#migration_args[@]} -eq 0 ]]; then
+  echo "no migrations found under supabase/migrations" >&2
+  exit 1
+fi
+
 docker exec "$container_name" psql -v ON_ERROR_STOP=1 -U postgres \
   -f /work/tests/sql/bootstrap_supabase.sql \
-  -f /work/supabase/migrations/0001_line.sql \
-  -f /work/supabase/migrations/0002_line_app_bridge.sql \
-  -f /work/supabase/migrations/0003_intake.sql \
-  -f /work/supabase/migrations/0004_usage.sql \
-  -f /work/supabase/migrations/0005_ledger_sync.sql \
-  -f /work/supabase/migrations/0006_plans.sql \
-  -f /work/tests/sql/pre_production_safety.sql \
-  -f /work/supabase/migrations/0007_production_safety.sql \
-  -f /work/tests/sql/post_production_safety.sql \
-  -f /work/supabase/migrations/0008_account_deletion.sql \
-  -f /work/supabase/migrations/0009_paid_account_erasure.sql \
-  -f /work/supabase/migrations/0010_payment_evidence.sql \
+  "${migration_args[@]}" \
   -f /work/scripts/check-operations.sql \
   -f /work/tests/sql/line_backend.sql \
+  -f /work/tests/sql/shared_documents.sql \
   -f /work/tests/sql/ledger_sync.sql \
   -f /work/tests/sql/plans.sql \
   -f /work/tests/sql/production_safety.sql \
   -f /work/tests/sql/account_deletion.sql \
   -f /work/tests/sql/payment_evidence.sql \
+  -f /work/tests/sql/operations_role.sql \
+  -f /work/tests/sql/retention.sql \
   -f /work/scripts/paid-usage.sql \
   -f /work/scripts/pitch-metrics.sql
 

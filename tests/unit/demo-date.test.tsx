@@ -64,7 +64,7 @@ describe('เดโมเดินตามปฏิทินจริง', () =
  */
 describe('เดโมที่ค้างในเครื่อง', () => {
   const mount = async () => {
-    const { StoreProvider, STORAGE_KEY, useStore } = await import('../../src/core/store')
+    const { StoreProvider, DEMO_SLOT_KEY: STORAGE_KEY, useStore } = await import('../../src/core/store')
     let seen: ReturnType<typeof useStore>
     const Probe = () => { seen = useStore(); return null }
     render(<StoreProvider><Probe /></StoreProvider>)
@@ -76,7 +76,7 @@ describe('เดโมที่ค้างในเครื่อง', () => {
   it('ข้ามเดือนแล้วสร้างชุดข้อมูลใหม่ ไม่ค้างอยู่เดือนเก่า', async () => {
     on('2027-03-15')
     const stale = buildScenario('default')
-    const { STORAGE_KEY } = await import('../../src/core/store')
+    const { DEMO_SLOT_KEY: STORAGE_KEY } = await import('../../src/core/store')
     localStorage.setItem(STORAGE_KEY, JSON.stringify(stale))
     cleanup()
 
@@ -90,7 +90,7 @@ describe('เดโมที่ค้างในเครื่อง', () => {
     on('2027-03-15')
     const saved = buildScenario('default')
     const marker = { ...saved, clients: [...saved.clients, { id: 'kept', name: 'ลูกค้าที่เพิ่งเพิ่ม', lineId: '@kept' }] }
-    const { STORAGE_KEY } = await import('../../src/core/store')
+    const { DEMO_SLOT_KEY: STORAGE_KEY } = await import('../../src/core/store')
     localStorage.setItem(STORAGE_KEY, JSON.stringify(marker))
     cleanup()
 

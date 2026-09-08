@@ -2,12 +2,15 @@ import { act, cleanup, render, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { MemoryRouter } from 'react-router-dom'
 import { buildScenario } from '../../src/core/scenarios'
-import { StoreProvider, STORAGE_KEY, useStore } from '../../src/core/store'
+import { DEMO_SLOT_KEY as STORAGE_KEY, REAL_SLOT_KEY, StoreProvider, useStore } from '../../src/core/store'
 import type { Subject } from '../../src/core/types'
 import { sendUsage } from '../../src/core/usage'
 import { FROZEN_TODAY } from '../setup'
 
-vi.mock('../../src/core/usage', () => ({ sendUsage: vi.fn(() => true) }))
+vi.mock('../../src/core/usage', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../src/core/usage')>()
+  return { ...actual, sendUsage: vi.fn(() => true) }
+})
 
 import App from '../../src/App'
 
@@ -20,6 +23,16 @@ afterEach(() => { cleanup(); vi.clearAllMocks(); localStorage.clear(); history.r
 /** เปิดแอปจริงบน store จริง แล้วรอสิทธิ์เขียน — ล้างการนับตอนเปิดแอปทิ้ง เทสนี้วัดเฉพาะสิ่งที่เกิดหลังจากนั้น */
 async function open(scenarioId: string): Promise<void> {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(buildScenario(scenarioId)))
+  render(<StoreProvider><MemoryRouter initialEntries={['/']}><Probe /><App /></MemoryRouter></StoreProvider>)
+  await waitFor(() => expect(store.writeStatus).toBe('writable'))
+  sent.mockClear()
+}
+
+/** เปิดแอปบนสมุดบัญชีจริงที่มีข้อมูลอยู่แล้ว — ช่องของโหมดจริงคนละใบกับเดโม */
+async function openReal(): Promise<void> {
+  const seeded = { ...buildScenario('default'), mode: 'real' as const, scenarioId: 'real' }
+  localStorage.setItem(REAL_SLOT_KEY, JSON.stringify(seeded))
+  localStorage.setItem('solo-tutor:workspace', 'real')
   render(<StoreProvider><MemoryRouter initialEntries={['/']}><Probe /><App /></MemoryRouter></StoreProvider>)
   await waitFor(() => expect(store.writeStatus).toBe('writable'))
   sent.mockClear()
@@ -69,7 +82,7 @@ describe('ตัวนับการใช้งาน — ยกสมุด�
     })
 
     expect(counts().payments).toBe(before.payments + 1)
-    expect(sent.mock.calls).toEqual([['payment_recorded', 1, 'demo']])
+    expect(sent.mock.calls).toEqual([['payment_recorded', 1, { mode: 'demo' }]])
   })
 
   it('กู้คืนก้อนที่เล็กกว่าเดิม แล้วออกบิลจริงหนึ่งใบ ยังรายงานหนึ่งใบ ไม่เงียบหายไปกับฐานเก่า', async () => {
@@ -84,9 +97,9 @@ describe('ตัวนับการใช้งาน — ยกสมุด�
 
     expect(counts()).toEqual({ subjects: 1, invoices: 1, payments: 1 })
     expect(sent.mock.calls).toEqual([
-      ['students_changed', 1, 'demo'],
-      ['invoice_issued', 1, 'demo'],
-      ['payment_recorded', 1, 'demo'],
+      ['students_changed', 1, { mode: 'demo' }],
+      ['invoice_issued', 1, { mode: 'demo' }],
+      ['payment_recorded', 1, { mode: 'demo' }],
     ])
   })
 
@@ -95,6 +108,8 @@ describe('ตัวนับการใช้งาน — ยกสมุด�
     expect(counts().subjects).toBeGreaterThan(1)
 
     act(() => { expect(store.dispatch({ type: 'startReal' })).toBe(true) })
+    // สลับช่องแล้วต้องรอสิทธิ์เขียนของช่องใหม่ก่อน — ล็อกคนละดอกต่อ workspace
+    await waitFor(() => expect(store.writeStatus).toBe('writable'))
 
     expect(store.state.mode).toBe('real')
     expect(counts()).toEqual({ subjects: 0, invoices: 0, payments: 0 })
@@ -103,9 +118,9 @@ describe('ตัวนับการใช้งาน — ยกสมุด�
     act(() => { expect(addPackageStudent('s-first-real')).toBe(true) })
 
     expect(sent.mock.calls).toEqual([
-      ['students_changed', 1, 'real'],
-      ['invoice_issued', 1, 'real'],
-      ['payment_recorded', 1, 'real'],
+      ['students_changed', 1, { mode: 'real' }],
+      ['invoice_issued', 1, { mode: 'real' }],
+      ['payment_recorded', 1, { mode: 'real' }],
     ])
   })
 
@@ -119,7 +134,7 @@ describe('ตัวนับการใช้งาน — ยกสมุด�
   })
 
   it('ลบบัญชีในเครื่องแล้วสมุดบัญชีว่าง ไม่ส่งอะไร', async () => {
-    await open('default')
+    await openReal()
 
     act(() => { expect(store.dispatch({ type: 'deleteAccountLocal' })).toBe(true) })
 
@@ -134,7 +149,7 @@ describe('ตัวนับการใช้งาน — งานที่�
     const before = counts()
 
     act(() => { expect(store.dispatch({ type: 'upsertSubject', subject: { ...newPackageStudent('s-new'), billing: { mode: 'per_unit', rate: 500 } }, clientName: 'ผู้ปกครองใหม่' })).toBe(true) })
-    expect(sent.mock.calls).toEqual([['students_changed', before.subjects + 1, 'demo']])
+    expect(sent.mock.calls).toEqual([['students_changed', before.subjects + 1, { mode: 'demo' }]])
     sent.mockClear()
 
     const period = FROZEN_TODAY.slice(0, 7)
@@ -143,12 +158,12 @@ describe('ตัวนับการใช้งาน — งานที่�
     const created = counts().invoices - beforeClose.invoices
     expect(created).toBeGreaterThan(0)
     expect(created).toBeLessThan(counts().invoices)
-    expect(sent.mock.calls).toEqual([['invoice_issued', created, 'demo']])
+    expect(sent.mock.calls).toEqual([['invoice_issued', created, { mode: 'demo' }]])
     sent.mockClear()
 
     const invoice = store.state.invoices.find(row => row.status === 'overdue' || row.status === 'sent')!
     act(() => { expect(store.dispatch({ type: 'recordPayment', invoiceId: invoice.id, amount: 100, slipVerified: false })).toBe(true) })
-    expect(sent.mock.calls).toEqual([['payment_recorded', 1, 'demo']])
+    expect(sent.mock.calls).toEqual([['payment_recorded', 1, { mode: 'demo' }]])
   })
 
   it('งานที่ไม่แตะรายชื่อ บิล หรือยอดเงิน ไม่ส่งอะไร', async () => {

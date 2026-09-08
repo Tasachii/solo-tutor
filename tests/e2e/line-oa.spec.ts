@@ -1,5 +1,6 @@
 import { expect, test, type Page } from './fixtures'
 import { copy } from '../../src/copy'
+import { ACTIVE_MODE, DEMO_SLOT, REAL_SLOT } from './workspace'
 
 test.skip(process.env.SOLO_LINE_QA !== '1', 'LINE OA mock E2E runs only in the isolated QA command')
 
@@ -31,6 +32,8 @@ const installMockBackend = async (page: Page, options: MockOptions = {}) => {
     outbox: {} as Record<string, OutboxRow>,
     enqueueCount: 0,
     lineSendCount: 0,
+    /** จำนวนลิงก์เอกสารที่ถูกเผยแพร่ — บิลหนึ่งใบควรได้ลิงก์เดียว ไม่ใช่ใบใหม่ทุกครั้งที่กด */
+    sharedDocuments: 0,
     snapshotSaves: 0,
     handled: [] as string[],
     escaped: [] as string[],
@@ -153,6 +156,17 @@ const installMockBackend = async (page: Page, options: MockOptions = {}) => {
       }
       return json({ ok: true })
     }
+    // ทุกบิลมีลิงก์เอกสาร การส่งจึงเผยแพร่ลิงก์ที่ปิดได้ก่อนข้อความออกจากเบราว์เซอร์
+    if (url.pathname === '/rest/v1/rpc/publish_shared_document') {
+      const body = request.postDataJSON() as { p_expires_at?: string }
+      state.sharedDocuments += 1
+      return json([{
+        token: `qa-doc-${String(state.sharedDocuments).padStart(3, '0')}`.padEnd(22, 'x'),
+        expires_at: body.p_expires_at ?? '2026-12-07T00:00:00Z',
+      }])
+    }
+    if (url.pathname === '/rest/v1/rpc/revoke_shared_document') return json(true)
+    if (url.pathname === '/rest/v1/shared_documents') return json([])
     throw new Error(`Unhandled mock Supabase request: ${request.method()} ${url.pathname}${url.search}`)
   })
   return state
@@ -161,9 +175,9 @@ const installMockBackend = async (page: Page, options: MockOptions = {}) => {
 const seedRealWorkspace = async (page: Page) => {
   await page.goto('?scenario=default#/app/admin')
   await expect(page.locator('.skel')).toHaveCount(0)
-  await expect.poll(() => page.evaluate(() => localStorage.getItem('solo-demo-v3'))).not.toBeNull()
-  await page.evaluate(({ providerId: provider, workspaceId: workspace, messageText: text }) => {
-    const saved = JSON.parse(localStorage.getItem('solo-demo-v3')!)
+  await expect.poll(() => page.evaluate((demo) => localStorage.getItem(demo), DEMO_SLOT)).not.toBeNull()
+  await page.evaluate(({ providerId: provider, workspaceId: workspace, messageText: text, demo, real, pointer }) => {
+    const saved = JSON.parse(localStorage.getItem(demo)!)
     saved.mode = 'real'
     saved.scenarioId = 'real'
     saved.onboarded = true
@@ -178,8 +192,9 @@ const seedRealWorkspace = async (page: Page) => {
     }]
     // ข้อความการบ้านของชุดเดโมอ้างถึงรายการเหล่านี้ — ตัดออกพร้อมกันเพื่อให้ state สอดคล้อง
     saved.homework = []
-    localStorage.setItem('solo-demo-v3', JSON.stringify(saved))
-  }, { providerId, workspaceId, messageText })
+    localStorage.setItem(real, JSON.stringify(saved))
+    localStorage.setItem(pointer, 'real')
+  }, { providerId, workspaceId, messageText, demo: DEMO_SLOT, real: REAL_SLOT, pointer: ACTIVE_MODE })
 }
 
 const login = async (page: Page) => {
@@ -216,11 +231,11 @@ test('เชื่อม OA ล้าง credentials สร้างรหัส
   const card = page.locator('.msg').filter({ hasText: messageText })
   await card.getByRole('button', { name: 'ส่งด้วย LINE OA' }).click()
   await expect(card).toHaveCount(0)
-  await expect.poll(() => page.evaluate(() => {
-    const state = JSON.parse(localStorage.getItem('solo-demo-v3')!)
+  await expect.poll(() => page.evaluate((real) => {
+    const state = JSON.parse(localStorage.getItem(real)!)
     const message = state.messages.find((row: { id: string }) => row.id === 'qa-line-message')
     return { status: message?.status, oaDelivery: message?.oaDelivery }
-  })).toEqual({ status: 'sent', oaDelivery: undefined })
+  }, REAL_SLOT)).toEqual({ status: 'sent', oaDelivery: undefined })
 
   expect(backend.enqueueCount).toBe(1)
   expect(backend.lineSendCount).toBe(1)
@@ -239,10 +254,10 @@ test('timeout หลังเข้าคิวเก็บ marker ข้าม 
   await expect(card).toContainText('รอตรวจสอบ')
   await expect(card).toContainText('ติดต่อระบบ OA ไม่สำเร็จ', { timeout: 15_000 })
   await expect(card.getByRole('button', { name: 'ส่งใน LINE' })).toHaveCount(0)
-  await expect.poll(() => page.evaluate(() => {
-    const state = JSON.parse(localStorage.getItem('solo-demo-v3')!)
+  await expect.poll(() => page.evaluate((real) => {
+    const state = JSON.parse(localStorage.getItem(real)!)
     return !!state.messages.find((row: { id: string }) => row.id === 'qa-line-message')?.oaDelivery
-  })).toBe(true)
+  }, REAL_SLOT)).toBe(true)
 
   await page.reload()
   await expect(page.locator('.skel')).toHaveCount(0)
@@ -299,8 +314,8 @@ test('แท็บค้างจ่าย: ส่งทวงทั้งชุ
   // บิลยังค้าง (ยังไม่ได้รับเงิน) แถวจึงยังอยู่ แต่บันทึกว่าทวงแล้ววันนี้ และไม่มีใบให้ส่งซ้ำ
   await expect(linkedRow).toContainText(copy.collect.lastReminder.split(' ')[0])
   await expect(sendAll).toBeDisabled()
-  await expect.poll(() => page.evaluate(() => {
-    const state = JSON.parse(localStorage.getItem('solo-demo-v3')!)
+  await expect.poll(() => page.evaluate((real) => {
+    const state = JSON.parse(localStorage.getItem(real)!)
     return state.messages.filter((m: { kind: string; status: string }) => m.kind === 'reminder' && m.status === 'sent').length
-  })).toBe(1)
+  }, REAL_SLOT)).toBe(1)
 })

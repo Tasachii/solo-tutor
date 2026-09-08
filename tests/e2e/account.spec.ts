@@ -6,17 +6,19 @@ import type { AppState } from '../../src/core/types'
 import { readFile } from 'node:fs/promises'
 import { test as plainTest } from '@playwright/test'
 import { installCloud, providerId } from './cloudMock'
+import { DEMO_SLOT, REAL_SLOT, ACTIVE_MODE } from './workspace'
 
 const openReal = async (page: Page, hash: string): Promise<void> => {
   await page.goto('?scenario=default#/app/today')
   await expect(page.locator('.skel')).toHaveCount(0)
-  await expect.poll(() => page.evaluate(() => localStorage.getItem('solo-demo-v3'))).not.toBeNull()
-  await page.evaluate(() => {
-    const saved = JSON.parse(localStorage.getItem('solo-demo-v3')!)
+  await expect.poll(() => page.evaluate((demo) => localStorage.getItem(demo), DEMO_SLOT)).not.toBeNull()
+  await page.evaluate(([demo, real, pointer]) => {
+    const saved = JSON.parse(localStorage.getItem(demo)!)
     saved.mode = 'real'; saved.scenarioId = 'real'; saved.onboarded = true
     saved.provider = { name: 'ครู QA', promptpayId: '0812345678' }
-    localStorage.setItem('solo-demo-v3', JSON.stringify(saved))
-  })
+    localStorage.setItem(real, JSON.stringify(saved))
+    localStorage.setItem(pointer, 'real')
+  }, [DEMO_SLOT, REAL_SLOT, ACTIVE_MODE])
   // Force one document navigation so StoreProvider hydrates the edited local
   // state. A hash navigation followed immediately by reload races lazy imports
   // in WebKit and reports a cancelled module as an application crash.
@@ -84,10 +86,10 @@ test.describe('ซิงก์คลาวด์กับ Supabase จำลอ�
     expect(seen.deletions).toBe(0)
     await submitDeletion(page)
     await expect.poll(() => seen.deletions).toBe(1)
-    const remaining = (target: Page) => target.evaluate(() => {
-      const raw = JSON.parse(localStorage.getItem('solo-demo-v3') ?? '{}')
+    const remaining = (target: Page) => target.evaluate((real) => {
+      const raw = JSON.parse(localStorage.getItem(real) ?? '{}')
       return { subjects: raw.subjects?.length ?? 0, provider: raw.provider?.name ?? '' }
-    })
+    }, REAL_SLOT)
     await expect.poll(() => remaining(page)).toEqual({ subjects: 0, provider: '' })
     await expect.poll(() => remaining(other)).toEqual({ subjects: 0, provider: '' })
     await expect(other.getByText('teacher@example.com', { exact: true })).toHaveCount(0)
@@ -113,7 +115,7 @@ test.describe('ซิงก์คลาวด์กับ Supabase จำลอ�
     await dialog.getByLabel(copy.account.deleteAccountType, { exact: true }).fill('ลบบัญชี')
     await dialog.getByRole('button', { name: copy.account.deleteAccountConfirm, exact: true }).click()
     await expect.poll(() => seen.deletions).toBe(1)
-    await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('solo-demo-v3')!).subjects.length)).toBe(0)
+    await expect.poll(() => page.evaluate((real) => JSON.parse(localStorage.getItem(real)!).subjects.length, REAL_SLOT)).toBe(0)
     await expect(page.getByText('teacher@example.com', { exact: true })).toHaveCount(0)
   })
 
@@ -128,7 +130,7 @@ test.describe('ซิงก์คลาวด์กับ Supabase จำลอ�
     await page.getByLabel('รหัสผ่าน').fill('qa-password')
     await page.getByRole('button', { name: 'เข้าสู่ระบบ' }).click()
     await expect(page.getByTestId('sync-status')).toHaveText(copy.account.status.synced, { timeout: 15_000 })
-    const before = await page.evaluate(() => JSON.parse(localStorage.getItem('solo-demo-v3')!).subjects)
+    const before = await page.evaluate((real) => JSON.parse(localStorage.getItem(real)!).subjects, REAL_SLOT)
     await page.getByRole('button', { name: copy.account.deleteAccountTitle, exact: true }).click()
     const dialog = page.getByRole('dialog', { name: copy.account.deleteAccountTitle })
     await dialog.getByLabel(copy.account.deleteAccountPassword, { exact: true }).fill('qa-password')
@@ -138,7 +140,7 @@ test.describe('ซิงก์คลาวด์กับ Supabase จำลอ�
     await dialog.getByRole('button', { name: copy.account.deleteAccountConfirm, exact: true }).click()
     expect((await response).status()).toBe(409)
     await expect(page.getByText(copy.account.retentionRequired, { exact: true })).toBeVisible()
-    expect(await page.evaluate(() => JSON.parse(localStorage.getItem('solo-demo-v3')!).subjects)).toEqual(before)
+    expect(await page.evaluate((real) => JSON.parse(localStorage.getItem(real)!).subjects, REAL_SLOT)).toEqual(before)
     await expect(page.getByText('teacher@example.com', { exact: true })).toBeVisible()
     expect(scriptErrors).toEqual([])
   })
@@ -150,7 +152,7 @@ test.describe('ซิงก์คลาวด์กับ Supabase จำลอ�
     await page.getByLabel('รหัสผ่าน').fill('qa-password')
     await page.getByRole('button', { name: 'เข้าสู่ระบบ' }).click()
     await expect(page.getByTestId('sync-status')).toHaveText(copy.account.status.synced, { timeout: 15_000 })
-    const before = await page.evaluate(() => JSON.parse(localStorage.getItem('solo-demo-v3')!).subjects)
+    const before = await page.evaluate((real) => JSON.parse(localStorage.getItem(real)!).subjects, REAL_SLOT)
     const pending = page.waitForEvent('download')
     await page.getByRole('button', { name: copy.account.recoveryExport }).click()
     const recovery = await pending
@@ -163,7 +165,7 @@ test.describe('ซิงก์คลาวด์กับ Supabase จำลอ�
     await expect(page.getByTestId('sync-status')).toHaveText(copy.account.status.locked, { timeout: 15_000 })
     await page.getByLabel(copy.account.recoveryImport, { exact: true }).setInputFiles({ name: 'mock-recovery.json', mimeType: 'application/json', buffer: bytes })
     await expect(page.getByTestId('sync-status')).toHaveText(copy.account.status.synced, { timeout: 15_000 })
-    expect(await page.evaluate(() => JSON.parse(localStorage.getItem('solo-demo-v3')!).subjects)).toEqual(before)
+    expect(await page.evaluate((real) => JSON.parse(localStorage.getItem(real)!).subjects, REAL_SLOT)).toEqual(before)
     expect(seen.deletions).toBe(0)
     expect(seen.saves).toHaveLength(1)
   })
@@ -191,7 +193,7 @@ test.describe('ซิงก์คลาวด์กับ Supabase จำลอ�
 
   test('เครื่องมีข้อมูลและคลาวด์ก็มี — ไม่เดา ถามครู แล้ว "ใช้ข้อมูลเครื่องนี้" เขียนทับด้วย revision ของคลาวด์', async ({ page }) => {
     await openReal(page, '/app/settings/account')
-    const local = await page.evaluate(() => JSON.parse(localStorage.getItem('solo-demo-v3')!)) as AppState
+    const local = await page.evaluate((real) => JSON.parse(localStorage.getItem(real)!), REAL_SLOT) as AppState
     const sealed = await packSnapshot({ ...local, provider: { ...local.provider, name: 'ครูจากอีกเครื่อง' } },
       await deriveKey('qa-password', providerId), '2025-09-01T00:00:00Z')
     const seen = await installCloud(page, { revision: 7, ...sealed })
@@ -212,14 +214,15 @@ test.describe('ซิงก์คลาวด์กับ Supabase จำลอ�
 test('แพ็กฟรีรับได้ 5 คนที่ยังเรียนอยู่ — คนที่ 6 เจอชีทแพ็ก ไม่ถูกเพิ่มเงียบ ๆ', async ({ page }) => {
   await page.goto('?scenario=default#/app/today')
   await expect(page.locator('.skel')).toHaveCount(0)
-  await expect.poll(() => page.evaluate(() => localStorage.getItem('solo-demo-v3'))).not.toBeNull()
-  await page.evaluate(() => {
-    const saved = JSON.parse(localStorage.getItem('solo-demo-v3')!)
+  await expect.poll(() => page.evaluate((demo) => localStorage.getItem(demo), DEMO_SLOT)).not.toBeNull()
+  await page.evaluate(([demo, real, pointer]) => {
+    const saved = JSON.parse(localStorage.getItem(demo)!)
     saved.mode = 'real'; saved.scenarioId = 'real'; saved.onboarded = true
     saved.provider = { name: 'ครู QA', promptpayId: '0812345678' }
     saved.subjects = saved.subjects.map((s: { active: boolean }, i: number) => ({ ...s, active: i < 5 }))
-    localStorage.setItem('solo-demo-v3', JSON.stringify(saved))
-  })
+    localStorage.setItem(real, JSON.stringify(saved))
+    localStorage.setItem(pointer, 'real')
+  }, [DEMO_SLOT, REAL_SLOT, ACTIVE_MODE])
   await page.goto('?qa-real=1#/app/subjects')
   await expect(page.locator('.skel')).toHaveCount(0)
   await expect(page.locator('.srow').first()).toBeVisible()   // รายชื่อต้องวาดก่อนนับ (CI ช้าเคยนับได้ 0)
@@ -273,6 +276,8 @@ test.describe('แพ็กสมาชิกกับ Supabase จำลอง'
       const saved = JSON.parse(localStorage.getItem('solo-demo-v3') ?? '{}') as { mode?: string; subjects?: unknown[] }
       return { mode: saved.mode, subjects: saved.subjects?.length ?? 0 }
     })).toEqual({ mode: 'demo', subjects: 6 })
+    // ยังไม่กด "เริ่มใช้จริง" ช่องของสมุดบัญชีจริงจึงต้องยังไม่มีอะไร
+    expect(await page.evaluate((real) => localStorage.getItem(real), REAL_SLOT)).toBeNull()
     await page.getByRole('button', { name: copy.menu.title }).click()
     await page.getByRole('dialog', { name: copy.menu.title }).getByRole('button', { name: copy.menu.startReal }).click()
     await page.getByRole('dialog', { name: copy.menu.startReal }).getByRole('button', { name: copy.menu.startReal }).click()

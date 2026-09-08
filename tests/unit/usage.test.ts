@@ -1,12 +1,19 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { anonymousTeacherId, sendUsage, usagePayload } from '../../src/core/usage'
+import {
+  CLIENT_EVENTS, QA_PARAM, ROUTE_CATEGORIES, SERVER_EVENTS, SESSION_IDLE_MS, USAGE_VERSION,
+  adoptAudience, anonymousTeacherId, currentAudience, currentSessionId, postUsage,
+  resetUsageKeys, routeCategory, sendUsage, usagePayload,
+} from '../../src/core/usage'
 
 const configure = () => {
   vi.stubEnv('VITE_SUPABASE_URL', 'https://project-ref.supabase.co')
   vi.stubEnv('VITE_SUPABASE_PUBLISHABLE_KEY', 'sb_publishable_browser_test')
   vi.stubEnv('VITE_SUPABASE_ANON_KEY', '')
 }
-afterEach(() => { vi.restoreAllMocks(); vi.unstubAllEnvs(); localStorage.clear() })
+afterEach(() => { vi.restoreAllMocks(); vi.unstubAllEnvs(); localStorage.clear(); resetUsageKeys() })
+
+const bodyOf = (send: ReturnType<typeof vi.fn>, call = 0) =>
+  JSON.parse(String((send.mock.calls[call][1] as RequestInit).body))
 
 /** ตัวนับต้องไม่มีทางพาข้อมูลนักเรียนออกไป — ตรึงรูปร่าง payload ไว้ */
 describe('ตัวนับการใช้งาน', () => {
@@ -18,32 +25,144 @@ describe('ตัวนับการใช้งาน', () => {
     expect(anonymousTeacherId()).not.toBe(a)
   })
 
-  it('payload มีแค่ teacher_id · event · count · time (· mode) ไม่มีอย่างอื่น', () => {
-    const p = usagePayload('invoice_issued', 3, 'real', new Date('2026-09-08T10:00:00+07:00'))
-    expect(Object.keys(p).sort()).toEqual(['count', 'event', 'mode', 'teacher_id', 'time'])
+  it('payload มีแค่ช่องที่ตกลงไว้ ไม่มีชื่อ อีเมล เบอร์ ยอดเงิน URL หรือ query', () => {
+    const p = usagePayload('invoice_issued', 3, { mode: 'real', route: 'app', audience: 'public' })!
+    expect(Object.keys(p).sort())
+      .toEqual(['audience', 'count', 'event', 'event_id', 'mode', 'route', 'session_id', 'teacher_id', 'v'])
+    expect(p.v).toBe(USAGE_VERSION)
     expect(p.count).toBe(3)
-    expect(p.time).toBe('2026-09-08T03:00:00.000Z')
-    expect(JSON.stringify(p)).not.toMatch(/น้อง|ครู|บาท|[0-9]{3},[0-9]{3}/)
+    expect(JSON.stringify(p)).not.toMatch(/น้อง|ครู|บาท|@|\?|#|[0-9]{3},[0-9]{3}/)
   })
 
-  it('count ติดลบหรือทศนิยมถูกทำให้เป็นจำนวนเต็มไม่ติดลบ', () => {
-    expect(usagePayload('students_changed', -2).count).toBe(0)
-    expect(usagePayload('students_changed', 4.7).count).toBe(4)
+  it('count ติดลบ ทศนิยม หรือไม่ใช่ตัวเลข ถูกทำให้เป็นจำนวนเต็มไม่ติดลบที่มีเพดาน', () => {
+    expect(usagePayload('students_changed', -2)!.count).toBe(0)
+    expect(usagePayload('students_changed', 4.7)!.count).toBe(4)
+    expect(usagePayload('students_changed', Number.NaN)!.count).toBe(0)
+    expect(usagePayload('students_changed', 999_999)!.count).toBe(10_000)
   })
 
   it('ส่งไปที่ /functions/v1/usage ของโปรเจกต์เดียวกัน', () => {
     configure()
     const send = vi.fn().mockResolvedValue(new Response('{}'))
-    expect(sendUsage('payment_recorded', 1, 'real', send as unknown as typeof fetch)).toBe(true)
-    const [url, init] = send.mock.calls[0]
+    expect(sendUsage('payment_recorded', 1, { mode: 'real', send })).toBe(true)
+    const [url] = send.mock.calls[0]
     expect(url).toBe('https://project-ref.supabase.co/functions/v1/usage')
-    expect(JSON.parse((init as RequestInit).body as string).event).toBe('payment_recorded')
+    expect(bodyOf(send).event).toBe('payment_recorded')
   })
 
   it('ไม่มีโปรเจกต์ = ไม่ส่ง และไม่โยน error', () => {
     vi.stubEnv('VITE_SUPABASE_URL', ''); vi.stubEnv('VITE_SUPABASE_PUBLISHABLE_KEY', '')
     const send = vi.fn()
-    expect(sendUsage('app_open', 1, 'demo', send as unknown as typeof fetch)).toBe(false)
+    expect(sendUsage('app_open', 1, { mode: 'demo', send })).toBe(false)
     expect(send).not.toHaveBeenCalled()
+  })
+
+  it('เครือข่ายล่มหรือถูกบล็อก ตัวนับกลืนเองไม่โยนต่อให้ผู้เรียก', () => {
+    configure()
+    const rejected = vi.fn().mockRejectedValue(new Error('blocked by client'))
+    expect(() => sendUsage('invoice_issued', 1, { mode: 'real', send: rejected })).not.toThrow()
+    const thrower = vi.fn(() => { throw new Error('offline') })
+    expect(sendUsage('invoice_issued', 1, { mode: 'real', send: thrower as unknown as typeof fetch })).toBe(false)
+  })
+})
+
+describe('ตัวนับการใช้งาน — ชื่อเหตุการณ์', () => {
+  it('เบราว์เซอร์ส่งได้เฉพาะชื่อ client และไม่ทับกับชื่อที่เซิร์ฟเวอร์เขียนเอง', () => {
+    expect([...CLIENT_EVENTS]).toEqual([
+      'landing_view', 'pricing_view', 'demo_started', 'demo_completed', 'signup_started',
+      'onboarding_completed', 'app_open', 'students_changed', 'invoice_issued', 'payment_recorded',
+    ])
+    expect([...SERVER_EVENTS]).toEqual(['signup_completed', 'email_verified'])
+    for (const name of SERVER_EVENTS) expect(CLIENT_EVENTS).not.toContain(name)
+  })
+})
+
+describe('ตัวนับการใช้งาน — หมวดหน้า', () => {
+  it('ส่งชื่อหมวด ไม่ใช่ path จริงและไม่ใช่ query/hash', () => {
+    expect(routeCategory('/')).toBe('landing')
+    expect(routeCategory('/pricing')).toBe('pricing')
+    expect(routeCategory('/pricing/')).toBe('pricing')
+    expect(routeCategory('#/pricing?plan=3')).toBe('pricing')
+    expect(routeCategory('/privacy')).toBe('legal')
+    expect(routeCategory('/terms')).toBe('legal')
+    expect(routeCategory('/start')).toBe('start')
+    expect(routeCategory('/login')).toBe('login')
+    expect(routeCategory('/app/billing')).toBe('app')
+    expect(routeCategory('/somewhere-else')).toBe('other')
+    for (const category of ROUTE_CATEGORIES) expect(typeof category).toBe('string')
+  })
+
+  it('หน้าเอกสารและลิงก์ของผู้ปกครองไม่มีหมวด แปลว่าไม่ส่งอะไรเลย', () => {
+    expect(routeCategory('/document/8f3a-secret-token')).toBeNull()
+    expect(routeCategory('/receipt/rc-1')).toBeNull()
+    expect(routeCategory('/client/client-1')).toBeNull()
+  })
+})
+
+describe('ตัวนับการใช้งาน — session และ visitor', () => {
+  it('กิจกรรมต่อเนื่องอยู่ session เดิม ขาดไป 30 นาทีเริ่ม session ใหม่ แต่ visitor คนเดิม', () => {
+    const start = Date.UTC(2026, 8, 8, 3, 0, 0)
+    const visitor = anonymousTeacherId()
+    const first = currentSessionId(start)
+    expect(currentSessionId(start + 29 * 60_000)).toBe(first)
+    const later = currentSessionId(start + 29 * 60_000 + SESSION_IDLE_MS + 1)
+    expect(later).not.toBe(first)
+    expect(anonymousTeacherId()).toBe(visitor)
+  })
+
+  it('นาฬิกาเครื่องถอยหลังนับเป็น session ใหม่ ไม่ใช่ยืด session เดิมไปเรื่อย', () => {
+    const start = Date.UTC(2026, 8, 8, 3, 0, 0)
+    const first = currentSessionId(start)
+    expect(currentSessionId(start - 60_000)).not.toBe(first)
+  })
+
+  it('ค่าที่เสียหายในเครื่องไม่ทำให้พัง — ออก session ใหม่แทน', () => {
+    localStorage.setItem('solo-usage-session', 'ไม่ใช่ JSON')
+    expect(currentSessionId(Date.now())).toMatch(/^[0-9a-f-]{36}$/)
+  })
+})
+
+describe('ตัวนับการใช้งาน — แกนทีม/QA แยกจากแกน Demo/จริง', () => {
+  it('?qa=1 ทำให้ทราฟฟิกของทีมอยู่คนละแกน และ ?qa=0 คืนค่าเป็นผู้เยี่ยมชมปกติ', () => {
+    adoptAudience(`?${QA_PARAM}=1`)
+    expect(currentAudience()).toBe('team')
+    expect(usagePayload('landing_view', 1, { route: 'landing' })!.audience).toBe('team')
+    adoptAudience(`?${QA_PARAM}=0`)
+    expect(currentAudience()).toBe('public')
+    // ผู้ที่ลอง Demo ยังเป็นผู้เยี่ยมชมจริง แค่คนละโหมด ไม่ใช่ทีม
+    expect(usagePayload('demo_started', 1, { mode: 'demo', route: 'start' })!.audience).toBe('public')
+  })
+
+  it('query ที่ไม่มี ?qa= ไม่เปลี่ยนค่าที่จำไว้', () => {
+    adoptAudience(`?${QA_PARAM}=1`)
+    adoptAudience('?plan=3')
+    expect(currentAudience()).toBe('team')
+  })
+})
+
+describe('ตัวนับการใช้งาน — กันนับซ้ำ', () => {
+  it('กุญแจเดิมยิงซ้ำไม่ส่งอีก', () => {
+    configure()
+    const send = vi.fn().mockResolvedValue(new Response('{}'))
+    expect(sendUsage('landing_view', 1, { route: 'landing', key: 'view:abc:landing', send })).toBe(true)
+    expect(sendUsage('landing_view', 1, { route: 'landing', key: 'view:abc:landing', send })).toBe(false)
+    expect(send).toHaveBeenCalledTimes(1)
+  })
+
+  it('กุญแจคนละค่าได้ event_id คนละค่า แต่ retry payload เดิมใช้ event_id เดิม', () => {
+    configure()
+    const send = vi.fn().mockResolvedValue(new Response('{}'))
+    const first = usagePayload('landing_view', 1, { route: 'landing', key: 'view:one:landing' })!
+    const second = usagePayload('landing_view', 1, { route: 'landing', key: 'view:two:landing' })!
+    expect(first.event_id).not.toBe(second.event_id)
+    expect(postUsage(first, send)).toBe(true)
+    expect(postUsage(first, send)).toBe(true)
+    expect(bodyOf(send, 0).event_id).toBe(bodyOf(send, 1).event_id)
+  })
+
+  it('ไม่มีกุญแจ = เหตุการณ์คนละครั้ง ได้ event_id ใหม่ทุกครั้ง', () => {
+    const a = usagePayload('invoice_issued', 1, { mode: 'real' })!
+    const b = usagePayload('invoice_issued', 1, { mode: 'real' })!
+    expect(a.event_id).not.toBe(b.event_id)
   })
 })

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useStore } from '../core/store'
 import { copy } from '../copy'
@@ -8,8 +8,20 @@ import { AuthForm, type AuthMode } from '../app/components/AuthForm'
 import { PenguinMark } from '../app/components'
 import { useCloudSync } from '../app/CloudSync'
 import { AppearanceButton, ThemeToggle } from './ThemeToggle'
+import { currentSessionId, sendUsage } from '../core/usage'
 
 type Phase = 'form' | 'entering' | 'stuck'
+
+/**
+ * "เริ่มสมัคร" = กดส่งฟอร์มโหมดสมัครที่ผ่าน validate ของเบราว์เซอร์แล้ว ไม่ใช่แค่เปิดหน้า
+ * ฟอร์มเดียวใช้ทั้งสมัครและเข้าสู่ระบบ จึงอ่านโหมดจากช่องรหัสผ่านที่ AuthForm ประกาศไว้
+ * (autocomplete=new-password เฉพาะตอนสมัคร) — เทสตรึงข้อตกลงนี้ไว้ ถ้าฟอร์มเปลี่ยนจะรู้ทันที
+ */
+export function isValidatedSignupSubmit(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLFormElement) || !target.checkValidity()) return false
+  const password = target.querySelector('input[type="password"]')
+  return password?.getAttribute('autocomplete') === 'new-password'
+}
 
 /**
  * ประตูที่สองของหน้าแรก — ครูที่มีบัญชีหรือพร้อมใช้จริง เดโมยังไม่ต้องสมัครเหมือนเดิม
@@ -26,6 +38,11 @@ export default function Login() {
   const initialMode: AuthMode = new URLSearchParams(loc.search).get('mode') === 'signup' ? 'signup' : 'signin'
   const [phase, setPhase] = useState<Phase>('form')
   const [notice, setNotice] = useState('')
+
+  const noteSignupSubmit = (event: FormEvent) => {
+    if (!isValidatedSignupSubmit(event.target)) return
+    sendUsage('signup_started', 1, { route: 'login', key: `signup_started:${currentSessionId()}` })
+  }
 
   const enter = () => {
     if (state.mode !== 'real') {
@@ -74,7 +91,10 @@ export default function Login() {
               </section>
             ) : (
               // key ทำให้ ?mode= ในลิงก์มีผลแม้เปลี่ยนแค่ hash (หน้าเดิมยังไม่ถูก mount ใหม่)
-              <AuthForm key={initialMode} initialMode={initialMode} onSession={enter} hint={copy.account.signupHint} />
+              // display:contents ทำให้ตัวห่อไม่เปลี่ยนหน้าตา — มีไว้ดักเหตุการณ์ส่งฟอร์มเท่านั้น
+              <div style={{ display: 'contents' }} onSubmit={noteSignupSubmit}>
+                <AuthForm key={initialMode} initialMode={initialMode} onSession={enter} hint={copy.account.signupHint} />
+              </div>
             )}
             <p className="hint"><Link to="/start">{c.tryDemo}</Link></p>
             <p className="hint">{copy.account.encrypted}</p>

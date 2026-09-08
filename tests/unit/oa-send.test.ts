@@ -19,10 +19,19 @@ const api = vi.hoisted(() => ({
   findDelivery: vi.fn<() => Promise<Row | null>>(async () => null),
   deliveryTarget: vi.fn<() => Promise<Target | null>>(async () => ({ recipient_id: '33333333-3333-4333-8333-333333333333', eligible: true, reason: 'ok', client_id: 'x', channel_status: 'active', unfollowed_at: null, quota_used: 0, quota_limit: 300 })),
   deliverOa: vi.fn<() => Promise<Row | null>>(async () => ({ id: 'out-1', status: 'sent', recipient_id: '33333333-3333-4333-8333-333333333333', body: '', message_id: '', last_error: null })),
+  // ข้อความบิลมีลิงก์เอกสาร การส่งจริงจึงต้องเผยแพร่ลิงก์ที่ปิดได้ก่อน — ที่นี่คุมผลของขั้นนั้น
+  secureDraft: vi.fn<(state: unknown, draft: string) => Promise<{ draft: string; links: never[]; skipped: string | null }>>(
+    async (_state, draft) => ({ draft, links: [], skipped: null }),
+  ),
 }))
 vi.mock('../../src/integrations/supabaseRest', () => ({
   getSession: () => api.session, getSupabaseConfig: () => api.config, rpc: vi.fn(),
 }))
+// ต้อง partial mock — oaSend ใช้ publishBlocks จากโมดูลเดียวกัน ถ้า mock ทับทั้งก้อนจะกลายเป็น undefined
+vi.mock('../../src/core/documentPublish', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../src/core/documentPublish')>()
+  return { ...actual, secureDraft: (...a: unknown[]) => api.secureDraft(...(a as [never, string])) }
+})
 vi.mock('../../src/integrations/lineApi', () => ({
   findDelivery: (...a: unknown[]) => api.findDelivery(...(a as [])),
   deliveryTarget: (...a: unknown[]) => api.deliveryTarget(...(a as [])),
@@ -49,6 +58,7 @@ beforeEach(() => {
   api.findDelivery.mockReset().mockResolvedValue(null)
   api.deliveryTarget.mockReset().mockResolvedValue({ recipient_id: recipientId, eligible: true, reason: 'ok', client_id: 'x', channel_status: 'active', unfollowed_at: null, quota_used: 0, quota_limit: 300 })
   api.deliverOa.mockReset().mockResolvedValue({ id: 'out-1', status: 'sent', recipient_id: recipientId, body: '', message_id: '', last_error: null })
+  api.secureDraft.mockReset().mockImplementation(async (_state, draft) => ({ draft, links: [], skipped: null }))
 })
 
 describe('sendMessageViaOa', () => {
@@ -137,6 +147,18 @@ describe('sendMessageViaOa', () => {
     const outcome = await sendMessageViaOa(s, makeDispatch(s).dispatch, stale)
     expect(outcome.status === 'blocked' && outcome.reason).toBe('issue')
     expect(api.deliverOa).not.toHaveBeenCalled()
+  })
+  it('เผยแพร่ลิงก์ที่ปิดได้ไม่สำเร็จ → ไม่ส่ง และบอกเหตุผล ไม่ปล่อยลิงก์ถาวรออกไปแทน', async () => {
+    // ลิงก์ที่ส่งไปแล้วตามกลับมาปิดไม่ได้ ถ้าเผยแพร่ไม่สำเร็จจึงต้องหยุด ไม่ใช่ส่งลิงก์รุ่นเดิมเงียบ ๆ
+    const s = realState()
+    const { dispatch, state } = makeDispatch(s)
+    const draft = s.messages.find(m => m.status === 'draft' && m.kind === 'reminder')!
+    api.secureDraft.mockResolvedValueOnce({ draft: draft.draft, links: [], skipped: 'failed' })
+    const outcome = await sendMessageViaOa(state(), dispatch, draft)
+    expect(outcome.status).toBe('blocked')
+    expect(api.deliverOa).not.toHaveBeenCalled()
+    // ยังไม่มีอะไรออกจากเครื่อง และข้อความยังเป็นร่างรอส่งเหมือนเดิม
+    expect(state().messages.find(m => m.id === draft.id)?.status).toBe('draft')
   })
 })
 

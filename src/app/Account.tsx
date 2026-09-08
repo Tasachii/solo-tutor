@@ -8,6 +8,7 @@ import { BottomSheet, ConfirmSheet } from './components'
 import { useToast } from './components/Toast'
 import { useCloudSync } from './CloudSync'
 import { PlanCard } from './PlanCard'
+import SharedLinks from './SharedLinks'
 
 const when = (iso: string | null): string => {
   if (!iso) return copy.account.never
@@ -119,6 +120,8 @@ export default function Account() {
           <input type="file" accept="application/json,.json" disabled={recoveryBusy}
             aria-label={a.recoveryImport} onChange={(event) => { void loadRecovery(event.currentTarget.files?.[0]); event.currentTarget.value = '' }} />
         </section>
+
+        <SharedLinks />
 
         <section className="card">
           <h2 className="h2">{a.deleteTitle}</h2>
