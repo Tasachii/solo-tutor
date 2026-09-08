@@ -295,6 +295,7 @@ test('แพ็กฟรีรับได้ 5 คนที่ยังเร�
   })
   await page.goto('?qa-real=1#/app/subjects')
   await expect(page.locator('.skel')).toHaveCount(0)
+  await expect(page.locator('.srow').first()).toBeVisible()   // รายชื่อต้องวาดก่อนนับ (CI ช้าเคยนับได้ 0)
   const before = await page.locator('.srow').count()
   await page.getByRole('button', { name: `+ ${copy.subjects.add}` }).click()
   await page.getByLabel(copy.subjects.fieldName, { exact: true }).fill('น้องใหม่')

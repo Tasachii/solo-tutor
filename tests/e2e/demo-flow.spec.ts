@@ -118,6 +118,7 @@ test('ผู้จ่ายกดลิงก์แล้วเจอบิล�
 
 test('ไม่มีข้อความไหนส่งออกโดยผู้ใช้ไม่ได้กดส่ง', async ({ page }) => {
   await open(page, '/app/admin')
+  await expect(page.locator('.msg').first()).toBeVisible()   // รอให้คิวร่างวาดก่อนนับ ไม่งั้นบนเครื่อง CI ช้าจะนับได้ 0
   const before = await page.locator('.msg').count()
   await page.reload()
   await expect(page.locator('.skel')).toHaveCount(0)
@@ -134,6 +135,7 @@ test('เปิด LINE แล้วยังไม่นับว่าส่�
     }) as typeof window.open
   })
   await open(page, '/app/admin')
+  await expect(page.locator('.msg').first()).toBeVisible()
 
   const before = await page.locator('.msg').count()
   expect(before).toBeGreaterThan(0)
