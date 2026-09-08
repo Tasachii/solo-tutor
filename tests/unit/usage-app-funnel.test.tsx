@@ -224,7 +224,9 @@ describe('funnel ของคนสมัคร', () => {
     fireEvent.change(screen.getByLabelText('รหัสผ่าน'), { target: { value: 'a-long-password' } })
 
     fireEvent.submit(form())
-    await act(async () => { await Promise.resolve() })
+    // รอจนคำขอสมัครจบจริง ไม่ใช่แค่ microtask เดียว — ไม่งั้นฟอร์มยังตั้งสถานะค้างอยู่หลังเทสจบ
+    // แล้ว React จะไปแตะ window ที่ถูกรื้อไปแล้ว ซึ่งทำให้ทั้งชุดล้มแบบสุ่ม
+    await waitFor(() => expect(screen.getByRole('button', { name: 'สมัครใช้งาน' })).toBeTruthy())
 
     expect(callsFor('signup_started')).toHaveLength(1)
     expect(callsFor('signup_started')[0][2]).toMatchObject({ route: 'login' })
