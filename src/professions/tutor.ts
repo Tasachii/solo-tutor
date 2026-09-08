@@ -6,7 +6,7 @@ const tutor: ProfessionTemplate = {
   name: 'ติวเตอร์',
   status: 'live',
   icon: '📚',
-  tagline: 'เช็คชื่อ คิดเงิน ส่งบิล LINE ตรวจสลิป ใบเสร็จ ทวงแทน — ให้ติวเตอร์ที่สอนคนเดียว',
+  tagline: 'เช็คชื่อ คิดเงิน ส่งบิล LINE ตรวจสลิป ใบเสร็จ แจ้งยอดแทน — ให้ติวเตอร์ที่สอนคนเดียว',
   vocab: {
     subject: 'นักเรียน', subjects: 'นักเรียน', client: 'ผู้ปกครอง', clientHonorific: 'คุณ',
     unit: 'คาบ', units: 'ครั้ง', completion: 'เช็คชื่อ', completionDone: 'เช็คชื่อแล้ว',

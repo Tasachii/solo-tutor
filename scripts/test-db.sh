@@ -69,7 +69,8 @@ redeem_sql="set role service_role; select ok from public.redeem_line_link_code(
 );"
 first_out=$(mktemp)
 second_out=$(mktemp)
-trap 'rm -f "$first_out" "$second_out"; cleanup' EXIT
+missing_out=$(mktemp)
+trap 'rm -f "$first_out" "$second_out" "$missing_out"; cleanup' EXIT
 docker exec "$container_name" psql -Atq -U postgres -c "$redeem_sql" >"$first_out" &
 first_pid=$!
 docker exec "$container_name" psql -Atq -U postgres -c "$redeem_sql" >"$second_out" &
@@ -306,4 +307,22 @@ if ! grep -q "operations thresholds exceeded" "$first_out"; then
   sed -n '1,40p' "$first_out" >&2
   exit 1
 fi
+# ฐานจริงยังไม่ได้ apply ไมเกรชัน = การตรวจต้องล้มพร้อมบอกว่าต้องทำอะไร ไม่ใช่ 'function does not exist'
+# ซ่อนฟังก์ชันด้วยการเปลี่ยนชื่อชั่วคราว แล้วคืนชื่อกลับก่อนตรวจผล เพื่อไม่ให้เทสถัดไปพัง
+docker exec "$container_name" psql -Atq -v ON_ERROR_STOP=1 -U postgres -c \
+  "alter function public.operations_snapshot() rename to operations_snapshot_hidden;" >/dev/null
+docker exec "$container_name" psql -Atq -v ON_ERROR_STOP=1 -U postgres \
+  -f /work/scripts/check-operations.sql >"$missing_out" 2>&1 && missing_status=0 || missing_status=$?
+docker exec "$container_name" psql -Atq -v ON_ERROR_STOP=1 -U postgres -c \
+  "alter function public.operations_snapshot_hidden() rename to operations_snapshot;" >/dev/null
+if [[ "$missing_status" == "0" ]]; then
+  echo "operations check passed even though its snapshot function was missing" >&2
+  exit 1
+fi
+if ! grep -q "0013_operations_role.sql" "$missing_out"; then
+  echo "operations check failed without telling the owner which migration to apply" >&2
+  sed -n '1,40p' "$missing_out" >&2
+  exit 1
+fi
+
 echo "$postgres_image LINE backend contract tests passed"

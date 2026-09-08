@@ -1,7 +1,7 @@
 import type { ProfessionTemplate } from './types'
 const nail: ProfessionTemplate = {
   id: 'nail', name: 'ช่างทำเล็บ', status: 'coming_soon', icon: '💅',
-  tagline: 'นัด เตือน ตัดคอร์ส ทวง ใบเสร็จ ให้ร้านเล็บที่ทำคนเดียว',
+  tagline: 'นัด เตือน ตัดคอร์ส แจ้งยอด ใบเสร็จ ให้ร้านเล็บที่ทำคนเดียว',
   defaultBilling: 'package',
   vocab: {
     subject: 'ลูกค้า', subjects: 'ลูกค้า', client: 'ลูกค้า', clientHonorific: 'คุณ',
