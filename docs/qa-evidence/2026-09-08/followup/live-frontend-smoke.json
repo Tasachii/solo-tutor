@@ -1,0 +1,15 @@
+{
+  "site": "https://tasachii.github.io/solo-tutor/",
+  "checks": [
+    "exact Supabase CSP",
+    "self-hosted fonts",
+    "Demo greeting",
+    "public routes hide writer controls with competing tab",
+    "fresh offline shell",
+    "unvisited offline Help and Pricing",
+    "actual offline PDF download",
+    "no uncaught page errors"
+  ],
+  "supabaseRequestsIntercepted": 3,
+  "result": "passed"
+}

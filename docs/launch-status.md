@@ -4,6 +4,10 @@
 
 ## ผลตรวจและการนำขึ้นระบบรอบต่อมา
 
+เผยแพร่ frontend/Demo commit `e00845a` แล้ว: [Verify and deploy run 34196431958](https://github.com/Tasachii/solo-tutor/actions/runs/34196431958) ผ่านทั้ง test, integrations, build, deploy และตรวจ document/assets ของเว็บจริงสำเร็จ; CI ยืนยัน unit 459 และ integration 42 ผ่าน
+
+ตรวจเว็บที่เผยแพร่ด้วย Chromium ผ่าน: หน้า public ไม่แสดง writer controls เมื่อมีอีกแท็บถือ lock, เปิดออฟไลน์ครั้งแรก, Help/Pricing ที่ไม่เคยเปิด และดาวน์โหลด PDF จริงผ่าน ไม่พบ uncaught page error; ดักคำขอ Supabase ใน browser smoke ไม่ให้สร้างข้อมูลจริง
+
 - Supabase โปรเจกต์ `qbuafdbmpkffzbkqoysb`: migrations **0001–0010 ตรงกันทั้ง local/remote**; deploy `waitlist`, `report-error`, `usage`, `delete-account` และตั้ง server-only limiter secret แล้ว ไม่มีการเปลี่ยนแพ็กเสียเงิน
 - สำรองก่อน migration ผ่าน [GitHub Actions run 34193112398](https://github.com/Tasachii/solo-tutor/actions/runs/34193112398) สำเร็จ และเก็บ encrypted schema/data ของ public+auth ในเครื่องแยกจาก GitHub พร้อมตรวจ decrypt roundtrip สำเร็จ รอบนี้ไม่อ้างว่าได้ restore snapshot นี้ลง Supabase ใหม่ครบทุกบริการ
 - ตรวจหลัง deploy: providers 1, ledgers 0, plan_requests 0, financial_evidence 0; RLS เปิดทุก public table, anon/ครูอ่านตารางหลักฐานหรืออนุมัติเงินไม่ได้ **ยังไม่มีรายได้จริงในฐานข้อมูลนี้ ณ เวลาตรวจ**
@@ -33,7 +37,7 @@
 
 เรียงตามสิ่งที่ยังขวาง paid pilot ไม่เรียงตามความยาก:
 
-1. **ตัวตนและบัญชีรับเงินของผู้ให้บริการ:** ชื่อจริงที่ใช้ให้บริการ, PromptPay ของ Solo Tutor และช่องทางซัพพอร์ตที่มีคนตอบ ข้อมูลเหล่านี้ใช้ค่า mock แทนตอนรับเงินจริงไม่ได้
+1. **ตัวตนและบัญชีรับเงินของผู้ให้บริการ:** ชื่อจริงที่ใช้ให้บริการ, PromptPay ของ Solo Tutor และช่องทางซัพพอร์ตที่มีคนตอบ ข้อมูลเหล่านี้ใช้ค่า mock แทนตอนรับเงินจริงไม่ได้ พร้อมให้ผู้ทำบัญชี/ที่ปรึกษาที่เหมาะสมตรวจสถานะผู้ประกอบการ ภาษี และเอกสารใบเสร็จ/ใบกำกับภาษีที่ต้องใช้กับกิจการจริง
 2. **ข้อมูลเด็กและข้อตกลงบริการ:** ให้ผู้เชี่ยวชาญตรวจ privacy/DPA/retention/คืนเงิน และกำหนดกระบวนการคำขอของผู้ปกครอง การหยุดเรียนนักเรียนที่มีประวัติในแอปยังไม่เท่ากับลบข้อมูลเฉพาะรายทั้งหมด ส่วนลบบัญชีทั้งหมดรองรับแล้ว สำเนาที่ครูดาวน์โหลดหรืออยู่บนเครื่องออฟไลน์อื่นดึงกลับมาลบไม่ได้
 3. **Origin แยกและ SMTP จริง:** เลือก host/domain ของแอปเอง ตั้ง Auth redirects และ SMTP/email confirmation ให้ใช้งานจริงได้ กำหนดแผนย้ายข้อมูลและรักษาลิงก์เก่าก่อนเปลี่ยน origin; `_headers` ไม่ทำงานบน GitHub Pages
 4. **ตรวจธนาคารและดูแลลูกค้า:** คนตรวจยอด/อนุมัติ/รับเรื่องคืนเงินและซัพพอร์ตตามเวลาที่ประกาศ ใช้ [ขั้นตอนรับเงิน](payment-operations.md) ห้ามนับ pending หรือโอนจำลองเป็นรายได้
