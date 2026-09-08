@@ -8,6 +8,7 @@ on:
 permissions:
   contents: read
   actions: read
+  issues: write
 
 concurrency:
   group: operations-check
@@ -52,3 +53,9 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GH_REPOSITORY: ${{ github.repository }}
         run: node scripts/check-backup-freshness.mjs
+      - name: แจ้งเตือนเมื่อล้ม (GitHub Issue ป้าย ops-alert)
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          OPERATIONS_ALERT_WEBHOOK: ${{ secrets.OPERATIONS_ALERT_WEBHOOK }}
+        run: node scripts/ops-alert.mjs operations

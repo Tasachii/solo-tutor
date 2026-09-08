@@ -2,7 +2,8 @@
 # ต้องมี 2 secrets: SUPABASE_DB_PASSWORD (รหัสฐานข้อมูลที่ตั้งตอนสร้างโปรเจกต์) และ BACKUP_PASSPHRASE
 # ต่อตรงผ่าน pooler (IPv4) ไม่ผ่าน Management API — token แบบจำกัดสิทธิ์ของ Supabase ทำ `link` ไม่ผ่านโดยไม่บอกว่าขาดอะไร
 # repo เป็นสาธารณะ ใครล็อกอิน GitHub ก็โหลด artifact ได้ จึงเข้ารหัสเสมอ ไม่มีข้อยกเว้น
-# ซ้อม restore แล้ว 8 ก.ย. 2569: schema+data ลง Postgres 16 ได้ครบ 14 ตาราง
+# รูปแบบไฟล์ .tar.gz.solobak = AES-256-GCM มี authentication tag (scripts/backup-crypto.mjs) ถอดกลับเทียบทุกไบต์ก่อนเก็บ
+# วิธีกู้และข้อจำกัดอยู่ใน docs/backup-restore.md · ล้มเมื่อไหร่เปิด GitHub Issue ป้าย ops-alert
 name: Weekly database backup
 on:
   schedule:
@@ -10,42 +11,58 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+  issues: write
 jobs:
   dump:
     runs-on: ubuntu-latest
     env:
-      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
-      BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
       PROJECT_REF: qbuafdbmpkffzbkqoysb
       POOLER_HOST: aws-0-ap-southeast-1.pooler.supabase.com
     steps:
-      - name: ตรวจว่ามี secrets ครบ
-        run: |
-          test -n "$SUPABASE_DB_PASSWORD" || { echo "::error::ยังไม่ได้ตั้ง secret SUPABASE_DB_PASSWORD — gh secret set SUPABASE_DB_PASSWORD -R Tasachii/solo-tutor"; exit 1; }
-          test "${#BACKUP_PASSPHRASE}" -ge 24 || { echo "::error::BACKUP_PASSPHRASE ต้องยาวอย่างน้อย 24 ตัว — gh secret set BACKUP_PASSPHRASE"; exit 1; }
       - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
       - uses: supabase/setup-cli@v1
         with:
           version: latest
-      - name: dump schema + data ตรงจากฐานข้อมูล (ผ่าน session pooler ที่รองรับ IPv4)
+      - name: dump + เข้ารหัส (secret อยู่เฉพาะใน step นี้ · plaintext ไม่ออกจาก runner)
+        env:
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+          BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
         run: |
+          test -n "$SUPABASE_DB_PASSWORD" || { echo "::error::ยังไม่ได้ตั้ง secret SUPABASE_DB_PASSWORD — gh secret set SUPABASE_DB_PASSWORD -R Tasachii/solo-tutor"; exit 1; }
+          test "${#BACKUP_PASSPHRASE}" -ge 24 || { echo "::error::BACKUP_PASSPHRASE ต้องยาวอย่างน้อย 24 ตัว — gh secret set BACKUP_PASSPHRASE"; exit 1; }
           ENC=$(python3 -c 'import os,urllib.parse; print(urllib.parse.quote(os.environ["SUPABASE_DB_PASSWORD"], safe=""))')
           echo "::add-mask::$ENC"
-          DB_URL="postgresql://postgres.${PROJECT_REF}:${ENC}@${POOLER_HOST}:5432/postgres"
+          DB_URL="postgresql://postgres.${PROJECT_REF}:${ENC}@${POOLER_HOST}:5432/postgres?sslmode=require"
+          umask 077
           mkdir -p dump
-          supabase db dump --db-url "$DB_URL" -f dump/schema.sql
-          supabase db dump --db-url "$DB_URL" --data-only -f dump/data.sql
+          trap 'rm -rf dump backup.tar.gz backup-check.tar.gz' EXIT
+          supabase db dump --db-url "$DB_URL" --schema public -f dump/schema.sql
+          # Auth DDL เป็นไฟล์อ้างอิงเท่านั้น: ปลายทางต้องมี Supabase Auth schema ที่เข้ากันได้อยู่แล้ว
+          supabase db dump --db-url "$DB_URL" --schema auth -f dump/auth-schema-reference.sql
+          supabase db dump --db-url "$DB_URL" --role-only -f dump/roles.sql
+          supabase db dump --db-url "$DB_URL" --schema public,auth --data-only --use-copy -f dump/data.sql
           ls -la dump
-      - name: เข้ารหัสก่อนออกจาก runner
-        run: |
           stamp=$(date -u +%Y%m%d-%H%M)
-          tar -czf - dump | openssl enc -aes-256-cbc -pbkdf2 -iter 200000 -salt -pass env:BACKUP_PASSPHRASE -out "solo-tutor-db-$stamp.tar.gz.enc"
-          rm -rf dump
-          ls -la *.enc
-          echo "ถอดรหัส: openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 -pass pass:<passphrase> -in FILE | tar -xzf -"
+          tar -czf backup.tar.gz dump
+          backup_file="solo-tutor-db-$stamp.tar.gz.solobak"
+          node scripts/backup-crypto.mjs encrypt backup.tar.gz "$backup_file"
+          # ถอดกลับด้วย passphrase เดิมแล้วเทียบทุกไบต์ — artifact ที่ถอดไม่ได้ต้องไม่ถูกเก็บ
+          node scripts/backup-crypto.mjs decrypt "$backup_file" backup-check.tar.gz
+          cmp backup.tar.gz backup-check.tar.gz
+          ls -la "$backup_file"
+          echo "ถอดรหัส: BACKUP_PASSPHRASE=… node scripts/backup-crypto.mjs decrypt FILE restored.tar.gz (ดู docs/backup-restore.md)"
       - uses: actions/upload-artifact@v7
         with:
           name: solo-tutor-db-backup
-          path: '*.tar.gz.enc'
+          path: '*.tar.gz.solobak'
           retention-days: 90
           if-no-files-found: error
+      - name: แจ้งเตือนเมื่อล้ม (GitHub Issue ป้าย ops-alert)
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          OPERATIONS_ALERT_WEBHOOK: ${{ secrets.OPERATIONS_ALERT_WEBHOOK }}
+        run: node scripts/ops-alert.mjs backup

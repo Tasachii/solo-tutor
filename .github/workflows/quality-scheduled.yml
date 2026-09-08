@@ -5,6 +5,7 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+  issues: write
 jobs:
   dependencies-and-browsers:
     runs-on: ubuntu-latest
@@ -28,3 +29,10 @@ jobs:
             playwright-report/
             test-results/
           if-no-files-found: ignore
+          retention-days: 14
+      - name: แจ้งเตือนเมื่อล้ม (GitHub Issue ป้าย ops-alert)
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          OPERATIONS_ALERT_WEBHOOK: ${{ secrets.OPERATIONS_ALERT_WEBHOOK }}
+        run: node scripts/ops-alert.mjs quality

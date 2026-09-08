@@ -1,4 +1,4 @@
-# ปลุกหลังบ้านให้ไม่หลับ + ตรวจว่ายังตอบอยู่ — ล้มเมื่อไหร่ GitHub ส่งอีเมลหาเจ้าของ repo เอง
+# ปลุกหลังบ้านให้ไม่หลับ + ตรวจว่ายังตอบอยู่ — ล้มเมื่อไหร่เปิด GitHub Issue ป้าย ops-alert (scripts/ops-alert.mjs)
 # Supabase แพลนฟรีหยุดโปรเจกต์ที่ไม่มีกิจกรรม 7 วัน การเรียก ping() แตะ Postgres จริงจึงนับเป็นกิจกรรม
 name: Uptime and keep-alive
 on:
@@ -7,6 +7,7 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+  issues: write
 jobs:
   probe:
     runs-on: ubuntu-latest
@@ -15,6 +16,10 @@ jobs:
       SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
       PUBLISHABLE_KEY: ${{ vars.VITE_SUPABASE_PUBLISHABLE_KEY }}
     steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
       - name: หน้าเว็บตอบ 200
         run: |
           code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 "$SITE")
@@ -35,3 +40,9 @@ jobs:
           done
           code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 30 -X OPTIONS "$SUPABASE_URL/functions/v1/line-webhook")
           echo "line-webhook $code (405 = มีชีวิต ปฏิเสธ method ตามที่ควร)"; test "$code" = "405"
+      - name: แจ้งเตือนเมื่อล้ม (GitHub Issue ป้าย ops-alert)
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          OPERATIONS_ALERT_WEBHOOK: ${{ secrets.OPERATIONS_ALERT_WEBHOOK }}
+        run: node scripts/ops-alert.mjs uptime

@@ -105,7 +105,8 @@ export async function enforcePublicRateLimit(
   db: unknown = admin(),
 ): Promise<Response | null> {
   const address = requestAddress(req)
-  if (!address) throw new Error('Trusted client address header is missing')
+  // ไม่มี header ที่อยู่ลูกค้า = proxy หน้าเราเปลี่ยน — ปฏิเสธแบบสะอาด ไม่ใช่ 500 ที่ดูเหมือนระบบพัง
+  if (!address) return jsonError(403, 'client-address-required')
   const client = db as {
     rpc: (functionName: string, args: Record<string, unknown>) => PromiseLike<{ data: unknown; error: unknown }>
   }
@@ -164,7 +165,15 @@ export const withCors = (
     if (!origin) return jsonError(400, 'missing-origin')
     return new Response(null, { status: 204, headers: corsHeaders(allowed) })
   }
-  const response = await handler(req)
+  // ข้อผิดพลาดที่โยนเป็น Response (413/400 จาก jsonBody) ต้องได้ CORS header เท่ากับคำตอบปกติ
+  // ไม่งั้นเบราว์เซอร์เห็นเป็น CORS failure ทึบ ๆ แทนที่จะอ่านว่า payload-too-large
+  let response: Response
+  try {
+    response = await handler(req)
+  } catch (error) {
+    if (!(error instanceof Response)) throw error
+    response = error
+  }
   if (origin === allowed) {
     for (const [name, value] of Object.entries(corsHeaders(allowed))) response.headers.set(name, value)
   }

@@ -101,3 +101,29 @@ Deno.test('optional usage identity verifies every supplied bearer and ignores an
   }), verify), '10000000-0000-0000-0000-000000000001')
   equal(calls, 1)
 })
+
+Deno.test('CORS headers survive a thrown 413/400 so the browser can read the error (E-03)', async () => {
+  const handler = withCors(async (req) => {
+    await jsonBody(req, 8)
+    return new Response('ok')
+  }, () => 'https://solo.example', true)
+  const response = await handler(new Request('https://edge.example', {
+    method: 'POST', headers: { Origin: 'https://solo.example', 'content-length': '999' }, body: '{}',
+  }))
+  equal(response.status, 413)
+  equal(response.headers.get('access-control-allow-origin'), 'https://solo.example')
+  // ข้อผิดพลาดอื่นยังไหลต่อไป serveErrors ตามเดิม
+  const boom = withCors(async () => { throw new Error('boom') }, () => 'https://solo.example', true)
+  let thrown = false
+  try { await boom(new Request('https://edge.example', { method: 'POST', headers: { Origin: 'https://solo.example' } })) } catch { thrown = true }
+  equal(thrown, true)
+})
+
+Deno.test('rate limiter without a trusted client address answers 403, never 500 (E-06)', async () => {
+  let rpcCalls = 0
+  const db = { rpc: () => { rpcCalls += 1; return Promise.resolve({ data: [{ allowed: true }], error: null }) } }
+  const response = await enforcePublicRateLimit(new Request('https://edge.example', { method: 'POST' }), 'usage',
+    { client: 1, global: 1, windowSeconds: 60 }, db)
+  equal(response?.status ?? null, 403)
+  equal(rpcCalls, 0)
+})
