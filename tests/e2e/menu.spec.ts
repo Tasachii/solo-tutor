@@ -70,9 +70,11 @@ test('every sub-page has a way back to where it came from', async ({ page }) => 
   await expect(page).toHaveURL(/#\/app\/billing$/)
 
   // ใบเสร็จมีปุ่มกลับอยู่แล้ว · หน้าเลือกรูปแบบ/ราคา กลับหน้าแรกได้จากชื่อแบรนด์
+  // ลิงก์กลับพา ?stay=1 ไปด้วย เพื่อไม่ให้ครูโหมดจริงถูกเด้งเข้าแอปแทนที่จะได้ดูหน้าขาย
   await page.goto('#/pricing')
   await page.getByRole('link', { name: /Solo Tutor/ }).first().click()
-  await expect(page).toHaveURL(/#\/$/)
+  await expect(page).toHaveURL(/#\/(\?stay=1)?$/)
+  await expect(page.locator('.land__hero')).toBeVisible()
 })
 
 test('a tutor can paste an existing client list from a spreadsheet and it lands in the app', async ({ page }) => {
