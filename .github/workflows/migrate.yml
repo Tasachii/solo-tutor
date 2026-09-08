@@ -1,0 +1,76 @@
+# apply ไมเกรชันขึ้นฐานจริง — **กดเองเท่านั้น** ไม่มี schedule และไม่ผูกกับ push
+#
+# ใช้ secret ตัวเดียวกับ backup.yml (SUPABASE_DB_PASSWORD) ต่อผ่าน pooler แบบ IPv4
+# ก่อนแตะอะไร ให้ dump ตารางไว้ก่อนหนึ่งชุด แล้วค่อย push — ถ้าไฟล์ไหนล้ม supabase CLI หยุดทันที
+# ไฟล์ที่ apply แล้วถูกบันทึกใน supabase_migrations.schema_migrations การกดซ้ำจึงไม่ทำงานซ้ำ
+name: Apply database migrations
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'พิมพ์ APPLY เพื่อยืนยันว่าจะแตะฐานจริง'
+        required: true
+        default: ''
+permissions:
+  contents: read
+  issues: write
+concurrency:
+  group: database-migrate
+  cancel-in-progress: false
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      PROJECT_REF: qbuafdbmpkffzbkqoysb
+      POOLER_HOST: aws-0-ap-southeast-1.pooler.supabase.com
+    steps:
+      - name: ยืนยันเจตนา
+        run: |
+          test "${{ inputs.confirm }}" = "APPLY" || {
+            echo "::error::ต้องพิมพ์ APPLY ในช่องยืนยัน — งานนี้แก้ฐานจริง"
+            exit 1
+          }
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - name: apply
+        env:
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        run: |
+          test -n "$SUPABASE_DB_PASSWORD" || { echo "::error::ยังไม่ได้ตั้ง secret SUPABASE_DB_PASSWORD"; exit 1; }
+          ENC=$(python3 -c 'import os,urllib.parse; print(urllib.parse.quote(os.environ["SUPABASE_DB_PASSWORD"], safe=""))')
+          echo "::add-mask::$ENC"
+          DB_URL="postgresql://postgres.${PROJECT_REF}:${ENC}@${POOLER_HOST}:5432/postgres?sslmode=require"
+          echo "::add-mask::$DB_URL"
+          sudo apt-get update -qq && sudo apt-get install --yes -qq postgresql-client
+
+          echo "--- เวอร์ชันฐานจริง (ไมเกรชันทดสอบบน PG16/17 ในเครื่อง) ---"
+          psql "$DB_URL" -X -Atq -c 'select version();'
+
+          echo "--- ไมเกรชันที่ฐานจริงบันทึกว่า apply แล้ว ---"
+          psql "$DB_URL" -X -Atq -c \
+            'select version from supabase_migrations.schema_migrations order by version;' || true
+
+          echo "--- push ---"
+          supabase db push --db-url "$DB_URL" --include-all
+
+          echo "--- ตรวจว่าของที่ควรมี มีจริง ---"
+          psql "$DB_URL" -X -v ON_ERROR_STOP=1 -Atq -c "
+            select 'shared_documents=' || (to_regclass('public.shared_documents') is not null)::text;
+            select 'operations_snapshot=' || (to_regprocedure('public.operations_snapshot()') is not null)::text;
+            select 'apply_retention=' || (to_regprocedure('public.apply_retention(boolean)') is not null)::text;
+            select 'rate_limit_salt=' || (to_regclass('public.rate_limit_salt') is not null)::text;
+            select 'analytics_owners=' || (to_regclass('public.analytics_owners') is not null)::text;
+            select 'erase_line_workspace_clients=' || (to_regproc('public.erase_line_workspace_clients') is not null)::text;
+            select 'list_plan_refunds=' || (to_regproc('public.list_plan_refunds') is not null)::text;"
+      - name: แจ้งเตือนเมื่อล้ม (GitHub Issue ป้าย ops-alert)
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          OPERATIONS_ALERT_WEBHOOK: ${{ secrets.OPERATIONS_ALERT_WEBHOOK }}
+        run: node scripts/ops-alert.mjs migrate
