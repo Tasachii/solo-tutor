@@ -4,6 +4,8 @@
     <meta charset="UTF-8" />
     <!-- frame-ancestors requires a response header; see docs/production-readiness-20260908.md. -->
     <meta http-equiv="Content-Security-Policy" content="__SOLO_CSP__" />
+    <!-- token ของเอกสารอยู่ใน URL ของหน้าผู้ปกครอง ห้ามให้หลุดไปกับ Referer เมื่อผู้รับกดลิงก์ออกไปที่อื่น -->
+    <meta name="referrer" content="no-referrer" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <!-- ต้องตรงกับ --bg ใน src/index.css (มีเทสเทียบให้) -->
     <meta name="theme-color" content="#f4f5fb" media="(prefers-color-scheme: light)" />

@@ -38,7 +38,10 @@ begin
 end $$;
 reset role;
 
-update public.public_rate_limits set window_started = now() - interval '3 hours';
+-- ทำให้เก่าเฉพาะแถวของปลายทางที่ไฟล์นี้สร้างเอง แถวของไฟล์อื่นยังใหม่จึงไม่ถูกลบ
+-- เดิมทำให้ทั้งตารางเก่าแล้วนับผลรวมแบบตายตัว ซึ่งพังทันทีที่มีปลายทางใหม่เพิ่มเข้ามา
+update public.public_rate_limits set window_started = now() - interval '3 hours'
+where endpoint in ('waitlist', 'report-error', 'usage', 'delete-account');
 set role service_role;
 do $$
 begin

@@ -49,6 +49,7 @@ docker exec "$container_name" psql -v ON_ERROR_STOP=1 -U postgres \
   -f /work/scripts/check-operations.sql \
   -f /work/tests/sql/line_backend.sql \
   -f /work/tests/sql/shared_documents.sql \
+  -f /work/tests/sql/shared_document_rate_limit.sql \
   -f /work/tests/sql/ledger_sync.sql \
   -f /work/tests/sql/plans.sql \
   -f /work/tests/sql/production_safety.sql \
