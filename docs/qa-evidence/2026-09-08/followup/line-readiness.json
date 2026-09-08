@@ -1,0 +1,48 @@
+{
+  "checks": [
+    {
+      "function": "line-connect",
+      "check": "preflight",
+      "status": 204,
+      "expected": 204
+    },
+    {
+      "function": "line-connect",
+      "check": "unauthenticated",
+      "status": 401,
+      "expected": 401
+    },
+    {
+      "function": "line-connect",
+      "check": "foreign-origin",
+      "status": 403,
+      "expected": 403
+    },
+    {
+      "function": "line-send",
+      "check": "preflight",
+      "status": 204,
+      "expected": 204
+    },
+    {
+      "function": "line-send",
+      "check": "unauthenticated",
+      "status": 401,
+      "expected": 401
+    },
+    {
+      "function": "line-send",
+      "check": "foreign-origin",
+      "status": 403,
+      "expected": 403
+    },
+    {
+      "function": "line-webhook",
+      "check": "wrong-method",
+      "status": 405,
+      "expected": 405
+    }
+  ],
+  "result": "passed",
+  "messagesSent": 0
+}
