@@ -13,6 +13,7 @@ import { modeThai } from '../copy/tutor'
 import { BottomSheet, EmptyState, ProgressBar, BackLink } from './components'
 import { useToast } from './components/Toast'
 import SubjectSheet, { parseMoneyInput } from './SubjectSheet'
+import { keptForRecords } from '../core/tombstones'
 import type { AppState } from '../core/types'
 
 export const mustArchiveSubject = (state: AppState, subjectId: string): boolean =>
@@ -116,6 +117,8 @@ export default function SubjectDetail() {
           toast.push({ text: 'กลับมาใช้งานรายการนี้แล้ว', tone: 'ok' })
         }}>กลับมาใช้งาน</button>}
       </div>
+      {/* ครูกดลบคนนี้ไปแล้ว ระบบเก็บแถวไว้เอง — ไม่บอกตรงนี้ ครูจะเข้าใจว่าลบสำเร็จและบอกผู้ปกครองตามนั้น */}
+      {keptForRecords(state, s.id) && <p className="hint">{copy.subjects.keptForRecords}</p>}
 
       {/* แยกปุ่มลบออกมาท้ายหน้า — เดิมอยู่ติด "หยุดเรียน" และเงียบกว่าปุ่มข้าง ๆ จึงกดพลาดง่าย */}
       <div className="danger-zone">

@@ -34,6 +34,9 @@ export function ledgerFingerprint(s: AppState): string {
     clients: s.clients, subjects: s.subjects, units: s.units, completions: s.completions, invoices: s.invoices,
     payments: s.payments, receipts: s.receipts, messages: s.messages, chats: s.chats, counters: s.counters,
     lastBackupAt: s.lastBackupAt ?? null, lineWorkspaceId: s.lineWorkspaceId ?? null, lineProviderId: s.lineProviderId ?? null,
+    // ต่อท้ายเฉพาะเมื่อมีจริง — สมุดบัญชีที่ไม่เคยลบใครจึงได้ลายนิ้วมือเดิมทุกตัว ไม่เกิดรอบซิงก์ปลอมตอนอัปเดตแอป
+    ...(s.deletedSubjects?.length ? { deletedSubjects: s.deletedSubjects } : {}),
+    ...(s.deletedClients?.length ? { deletedClients: s.deletedClients } : {}),
   }
   const text = JSON.stringify(pick)
   // FNV-1a 32 บิต สองรอบด้วย seed ต่างกัน — พอสำหรับ "เท่ากันไหม" ไม่ใช่ความปลอดภัย

@@ -65,6 +65,20 @@ from public.usage_funnel_daily
 where day >= (public.thai_today() - 90)
 order by day desc, audience, mode;
 
+-- Where visitors came from. Only values on the agreed list are stored, so a link carrying
+-- anything else reads as 'unknown' and a visit with no ?c= at all has no source rather than a
+-- guessed one. This is a per-browser first-touch label, not a claim about a person.
+select coalesce(campaign, 'none') as source,
+       audience,
+       count(distinct teacher_id) as visitors,
+       count(distinct session_id) as sessions,
+       count(*) filter (where event in ('landing_view', 'pricing_view')) as pageviews,
+       count(distinct session_id) filter (where event = 'signup_started') as signup_started
+from public.usage_events
+where at >= now() - interval '90 days'
+group by 1, 2
+order by visitors desc, source, audience;
+
 -- The end of the funnel comes from server transactions and bank evidence,
 -- never from a browser event: a client cannot claim it paid.
 select month, pro_requested, pro_requesting_providers,

@@ -92,13 +92,22 @@ revoke all on function public.take_public_rate_limit(text,text,integer,integer,i
   from public, anon, authenticated;
 grant execute on function public.take_public_rate_limit(text,text,integer,integer,integer) to service_role;
 
--- แฮชผู้เรียกจากหมายเลขเครือข่ายที่ PostgREST ส่งมาใน header + ความลับในฐาน
--- คืนค่าเป็น hex 64 ตัวเสมอ เพื่อให้ผ่านการตรวจรูปแบบของตัวจำกัด
+-- แฮชผู้เรียกจากหมายเลขเครือข่ายที่พร็อกซีเติมให้ + ความลับในฐาน
+--
+-- **ห้ามใช้ตัวแรกของ x-forwarded-for** ผู้เรียกส่ง header นี้มาเองได้ ถ้าเชื่อตัวแรก
+-- ใครก็สลับหมายเลขทุกคำขอเพื่อได้โควตาใหม่เรื่อย ๆ ตัวจำกัดต่อผู้เรียกจะไร้ความหมายทันที
+-- พร็อกซีที่เชื่อถือได้จะ "ต่อท้าย" หมายเลขจริงเข้าไป ตัวสุดท้ายจึงเป็นค่าที่ฝั่งเราควบคุม
+-- `cf-connecting-ip` ตัดออก เพราะเชื่อได้ต่อเมื่อพิสูจน์ได้ว่าทราฟฟิกผ่าน Cloudflare จริงเท่านั้น
+--
+-- คืน null เมื่อหาหมายเลขไม่ได้ ผู้เรียกจะถูกคุมด้วยเพดานรวมอย่างเดียว
+-- **ตั้งใจไม่ยัดทุกคนลงถังเดียว** เพราะถ้าหมายเลขหาไม่เจอบนโปรดักชัน ถังรวมจะเต็มแล้วผู้ปกครองทุกคนเปิดบิลไม่ได้
 create or replace function public.public_client_hash()
 returns text
 language plpgsql stable security definer set search_path = public, pg_temp as $$
 declare
   v_headers json;
+  v_chain text;
+  v_parts text[];
   v_addr text;
   v_salt text;
 begin
@@ -107,12 +116,15 @@ begin
   exception when others then
     v_headers := null;
   end;
-  -- ตัวแรกใน x-forwarded-for คือผู้เรียกจริง ที่เหลือเป็นพร็อกซีระหว่างทาง
-  v_addr := coalesce(
-    nullif(btrim(split_part(coalesce(v_headers ->> 'x-forwarded-for', ''), ',', 1)), ''),
-    nullif(btrim(coalesce(v_headers ->> 'cf-connecting-ip', '')), ''),
-    '__noaddr__'
-  );
+  v_chain := btrim(coalesce(v_headers ->> 'x-forwarded-for', ''));
+  if v_chain = '' then
+    return null;
+  end if;
+  v_parts := string_to_array(v_chain, ',');
+  v_addr := nullif(btrim(v_parts[array_length(v_parts, 1)]), '');
+  if v_addr is null then
+    return null;
+  end if;
   select salt into v_salt from public.rate_limit_salt where only_row;
   if v_salt is null then
     raise exception 'rate limit salt missing' using errcode = '55000';
@@ -131,9 +143,17 @@ returns table (kind text, cipher text, iv text, expires_at timestamptz)
 language plpgsql volatile security definer set search_path = public, pg_temp as $$
 declare
   v_allowed boolean;
+  v_hash text := public.public_client_hash();
 begin
-  select rl.allowed into v_allowed
-  from public.take_public_rate_limit('shared-document', public.public_client_hash(), 60, 1200, 60) rl;
+  -- หาหมายเลขผู้เรียกไม่ได้ = คุมด้วยเพดานรวมอย่างเดียว ยังกันการไล่หา token ได้
+  -- ตั้งเพดานต่อผู้เรียกเท่าเพดานรวม ถังนั้นจึงไม่มีวันตัดก่อน และผู้ปกครองไม่ไปเบียดกันจนเปิดบิลไม่ได้
+  if v_hash is null then
+    select rl.allowed into v_allowed
+    from public.take_public_rate_limit('shared-document', repeat('0', 64), 1200, 1200, 60) rl;
+  else
+    select rl.allowed into v_allowed
+    from public.take_public_rate_limit('shared-document', v_hash, 60, 1200, 60) rl;
+  end if;
   if not coalesce(v_allowed, false) then
     raise exception 'too many requests' using errcode = '53400';
   end if;

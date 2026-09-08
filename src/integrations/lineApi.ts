@@ -22,6 +22,18 @@ export const syncClients = (workspace: string, clients: Client[]) =>
   rpc<{ local_client_key: string; client_id: string }[]>('sync_line_workspace_clients', {
     p_workspace_key: workspace, p_clients: clients.map(c => ({ id: c.id, name: c.name })),
   })
+/**
+ * สั่งลบข้อมูลผู้ปกครองบนเซิร์ฟเวอร์ — ชื่อ · การผูก LINE · แชทขาเข้า · เนื้อความที่เคยส่ง
+ *
+ * รับได้เฉพาะคีย์ที่มาจากใบสั่งลบผู้จ่ายในสมุดบัญชี (erasableClientKeys) เท่านั้น
+ * ห้ามส่งผลลัพธ์ของการ "ไม่เจอชื่อในรายชื่อ" เข้ามาที่นี่เด็ดขาด — เครื่องที่ถือสมุดบัญชีรุ่นเก่า
+ * จะลบผู้ปกครองที่ยังเป็นลูกค้าอยู่ทิ้งทั้งหมด (ดู migration 0018 และ src/core/tombstones.ts)
+ * ปลอดภัยเมื่อเรียกซ้ำ: คีย์ที่ลบไปแล้วหรือไม่เคยซิงก์ คืน erased=false โดยไม่แตะอะไร
+ */
+export const eraseClients = (workspace: string, localClientKeys: string[]) =>
+  rpc<{ local_client_key: string; erased: boolean }[]>('erase_line_workspace_clients', {
+    p_workspace_key: workspace, p_local_client_keys: localClientKeys,
+  })
 export async function deliveryTarget(workspace: string, clientId: string): Promise<DeliveryTarget | null> {
   const rows = await rpc<DeliveryTarget[]>('line_delivery_target', { p_workspace_key: workspace, p_local_client_key: clientId })
   return rows[0] ?? null

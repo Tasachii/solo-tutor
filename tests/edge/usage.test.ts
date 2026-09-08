@@ -64,7 +64,8 @@ Deno.test('only the agreed fields survive; names, emails and paths are dropped',
     url: 'https://solo.example/#/document/secret', time: '2026-09-08T03:00:00.000Z',
   }))
   equal(Object.keys(row ?? {}).sort(),
-    ['audience', 'count', 'event', 'event_id', 'mode', 'route', 'session_id', 'teacher_id', 'version'])
+    ['audience', 'campaign', 'count', 'event', 'event_id', 'mode', 'route', 'session_id', 'teacher_id',
+     'version'])
   equal(JSON.stringify(row).includes('secret'), false)
   equal(JSON.stringify(row).includes('parent@example.com'), false)
 })
@@ -96,17 +97,17 @@ Deno.test('demo, real and team traffic stay on their own axes', () => {
 })
 
 Deno.test('account milestones come from Auth, one row per account for all time', () => {
-  const rows = attestedRows(account, { teacher_id: VISITOR, audience: 'public' })
+  const rows = attestedRows(account, { teacher_id: VISITOR, audience: 'public', campaign: null })
   equal(rows.map((row) => row.event), ['signup_completed', 'email_verified'])
   equal(rows.map((row) => row.event_id), [
     `srv:signup_completed:${account.id}`, `srv:email_verified:${account.id}`,
   ])
   // เวลาที่ Auth บันทึกไว้จริง cohort จึงตรงแม้เราเพิ่งเห็นบัญชีนั้นวันนี้
   equal(rows.map((row) => row.at), [account.createdAt, account.emailConfirmedAt])
-  equal(attestedRows({ ...account, emailConfirmedAt: null }, { teacher_id: VISITOR, audience: 'public' })
+  equal(attestedRows({ ...account, emailConfirmedAt: null }, { teacher_id: VISITOR, audience: 'public', campaign: null })
     .map((row) => row.event), ['signup_completed'])
   equal(attestedRows({ id: account.id, createdAt: 'not a date', emailConfirmedAt: null },
-    { teacher_id: VISITOR, audience: 'public' }), [])
+    { teacher_id: VISITOR, audience: 'public', campaign: null }), [])
 })
 
 Deno.test('an anonymous visitor event is stored without an account', async () => {

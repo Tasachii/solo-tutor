@@ -4,7 +4,8 @@ import { useStore } from '../core/store'
 import { getSession, getSupabaseConfig, invoke, rpc } from '../integrations/supabaseRest'
 import { AuthForm } from './components/AuthForm'
 import { useCloudSync } from './CloudSync'
-import { deliveryTarget, readChannel, syncClients, type LineChannel } from '../integrations/lineApi'
+import { deliveryTarget, eraseClients, readChannel, syncClients, type LineChannel } from '../integrations/lineApi'
+import { erasableClientKeys } from '../core/tombstones'
 import { ConfirmSheet } from './components'
 import { copyText } from './share'
 
@@ -53,8 +54,19 @@ export default function LineSettings() {
     try { await work() } catch { setNotice('ทำรายการไม่สำเร็จ กรุณาตรวจการเชื่อมต่อและเข้าสู่ระบบอีกครั้งหากหมดอายุ') }
     finally { setBusy(false); setSession(readSessionSafely()) }
   }
+  /**
+   * ผู้จ่ายที่ครูลบไปแล้วต้องหายจากเซิร์ฟเวอร์ด้วย ไม่ใช่หายแค่ในเครื่อง
+   * ขับเคลื่อนจากรายการที่ครูลบจริงเท่านั้น — แถวที่หายไปจากสมุดของเครื่องที่ข้อมูลเก่ากว่า ไม่ใช่การลบ
+   * เรียกซ้ำได้ ฝั่งเซิร์ฟเวอร์ทำงานเดิมซ้ำแล้วผลเท่าเดิม
+   */
+  const flushErasures = async () => {
+    if (!state.lineWorkspaceId) return
+    const keys = erasableClientKeys(state)
+    if (keys.length) await eraseClients(state.lineWorkspaceId, keys)
+  }
   const refresh = async () => {
     setChannel(await readChannel())
+    await flushErasures()
     if (state.lineWorkspaceId) {
       const rows = await Promise.all(state.clients.map(async c => {
         const target = await deliveryTarget(state.lineWorkspaceId!, c.id)
@@ -86,6 +98,7 @@ export default function LineSettings() {
       if (!dispatch({ type: 'lineWorkspace', id: workspace, providerId: session!.user.id })) throw new Error('storage')
     }
     if (state.lineProviderId && state.lineProviderId !== session!.user.id) throw new Error('wrong-account')
+    await flushErasures()
     const mapping = await syncClients(workspace, state.clients)
     const client = mapping.find(c => c.local_client_key === clientId)
     if (!client) throw new Error('client')

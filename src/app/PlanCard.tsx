@@ -4,6 +4,7 @@ import { useStore } from '../core/store'
 import { copy } from '../copy'
 import { dateThai, money } from '../core/format'
 import { FREE_STUDENT_CAP, daysLeft, isPro } from '../core/plan'
+import { listPlanRefunds, refundsUnsupported, summarizeRefunds, type ReceiptRefund } from '../core/planRefunds'
 import { PLANS, readPlanIntent, rememberPlanIntent, validPaidPlanMonths } from '../platform/plans'
 import { PAID_PLAN_AVAILABLE, PROVIDER_LEGAL_NAME, SOLO_PROMPTPAY, SUPPORT_CONTACT } from '../platform/config'
 import { cancelPlanRequest, listPlanRequests, pausePlan, requestPlan, resumePlan, type PlanRequestRow } from '../integrations/planApi'
@@ -42,18 +43,31 @@ export function PlanCard() {
   // คำขอที่ไม่ผ่านต้องเห็น ไม่ใช่หายเงียบ — ครูจะได้รู้ว่าต้องส่งใหม่หรือติดต่อทีม (D-03)
   const rejected = rows.filter((r) => r.status === 'rejected')
   const [loadFailed, setLoadFailed] = useState(false)
+  // สรุปการคืนเงินต่อใบเสร็จ มาจากหลักฐานฝั่งเซิร์ฟเวอร์เท่านั้น (D-08)
+  const [refunds, setRefunds] = useState<Map<string, ReceiptRefund>>(() => new Map())
+  const [refundFailed, setRefundFailed] = useState(false)
   const price = PLANS.find((x) => x.months === months)?.price ?? 0
 
+  /**
+   * ประวัติกับการคืนเงินโหลดแยกกัน ล้มคนละแบบ — คืนเงินโหลดไม่ได้ไม่ได้แปลว่าประวัติล้ม
+   * และถ้าคืนเงินล้ม สรุปเดิมที่เคยโหลดสำเร็จยังอยู่ ดีกว่าล้างทิ้งจนใบเสร็จกลับไปโชว์ยอดเต็ม
+   *
+   * ฐานที่ยังไม่มีคำสั่งคืนเงิน (404) ไม่ใช่ความล้มเหลว — หลังบ้านแบบนั้นยังคืนเงินใครไม่ได้
+   * ครูที่ไม่เคยถูกคืนเงินต้องไม่โดนเตือนเพราะเรา deploy migration ช้า
+   */
   const reload = async (): Promise<PlanRequestRow[] | null> => {
-    try {
-      const next = await listPlanRequests()
-      setRows(next)
-      setLoadFailed(false)
-      return next
-    } catch {
+    const [requests, refunded] = await Promise.allSettled([listPlanRequests(), listPlanRefunds()])
+    if (refunded.status === 'fulfilled') {
+      setRefunds(summarizeRefunds(refunded.value))
+      setRefundFailed(false)
+    } else setRefundFailed(!refundsUnsupported(refunded.reason))
+    if (requests.status !== 'fulfilled') {
       setLoadFailed(true)
       return null
     }
+    setRows(requests.value)
+    setLoadFailed(false)
+    return requests.value
   }
   useEffect(() => { if (cloud.session) void reload() }, [cloud.session?.user.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -91,6 +105,10 @@ export function PlanCard() {
       return true
     } catch { toast.push({ text: copy.common.saveFailed, tone: 'danger' }); return false }
   }
+
+  const receiptRefund = receipt ? refunds.get(receipt.id) ?? null : null
+  const refundNote = (r: ReceiptRefund): string =>
+    `${r.state === 'full' ? p.refund.full : p.refund.partial} · ${p.refund.summary.replace('{refunded}', money(r.refunded)).replace('{net}', money(r.net))}`
 
   const statusLine = !plan || plan.plan === 'free'
     ? p.free.replace('{cap}', String(FREE_STUDENT_CAP))
@@ -136,12 +154,18 @@ export function PlanCard() {
 
       {(approved.length > 0 || rejected.length > 0) && <>
         <h3 className="h2" style={{ marginTop: 'var(--space-4)' }}>{p.history}</h3>
+        {/* ตรวจคืนเงินไม่ได้ = ยอดในใบเสร็จยังไม่ยืนยัน ต้องบอก ไม่ใช่ปล่อยให้อ่านเป็นยอดเต็ม (D-08) */}
+        {refundFailed && !loadFailed && <p className="warnbar" role="status" data-testid="plan-refund-unknown">{p.refund.loadFailed}</p>}
         <ul className="rows">
-          {approved.map((r) => <li key={r.id} className="srow">
-            <span className="srow__main"><span className="srow__name">{p.receiptItem.replace('{months}', String(r.months))} · {money(r.amount)} {copy.common.baht}</span>
-              <span className="srow__meta">{r.receipt_no} · {stamp(r.decided_at)}</span></span>
-            <button className="btn btn--ghost btn--sm" onClick={() => setReceipt(r)}>{p.receipt}</button>
-          </li>)}
+          {approved.map((r) => {
+            const refund = refunds.get(r.id)
+            return <li key={r.id} className="srow" {...(refund ? { 'data-testid': 'plan-refunded' } : {})}>
+              <span className="srow__main"><span className="srow__name">{p.receiptItem.replace('{months}', String(r.months))} · {money(refund?.paid ?? r.amount)} {copy.common.baht}</span>
+                <span className="srow__meta">{r.receipt_no} · {stamp(r.decided_at)}</span>
+                {refund && <span className="srow__meta">{refundNote(refund)}</span>}</span>
+              <button className="btn btn--ghost btn--sm" onClick={() => setReceipt(r)}>{p.receipt}</button>
+            </li>
+          })}
           {rejected.map((r) => <li key={r.id} className="srow" data-testid="plan-rejected">
             <span className="srow__main"><span className="srow__name">{p.receiptItem.replace('{months}', String(r.months))} · {money(r.amount)} {copy.common.baht}</span>
               <span className="srow__meta">{p.status.rejected} · {stamp(r.decided_at)}{SUPPORT_CONTACT ? ` · ${p.contact.replace('{contact}', SUPPORT_CONTACT)}` : ''}</span></span>
@@ -169,10 +193,26 @@ export function PlanCard() {
         <div><dt>{copy.receipt.no}</dt><dd className="num">{receipt.receipt_no}</dd></div>
         <div><dt>{copy.receipt.issuedAt}</dt><dd>{stamp(receipt.decided_at)}</dd></div>
         <div><dt>{copy.receipt.item}</dt><dd>{p.receiptItem.replace('{months}', String(receipt.months))}</dd></div>
-        <div><dt>{copy.receipt.amount}</dt><dd className="num">{money(receipt.amount)} {copy.common.baht}</dd></div>
+        <div><dt>{receiptRefund ? p.refund.paid : copy.receipt.amount}</dt><dd className="num">{money(receiptRefund?.paid ?? receipt.amount)} {copy.common.baht}</dd></div>
+        {/* คืนเงินแล้วห้ามให้ใบเสร็จอ่านเป็นยอดเต็ม — ยอดคืนและยอดสุทธิต้องอยู่บนใบเดียวกัน (D-08) */}
+        {receiptRefund && <>
+          <div><dt>{p.refund.refunded}</dt><dd className="num">-{money(receiptRefund.refunded)} {copy.common.baht}</dd></div>
+          <div><dt>{p.refund.net}</dt><dd className="num">{money(receiptRefund.net)} {copy.common.baht}</dd></div>
+        </>}
         <div><dt>{copy.receipt.payer}</dt><dd>{cloud.session?.user.email ?? '—'}</dd></div>
         <div><dt>{copy.receipt.payee}</dt><dd>{PROVIDER_LEGAL_NAME || copy.brand.name}</dd></div>
       </dl>
+      {receiptRefund && <div data-testid="plan-receipt-refund">
+        <p role="status">{refundNote(receiptRefund)}</p>
+        <ul className="rows">
+          {receiptRefund.entries.map((entry) => <li key={entry.id} className="srow">
+            <span className="srow__main"><span className="srow__name">{p.refund.line.replace('{date}', stamp(entry.occurredAt))}</span></span>
+            <span className="num">-{money(entry.amount)} {copy.common.baht}</span>
+          </li>)}
+        </ul>
+        <p className="hint">{p.refund.keepsPlan}</p>
+        <p className="hint">{p.refund.source}</p>
+      </div>}
     </BottomSheet>}
   </>
 }

@@ -267,6 +267,41 @@ export function validateState(value: unknown): StateValidation {
       })
     }
   }
+  /**
+   * หลุมศพของนักเรียนที่ถูกลบ — ไม่มี = ไม่เคยลบใคร
+   * ด่านสำคัญคือใบหนึ่งต้องไม่ชี้ไปยังรายการที่ยัง "เปิดอยู่" — ถ้าอยู่ด้วยกันได้แปลว่าการรวมข้อมูลเพี้ยน
+   * และรอบซิงก์ถัดไปจะลบคนที่ครูเพิ่งเพิ่มกลับเข้ามา จึงต้องปฏิเสธทั้งก้อนตั้งแต่ตรงนี้
+   */
+  const tombstones = app.deletedSubjects
+  if (tombstones !== undefined) {
+    if (!Array.isArray(tombstones) || tombstones.length > 100_000) errors.push('deletedSubjects: ต้องเป็น array')
+    else {
+      if (!hasUniqueStrings(tombstones, 'id')) errors.push('deletedSubjects: id ต้องมีค่าและไม่ซ้ำ')
+      const activeSubjectIds = new Set(state.subjects.filter((row) => row.active).map((row) => row.id))
+      tombstones.forEach((row, index) => {
+        if (!isRecord(row)) { errors.push(`deletedSubjects[${index}]: ต้องเป็น object`); return }
+        if (!isISODate(row.at)) errors.push(`deletedSubjects[${index}].at: ไม่ถูกต้อง`)
+        if (row.mode !== 'removed' && row.mode !== 'archived') errors.push(`deletedSubjects[${index}].mode: ไม่ถูกต้อง`)
+        if (isString(row.id) && activeSubjectIds.has(row.id)) errors.push(`deletedSubjects[${index}].id: ยังเป็นรายการที่เปิดอยู่`)
+      })
+    }
+  }
+  /**
+   * หลุมศพของผู้จ่าย — ใบหนึ่งต้องไม่ชี้ไปยังผู้จ่ายที่ยังอยู่ในรายชื่อ
+   * ถ้าอยู่ด้วยกันได้ แปลว่ารอบซิงก์ถัดไปจะสั่งเซิร์ฟเวอร์ลบข้อมูลผู้ปกครองที่ยังเป็นลูกค้าอยู่
+   */
+  const clientTombstones = app.deletedClients
+  if (clientTombstones !== undefined) {
+    if (!Array.isArray(clientTombstones) || clientTombstones.length > 100_000) errors.push('deletedClients: ต้องเป็น array')
+    else {
+      if (!hasUniqueStrings(clientTombstones, 'id')) errors.push('deletedClients: id ต้องมีค่าและไม่ซ้ำ')
+      clientTombstones.forEach((row, index) => {
+        if (!isRecord(row)) { errors.push(`deletedClients[${index}]: ต้องเป็น object`); return }
+        if (!isISODate(row.at)) errors.push(`deletedClients[${index}].at: ไม่ถูกต้อง`)
+        if (isString(row.id) && clientIds.has(row.id)) errors.push(`deletedClients[${index}].id: ยังเป็นผู้จ่ายที่มีอยู่`)
+      })
+    }
+  }
   state.messages.forEach((row, index) => {
     if (!isRecord(row)) { errors.push(`messages[${index}]: ต้องเป็น object`); return }
     if (!clientIds.has(row.clientId)) errors.push(`messages[${index}].clientId: ไม่พบผู้จ่าย`)

@@ -2,7 +2,7 @@ import { Suspense, useEffect, useRef } from 'react'
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { useStore } from './core/store'
 import { lazyRoute } from './core/lazyRoute'
-import { adoptAudience, currentSessionId, routeCategory, sendUsage } from './core/usage'
+import { adoptAudience, adoptCampaign, currentSessionId, routeCategory, sendUsage } from './core/usage'
 import { countDemoSteps, demoLoopComplete, earnedSteps, type DemoLoopStep, type StepCounts } from './core/funnel'
 
 import Landing from './platform/Landing'
@@ -18,6 +18,7 @@ const Subjects = lazyRoute(() => import('./app/Subjects'))
 const SubjectDetail = lazyRoute(() => import('./app/SubjectDetail'))
 const Billing = lazyRoute(() => import('./app/Billing'))
 const Admin = lazyRoute(() => import('./app/Admin'))
+const Insights = lazyRoute(() => import('./app/Insights'))
 const ReceiptList = lazyRoute(() => import('./app/ReceiptList'))
 const Onboarding = lazyRoute(() => import('./app/Onboarding'))
 const Receipt = lazyRoute(() => import('./app/Receipt'))
@@ -42,7 +43,11 @@ export default function App() {
   useEffect(() => { track('app_open') }, [track])
 
   // แกน QA/ทีม: ?qa=1 ติดเครื่องไว้จนกว่าจะ ?qa=0 — Demo ของผู้สนใจยังนับเป็น acquisition ตามเดิม
-  useEffect(() => { adoptAudience(window.location.search); adoptAudience(loc.search) }, [loc.search])
+  // แหล่งที่มา ?c= อ่านที่เดียวกัน: เก็บแค่คำในรายการที่ตกลงไว้ ไม่เก็บลิงก์ต้นทางหรือ query string
+  useEffect(() => {
+    adoptAudience(window.location.search); adoptAudience(loc.search)
+    adoptCampaign(window.location.search); adoptCampaign(loc.search)
+  }, [loc.search])
 
   // Pageview ผูกกับการเปลี่ยนหน้าใน history — re-render ที่ไม่เปลี่ยนหน้าไม่เข้าเงื่อนไขนี้
   // และ key ของ history ทำให้ effect ที่รันซ้ำบนหน้าเดิมได้ event_id เดิม เซิร์ฟเวอร์จึงไม่นับซ้ำ
@@ -100,6 +105,8 @@ export default function App() {
         <Route path="/start" element={<StylePicker />} />
         {/* ห่อ CloudSyncProvider เพื่อรอผลดึงข้อมูลจากคลาวด์ก่อนพาเข้าแอป */}
         <Route path="/login" element={<CloudSyncProvider><Login /></CloudSyncProvider>} />
+        {/* แดชบอร์ดเจ้าของ — ฐานข้อมูลเป็นด่านจริง หน้านี้เปิดได้แต่จะไม่มีตัวเลขถ้าไม่ใช่เจ้าของ */}
+        <Route path="/owner" element={<Insights />} />
         <Route path="/receipt/:id" element={<Receipt />} />
         <Route path="/client/:clientId" element={<ClientPreview />} />
         <Route path="/app" element={<CloudSyncProvider><AppShell /></CloudSyncProvider>}>

@@ -17,6 +17,9 @@ import { issueReceipt } from './receipts'
 import { isUuid, isBillingMode, isISODate, isMoney, isNonNegativeMoney, isTime } from './validation'
 import { financialRevision, messageSendIssue } from './messageDelivery'
 import { migrateCanonical } from './migrations'
+import { applyClientTombstones, applyTombstones, clientTombstonesOf, mergeClientTombstones,
+  mergeTombstones, pruneTombstones, tombstonesOf, withClientTombstones, withTombstones,
+  type SubjectTombstone } from './tombstones'
 import {
   ACTIVE_MODE_KEY, DEMO_SLOT_KEY, REAL_SLOT_KEY, parkedKey, readSlot, resolveActiveMode,
   slotKey, writeActiveMode, writerLockName, type WorkspaceMode,
@@ -126,6 +129,33 @@ function recordPackagePurchase(state: AppState, subject: Subject, slipVerified =
     paidAt: state.today, slipVerified }
   const withPayment = { ...state, invoices: [...state.invoices, invoice], payments: [...state.payments, payment] }
   return issueReceipt(withPayment, payment).state
+}
+
+/**
+ * จดว่าครูสั่งลบคนนี้ — เก็บไว้ในสมุดบัญชีเอง จึงติดไปกับไฟล์สำรองและก้อนบนคลาวด์
+ * ไม่มีบรรทัดนี้ การลบคือ "ความว่างเปล่า" ที่สำเนาเก่ากว่าทับกลับมาได้เสมอ
+ */
+function rememberDeletion(s: AppState, id: string, mode: SubjectTombstone['mode']): AppState {
+  return withTombstones(s, pruneTombstones(mergeTombstones(tombstonesOf(s), [{ id, at: s.today, mode }]), s.today))
+}
+
+/**
+ * รับสมุดบัญชีทั้งก้อนจากที่อื่น (ไฟล์สำรอง · คลาวด์ · สำเนาก่อนดึง) แล้วบังคับใช้เจตนาลบทั้งสองฝั่ง
+ * คืน null เมื่อผลลัพธ์ไม่ผ่านการตรวจ — ยอมไม่กู้คืน ดีกว่ากู้คืนแล้วเดาว่าอะไรควรอยู่ควรไป
+ */
+function applyDeletionsOnRestore(local: AppState, incoming: AppState): AppState | null {
+  // ข้ามโหมด (ไฟล์เดโมมาลงช่องเดโม) ถือเป็นคนละสมุดบัญชี — หลุมศพของอีกฝั่งไม่เกี่ยวและต้องไม่ตามไป
+  const sameLedger = incoming.mode === local.mode
+  const rows = pruneTombstones(sameLedger
+    ? mergeTombstones(tombstonesOf(local), tombstonesOf(incoming))
+    : tombstonesOf(incoming), incoming.today)
+  const clientRows = pruneTombstones(sameLedger
+    ? mergeClientTombstones(clientTombstonesOf(local), clientTombstonesOf(incoming))
+    : clientTombstonesOf(incoming), incoming.today)
+  // นักเรียนก่อน ผู้จ่ายทีหลัง — ผู้จ่ายจะถูกลบได้ก็ต่อเมื่อไม่เหลือนักเรียนของเขาแล้วจริง ๆ
+  const applied = applyClientTombstones(applyTombstones(incoming, rows), clientRows)
+  const merged = withClientTombstones(withTombstones(applied.state, rows), applied.kept)
+  return isWellFormed(merged) ? merged : null
 }
 
 /** ทุก action วิ่งผ่านที่นี่ แล้ว normalize (markOverdue + deriveDrafts) ตอนท้ายเสมอ */
@@ -396,6 +426,7 @@ export function reducer(state: AppState, action: Action): AppState {
                 .map((span, index, all) => index === all.length - 1 && span.to === undefined ? { ...span, to: s.today } : span) }
             : subject
           : subject) }
+        s = rememberDeletion(s, sub.id, 'archived')
         break
       }
       const invIds = new Set(s.invoices.filter((i) => i.subjectId === sub.id).map((i) => i.id))
@@ -421,7 +452,12 @@ export function reducer(state: AppState, action: Action): AppState {
           chats: s.chats.filter((c) => c.clientId !== sub.clientId),
           messages: s.messages.filter((m) => m.clientId !== sub.clientId),
         }
+        // ต้องจดแยกจากใบของนักเรียน — ข้อมูลผู้ปกครองบนเซิร์ฟเวอร์ผูกกับผู้จ่าย และใบนี้คือสัญญาณเดียว
+        // ที่ได้รับอนุญาตให้สั่งลบมัน (ดู erasableClientKeys และ migration 0018)
+        s = withClientTombstones(s, pruneTombstones(
+          mergeClientTombstones(clientTombstonesOf(s), [{ id: sub.clientId, at: s.today }]), s.today))
       }
+      s = rememberDeletion(s, sub.id, 'removed')
       break
     }
     case 'sendingStart':
@@ -436,12 +472,17 @@ export function reducer(state: AppState, action: Action): AppState {
     case 'backedUp':
       s = { ...s, lastBackupAt: s.today }
       break
-    case 'restore':
+    case 'restore': {
       if (!isWellFormed(action.state)) return state
       // ไฟล์เก็บวันที่สำรองไว้ ถ้าเอามาทั้งก้อน 'วันนี้' จะแช่แข็งอยู่วันนั้น
       // เช็คชื่อทุกคาบหลังจากนี้จะลงวันผิดโดยไม่มีอะไรฟ้อง
-      s = action.state.mode === 'real' ? { ...action.state, today: todayISO() } : action.state
+      const incoming = action.state.mode === 'real' ? { ...action.state, today: todayISO() } : action.state
+      // ก้อนนี้อาจเก่ากว่าการลบที่เครื่องนี้ทำไปแล้ว — บังคับใช้หลุมศพก่อนวาง ไม่ใช่วางแล้วค่อยว่ากัน
+      const merged = applyDeletionsOnRestore(s, incoming)
+      if (!merged) return state
+      s = merged
       break
+    }
     case 'rescheduleUnit': {
       const u = s.units.find((x) => x.id === action.unitId)
       if (!u) break
@@ -558,6 +599,21 @@ export function reducer(state: AppState, action: Action): AppState {
     case 'track':
       s = { ...s, events: appendEvent(s.events, action.name, action.props) }
       break
+  }
+
+  /**
+   * ครูเพิ่มหรือเปิดรายการคนนี้ใหม่ = เจตนาล่าสุดชนะหลุมศพเก่า ต้องรื้อใบนั้นทิ้ง
+   * ไม่งั้นซิงก์รอบหน้าจะลบคนที่เพิ่งเพิ่มกลับเข้ามา — 'restore' ไม่เข้าตรงนี้เพราะการรวมข้อมูลตัดสินไปแล้ว
+   */
+  if (s.deletedSubjects && action.type !== 'restore') {
+    const activeIds = new Set(s.subjects.filter((x) => x.active).map((x) => x.id))
+    const kept = tombstonesOf(s).filter((row) => !activeIds.has(row.id))
+    if (kept.length !== s.deletedSubjects.length) s = withTombstones(s, kept)
+  }
+  if (s.deletedClients && action.type !== 'restore') {
+    const liveClients = new Set(s.clients.map((c) => c.id))
+    const kept = clientTombstonesOf(s).filter((row) => !liveClients.has(row.id))
+    if (kept.length !== s.deletedClients.length) s = withClientTombstones(s, kept)
   }
 
   s = reconcileDraftInvoices(s)

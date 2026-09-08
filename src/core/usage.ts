@@ -39,6 +39,18 @@ export type RouteCategory = (typeof ROUTE_CATEGORIES)[number]
 export type Audience = 'public' | 'team'
 export type UsageMode = 'demo' | 'real'
 
+/**
+ * J-12 · แหล่งที่มาที่ทีมตกลงกันไว้ก่อน — อ่านจาก ?c= แล้วเก็บ "คำในรายการ" ไม่ใช่ค่าที่พิมพ์มา
+ * แผนข้อ 6.5 ห้ามเก็บ referrer ทั้งเส้นและ UTM อิสระ เพราะทั้งสองอย่างพา PII เข้ามาได้
+ * ค่าที่ไม่อยู่ในรายการกลายเป็น 'unknown' — รู้ว่ามีคนกดลิงก์ที่เราไม่รู้จัก แต่ไม่เก็บค่านั้น
+ * เพิ่มค่าใหม่ = เติมคำเดียวที่นี่ แล้วเติมคำเดียวกันใน supabase/functions/usage/index.ts
+ * และ supabase/migrations/0016_owner_analytics.sql (tests/unit/campaign-allowlist.test.ts บังคับให้ตรงกัน)
+ */
+export const CAMPAIGNS = ['line', 'facebook', 'qr', 'pitch', 'friend'] as const
+/** ค่าที่เก็บได้จริงในตาราง — รายการข้างบน บวก unknown สำหรับลิงก์ที่ไม่อยู่ในรายการ */
+export type Campaign = (typeof CAMPAIGNS)[number] | 'unknown'
+export const CAMPAIGN_PARAM = 'c'
+
 export interface UsagePayload {
   v: number
   event_id: string
@@ -49,6 +61,7 @@ export interface UsagePayload {
   route: RouteCategory | null
   audience: Audience
   mode: UsageMode | null
+  campaign: Campaign | null
 }
 
 /**
@@ -72,6 +85,7 @@ export function routeCategory(path: string): RouteCategory | null {
 const VISITOR_KEY = 'solo-usage-id'
 const SESSION_KEY = 'solo-usage-session'
 const AUDIENCE_KEY = 'solo-usage-audience'
+const CAMPAIGN_KEY = 'solo-usage-campaign'
 
 /** นิยามผลิตภัณฑ์: ขาดกิจกรรม 30 นาทีถือว่าเริ่ม session ใหม่ */
 export const SESSION_IDLE_MS = 30 * 60 * 1000
@@ -142,6 +156,32 @@ export function currentAudience(storage: Store = localStorage): Audience {
   return automated() ? 'team' : 'public'
 }
 
+const listed = (value: string | null): value is Campaign =>
+  value === 'unknown' || (CAMPAIGNS as readonly string[]).includes(value ?? '')
+
+/**
+ * อ่าน ?c= แล้วจำไว้ — เก็บเฉพาะคำในรายการ ไม่เก็บค่าที่พิมพ์มาและไม่เก็บ query string
+ * ครั้งแรกชนะ: ถามว่า "รู้จักเราครั้งแรกจากที่ไหน" ลิงก์ที่กดทีหลังจึงไม่เขียนทับคำตอบเดิม
+ * เป็นการผูกกับเบราว์เซอร์นี้เท่านั้น ไม่ใช่การไล่ตามคน — ล้างข้อมูลแล้วเริ่มนับใหม่
+ */
+export function adoptCampaign(search: string, storage: Store = localStorage): void {
+  let raw: string | null = null
+  try { raw = new URLSearchParams(search).get(CAMPAIGN_PARAM) } catch { return }
+  if (raw === null) return
+  if (currentCampaign(storage) !== null) return
+  try { storage.setItem(CAMPAIGN_KEY, listed(raw) && raw !== 'unknown' ? raw : 'unknown') } catch {
+    /* จำไม่ได้ = ไม่มีแหล่งที่มา ดีกว่าเดาว่ามาจากไหน */
+  }
+}
+
+export function currentCampaign(storage: Store = localStorage): Campaign | null {
+  try {
+    const saved = storage.getItem(CAMPAIGN_KEY)
+    if (listed(saved)) return saved
+  } catch { /* อ่านไม่ได้ = ไม่มีแหล่งที่มา */ }
+  return null
+}
+
 /**
  * กุญแจของเหตุการณ์เชิงตรรกะ → event_id หนึ่งค่า
  * เรียกซ้ำด้วยกุญแจเดิมแปลว่าส่งไปแล้ว: re-render ที่ไม่เปลี่ยนหน้าและ effect ที่รันสองรอบจึงไม่เพิ่ม pageview
@@ -169,6 +209,7 @@ export interface UsageOptions {
   mode?: UsageMode
   route?: RouteCategory
   audience?: Audience
+  campaign?: Campaign
   /** กุญแจของเหตุการณ์เชิงตรรกะ — ยิงซ้ำด้วยกุญแจเดิมจะไม่ส่งอีก */
   key?: string
   now?: Date
@@ -191,6 +232,7 @@ export function usagePayload(event: UsageEvent, count: number, options: UsageOpt
     route: options.route ?? null,
     audience: options.audience ?? currentAudience(),
     mode: options.mode ?? null,
+    campaign: options.campaign ?? currentCampaign(),
   }
 }
 

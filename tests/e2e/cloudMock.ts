@@ -12,13 +12,15 @@ export const installCloud = async (page: Page, head: { revision: number; cipher?
   const planRequests: Record<string, unknown>[] = []
   /** ลิงก์เอกสารที่ครูจำลองเผยแพร่ไว้ — เก็บสถานะจริงเพื่อให้การตรวจว่ายังเปิดได้อยู่ไหมตอบถูก */
   const sharedDocuments: Record<string, unknown>[] = []
+  /** การคืนเงินที่ทีมบันทึกไว้ฝั่งเซิร์ฟเวอร์ ปกติว่าง — เทสที่ต้องการค่อย push ยอดสมมติเข้ามา */
+  const planRefunds: Record<string, unknown>[] = []
   let snapshot: Record<string, unknown> | null = head
     ? { revision: head.revision, schema_version: 5, cipher: head.cipher ?? 'bm90LXJlYWw=', iv: head.iv ?? 'aXY=', kdf: head.kdf ?? 'pbkdf2-sha256-310000', updated_at: '2026-09-07T01:00:00Z', device: 'iPhone/iPad' }
     : null
   let providerPlan = { plan: 'free', plan_until: null as string | null, paused_at: null as string | null }
   const seen = {
     saves: [] as Record<string, unknown>[], reads: 0, planRequests,
-    deletions: 0, deletionStatus: 200, sharedDocuments,
+    deletions: 0, deletionStatus: 200, sharedDocuments, planRefunds,
     approveLatest() {
       const row = planRequests.find((request) => request.status === 'pending')
       if (!row) throw new Error('No pending plan request to approve')
@@ -68,6 +70,8 @@ export const installCloud = async (page: Page, head: { revision: number; cipher?
       return json([row])
     }
     if (url.pathname === '/rest/v1/rpc/cancel_plan_request') { planRequests.splice(0); return json(true) }
+    // การคืนเงินอ่านจากหลักฐานฝั่งเซิร์ฟเวอร์เท่านั้น (D-08) — ไม่มีรายการ = ไม่มีการคืนเงิน
+    if (url.pathname === '/rest/v1/rpc/list_plan_refunds') return json(planRefunds)
     if (url.pathname === '/rest/v1/rpc/pause_plan') {
       providerPlan = { ...providerPlan, paused_at: '2025-09-02T10:30:00+07:00' }
       return json([providerPlan])

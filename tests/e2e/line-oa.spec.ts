@@ -70,6 +70,8 @@ const installMockBackend = async (page: Page, options: MockOptions = {}) => {
     if (url.pathname === '/functions/v1/usage' || url.pathname === '/functions/v1/report-error') return json({ ok: true })
     if (url.pathname === '/rest/v1/providers' && request.method() === 'GET') return json([{ plan: 'free', plan_until: null, paused_at: null }])
     if (url.pathname === '/rest/v1/plan_requests' && request.method() === 'GET') return json(planRequests)
+    // การ์ดแพ็กอ่านการคืนเงินจากหลักฐานฝั่งเซิร์ฟเวอร์ด้วย (D-08) — เทสนี้ไม่มีการคืนเงิน
+    if (url.pathname === '/rest/v1/rpc/list_plan_refunds') return json([])
     if (url.pathname === '/rest/v1/ledger_snapshots' && request.method() === 'GET') return json([])
     if (url.pathname === '/rest/v1/rpc/save_ledger_snapshot') {
       state.snapshotSaves += 1

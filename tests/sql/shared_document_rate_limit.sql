@@ -23,18 +23,44 @@ exception
   when insufficient_privilege then reset role;
 end $$;
 
--- แฮชต้องเป็น hex 64 ตัวเสมอ ไม่งั้นตัวจำกัดจะปฏิเสธอาร์กิวเมนต์
+-- ไม่มี header บอกหมายเลขผู้เรียก → คืน null เพื่อให้ไปคุมด้วยเพดานรวมแทน
+-- ห้ามคืนค่าคงที่ ไม่งั้นผู้ปกครองทุกคนจะไปเบียดกันในถังเดียวและเปิดบิลไม่ได้
 do $$
-declare v_hash text;
 begin
-  v_hash := public.public_client_hash();
-  if v_hash !~ '^[0-9a-f]{64}$' then
-    raise exception 'client hash has the wrong shape: %', v_hash;
+  if public.public_client_hash() is not null then
+    raise exception 'with no forwarding header the caller must not get a shared bucket';
   end if;
-  -- เรียกซ้ำในผู้เรียกเดียวกันต้องได้ค่าเดิม ไม่งั้นการนับต่อผู้เรียกจะไม่มีความหมาย
-  if v_hash <> public.public_client_hash() then
-    raise exception 'client hash is not stable for the same caller';
+end $$;
+
+-- **แกนความปลอดภัย**: ผู้เรียกส่ง x-forwarded-for มาเองได้ พร็อกซีที่เชื่อถือได้จะต่อท้าย
+-- ถ้าอ่านตัวแรก ใครก็สลับหมายเลขทุกคำขอเพื่อรีเซ็ตโควตาได้ ตัวจำกัดต่อผู้เรียกจะไร้ความหมาย
+do $$
+declare
+  v_spoof_a text;
+  v_spoof_b text;
+  v_real_b text;
+begin
+  perform set_config('request.headers', '{"x-forwarded-for":"1.1.1.1, 203.0.113.9"}', true);
+  v_spoof_a := public.public_client_hash();
+  if v_spoof_a !~ '^[0-9a-f]{64}$' then
+    raise exception 'client hash has the wrong shape: %', v_spoof_a;
   end if;
+
+  -- เปลี่ยนเฉพาะค่าที่ผู้เรียกกรอกเอง — ถังต้องไม่เปลี่ยน
+  perform set_config('request.headers', '{"x-forwarded-for":"9.9.9.9, 203.0.113.9"}', true);
+  v_spoof_b := public.public_client_hash();
+  if v_spoof_b <> v_spoof_a then
+    raise exception 'a caller can change its rate-limit bucket by spoofing x-forwarded-for';
+  end if;
+
+  -- เปลี่ยนค่าที่พร็อกซีต่อท้าย — ถังต้องเปลี่ยน ไม่งั้นทุกคนใช้ถังเดียวกัน
+  perform set_config('request.headers', '{"x-forwarded-for":"1.1.1.1, 198.51.100.7"}', true);
+  v_real_b := public.public_client_hash();
+  if v_real_b = v_spoof_a then
+    raise exception 'different callers share one bucket — per-caller limiting does nothing';
+  end if;
+
+  perform set_config('request.headers', '', true);
 end $$;
 
 -- เอกสารตัวอย่างหนึ่งใบสำหรับอ่าน — ใช้ครูที่ไฟล์ก่อนหน้าสร้างไว้แล้ว ไม่สร้างบัญชีใหม่
@@ -51,11 +77,13 @@ begin
 end $$;
 
 -- ยิงจนเกินเพดานต่อผู้เรียก แล้วต้องถูกปฏิเสธ ไม่ใช่คืนเอกสารต่อไปเรื่อย ๆ
+-- ต้องมี header ของพร็อกซีก่อน ไม่งั้นจะตกไปอยู่เส้นทางที่คุมด้วยเพดานรวมซึ่งสูงกว่ามาก
 do $$
 declare
   v_blocked boolean := false;
   i integer;
 begin
+  perform set_config('request.headers', '{"x-forwarded-for":"198.51.100.42"}', true);
   for i in 1..80 loop
     begin
       perform * from public.read_shared_document('RATELIMITTOKEN00000000');
@@ -64,8 +92,21 @@ begin
       raise;
     end;
   end loop;
+  perform set_config('request.headers', '', true);
   if not v_blocked then
     raise exception 'reading the same document 80 times in a minute was never rate limited';
+  end if;
+end $$;
+
+-- ผู้เรียกอีกหมายเลขหนึ่งต้องยังอ่านได้ ถังต้องแยกกันจริง ไม่ใช่ล็อกทุกคนพร้อมกัน
+do $$
+declare v_rows bigint;
+begin
+  perform set_config('request.headers', '{"x-forwarded-for":"198.51.100.77"}', true);
+  select count(*) into v_rows from public.read_shared_document('RATELIMITTOKEN00000000');
+  perform set_config('request.headers', '', true);
+  if v_rows <> 1 then
+    raise exception 'one caller hitting its limit must not lock out everyone else';
   end if;
 end $$;
 

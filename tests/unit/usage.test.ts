@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
-  CLIENT_EVENTS, QA_PARAM, ROUTE_CATEGORIES, SERVER_EVENTS, SESSION_IDLE_MS, USAGE_VERSION,
-  adoptAudience, anonymousTeacherId, currentAudience, currentSessionId, postUsage,
+  CAMPAIGNS, CLIENT_EVENTS, QA_PARAM, ROUTE_CATEGORIES, SERVER_EVENTS, SESSION_IDLE_MS, USAGE_VERSION,
+  adoptAudience, adoptCampaign, anonymousTeacherId, currentAudience, currentSessionId, postUsage,
   resetUsageKeys, routeCategory, sendUsage, usagePayload,
 } from '../../src/core/usage'
 
@@ -15,6 +15,34 @@ afterEach(() => { vi.restoreAllMocks(); vi.unstubAllEnvs(); localStorage.clear()
 const bodyOf = (send: ReturnType<typeof vi.fn>, call = 0) =>
   JSON.parse(String((send.mock.calls[call][1] as RequestInit).body))
 
+/**
+ * รายการช่องที่ตกลงกันไว้ — เขียนด้วยมือโดยตั้งใจ ห้ามดึงจากโค้ดที่กำลังทดสอบ
+ * ถ้าอ่านรายการจากตัว payload เอง การเพิ่มช่องใหม่จะผ่านเทสเงียบ ๆ ซึ่งเป็นสิ่งเดียวที่เทสนี้มีไว้กัน
+ * เพิ่มหรือลบช่องที่นี่ = ต้องไปแก้แถวตัวนับการใช้งานใน docs/data-inventory.md ให้ตรงกันด้วย
+ */
+const AGREED_FIELDS = ['audience', 'campaign', 'count', 'event', 'event_id', 'mode', 'route',
+  'session_id', 'teacher_id', 'v'] as const
+
+const UUID_SHAPE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+/**
+ * ค่าที่แต่ละช่องมีได้จริง — คำในรายการที่ตกลงไว้ ตัวเลข หรือ id สุ่มเท่านั้น
+ * ไม่มีช่องไหนรับข้อความอิสระ ช่องที่เริ่มพาข้อความที่ผู้ใช้พิมพ์เองจึงตกเทสนี้ทันที
+ */
+const agreedValue = (key: string, value: unknown): boolean => {
+  if (value === null) return true
+  switch (key) {
+    case 'v': case 'count': return typeof value === 'number' && Number.isFinite(value)
+    case 'event': return (CLIENT_EVENTS as readonly string[]).includes(String(value))
+    case 'route': return (ROUTE_CATEGORIES as readonly string[]).includes(String(value))
+    case 'audience': return value === 'public' || value === 'team'
+    case 'mode': return value === 'demo' || value === 'real'
+    case 'campaign': return value === 'unknown' || (CAMPAIGNS as readonly string[]).includes(String(value))
+    case 'event_id': case 'teacher_id': case 'session_id': return UUID_SHAPE.test(String(value))
+    default: return false
+  }
+}
+
 /** ตัวนับต้องไม่มีทางพาข้อมูลนักเรียนออกไป — ตรึงรูปร่าง payload ไว้ */
 describe('ตัวนับการใช้งาน', () => {
   it('teacher_id สุ่มครั้งเดียวแล้วคงที่ในเครื่องเดิม', () => {
@@ -26,12 +54,30 @@ describe('ตัวนับการใช้งาน', () => {
   })
 
   it('payload มีแค่ช่องที่ตกลงไว้ ไม่มีชื่อ อีเมล เบอร์ ยอดเงิน URL หรือ query', () => {
-    const p = usagePayload('invoice_issued', 3, { mode: 'real', route: 'app', audience: 'public' })!
-    expect(Object.keys(p).sort())
-      .toEqual(['audience', 'count', 'event', 'event_id', 'mode', 'route', 'session_id', 'teacher_id', 'v'])
+    const p = usagePayload('invoice_issued', 3,
+      { mode: 'real', route: 'app', audience: 'public', campaign: 'qr' })!
+    // ช่องใหม่ที่ไม่มีใครตกลงด้วยต้องทำให้เทสนี้ล้ม ไม่ใช่ไหลออกไปเงียบ ๆ
+    expect(Object.keys(p).sort()).toEqual([...AGREED_FIELDS])
+    // และช่องเดิมที่เริ่มพาข้อความอิสระออกไปก็ต้องล้มเช่นกัน
+    for (const [key, value] of Object.entries(p)) {
+      expect(agreedValue(key, value), `ช่อง ${key} ส่งค่าที่ไม่ได้ตกลงไว้: ${JSON.stringify(value)}`).toBe(true)
+    }
     expect(p.v).toBe(USAGE_VERSION)
     expect(p.count).toBe(3)
     expect(JSON.stringify(p)).not.toMatch(/น้อง|ครู|บาท|@|\?|#|[0-9]{3},[0-9]{3}/)
+  })
+
+  it('ช่องที่เพิ่มเข้ามาเองในภายหลังต้องตกเทสรูปร่าง payload', () => {
+    const p = usagePayload('app_open', 1, { mode: 'real', route: 'app' })!
+    const smuggled = { ...p, note: 'ผู้ปกครองน้องเอ 0812345678' }
+    expect(Object.keys(smuggled).sort()).not.toEqual([...AGREED_FIELDS])
+    expect(agreedValue('note', smuggled.note)).toBe(false)
+  })
+
+  it('ไม่มีลิงก์แคมเปญ = ไม่มีแหล่งที่มาใน payload ไม่ใช่เดาว่ามาจากไหน', () => {
+    expect(usagePayload('landing_view', 1, { route: 'landing' })!.campaign).toBeNull()
+    adoptCampaign('?c=line')
+    expect(usagePayload('pricing_view', 1, { route: 'pricing' })!.campaign).toBe('line')
   })
 
   it('count ติดลบ ทศนิยม หรือไม่ใช่ตัวเลข ถูกทำให้เป็นจำนวนเต็มไม่ติดลบที่มีเพดาน', () => {

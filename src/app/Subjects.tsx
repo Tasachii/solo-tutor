@@ -12,6 +12,7 @@ import { Chip, EmptyState, ProgressBar, Skeleton } from './components'
 import SubjectSheet from './SubjectSheet'
 import { ImportSheet } from './ImportSheet'
 import { modesFor } from '../core/style'
+import { keptForRecords } from '../core/tombstones'
 import type { BillingMode } from '../core/types'
 
 type Filter = 'all' | 'per_unit' | 'flat_monthly' | 'package' | 'lowpack' | 'overdue'
@@ -146,7 +147,11 @@ export default function Subjects() {
           <ul className="rows">
             {inactive.map((s) => (
               <li key={s.id}><button className="srow" onClick={() => nav(`/app/subjects/${s.id}`)}>
-                <span className="srow__name dim">{s.name}</span>
+                <span className="srow__main">
+                  <span className="srow__name dim">{s.name}</span>
+                  {/* กดลบไปแล้วแต่แถวยังอยู่ — ต้องบอกว่าทำไม ไม่ใช่ปล่อยให้ดูเหมือนคนที่แค่หยุดเรียน */}
+                  {keptForRecords(state, s.id) && <span className="srow__meta">{copy.subjects.keptForRecords}</span>}
+                </span>
               </button></li>
             ))}
           </ul>

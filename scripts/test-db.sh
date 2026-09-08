@@ -57,6 +57,9 @@ docker exec "$container_name" psql -v ON_ERROR_STOP=1 -U postgres \
   -f /work/tests/sql/payment_evidence.sql \
   -f /work/tests/sql/operations_role.sql \
   -f /work/tests/sql/retention.sql \
+  -f /work/tests/sql/plan_refunds.sql \
+  -f /work/tests/sql/line_client_erasure.sql \
+  -f /work/tests/sql/owner_analytics.sql \
   -f /work/tests/sql/usage_events_v2.sql \
   -f /work/scripts/paid-usage.sql \
   -f /work/scripts/pitch-metrics.sql

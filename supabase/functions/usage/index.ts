@@ -16,6 +16,12 @@ const CLIENT_EVENTS = new Set([
 /** ชื่อที่ client อ้างเองไม่ได้ — ส่งมาเมื่อไหร่ถือว่า payload ไม่ถูกต้อง */
 const SERVER_EVENTS = ['signup_completed', 'email_verified'] as const
 const ROUTES = new Set(['landing', 'pricing', 'legal', 'start', 'login', 'app', 'other'])
+/**
+ * J-12 · แหล่งที่มาที่เก็บได้ — ต้องตรงกับ src/core/usage.ts และ 0016_owner_analytics.sql
+ * ค่าที่ไม่อยู่ในรายการกลายเป็น 'unknown' ไม่ใช่ทิ้งทั้งแถวและไม่ใช่เก็บตามที่ส่งมา
+ * ถ้ารายการนี้ล้ำหน้ารายการในฐานข้อมูล การบันทึกจะล้ม — แก้ migration และ deploy ก่อนเสมอ
+ */
+const CAMPAIGNS = new Set(['line', 'facebook', 'qr', 'pitch', 'friend'])
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 /** payload ที่ตกลงไว้ยาวไม่ถึง 400 ไบต์ — เผื่อไว้พอสมควรแล้วปฏิเสธส่วนเกินก่อนอ่านจนจบ */
 const MAX_BODY_BYTES = 1_024
@@ -32,6 +38,7 @@ export interface UsageRow {
   mode: UsageMode | null
   route: string | null
   audience: Audience
+  campaign: string | null
   version: number
   at?: string
 }
@@ -83,7 +90,10 @@ export function normalizeUsage(body: Record<string, unknown>): UsageRow | null {
   if (!eventId || !teacherId || !sessionId || !event || count === null || !audience || !version) return null
   const mode = body.mode === 'demo' || body.mode === 'real' ? body.mode : null
   const route = typeof body.route === 'string' && ROUTES.has(body.route) ? body.route : null
-  return { event_id: eventId, teacher_id: teacherId, session_id: sessionId, event, count, mode, route, audience, version }
+  // ค่าที่ส่งมาแล้วไม่อยู่ในรายการไม่ถูกเก็บไว้เลย — บันทึกว่า 'unknown' แทน
+  const campaign = typeof body.campaign === 'string' && body.campaign !== ''
+    ? (CAMPAIGNS.has(body.campaign) ? body.campaign : 'unknown') : null
+  return { event_id: eventId, teacher_id: teacherId, session_id: sessionId, event, count, mode, route, audience, campaign, version }
 }
 
 const usableTime = (value: string | null): string | null =>
@@ -95,10 +105,12 @@ const usableTime = (value: string | null): string | null =>
  * at ใช้เวลาที่ Auth บันทึกไว้จริง cohort จึงตรงแม้เราเพิ่งเห็นบัญชีนั้นวันนี้
  * id ขึ้นต้นด้วย srv: ซึ่งไม่ใช่รูป UUID — client จึงจองหรือชนกุญแจนี้ไม่ได้
  */
-export function attestedRows(account: VerifiedAccount, source: Pick<UsageRow, 'teacher_id' | 'audience'>): UsageRow[] {
+export function attestedRows(account: VerifiedAccount, source: Pick<UsageRow, 'teacher_id' | 'audience' | 'campaign'>): UsageRow[] {
   const base = {
     teacher_id: source.teacher_id, session_id: null, count: 1,
-    mode: 'real' as const, route: null, audience: source.audience, version: USAGE_VERSION,
+    mode: 'real' as const, route: null, audience: source.audience,
+    // แหล่งที่มายกมาจากเหตุการณ์ที่ทำให้เรารู้จักบัญชีนี้ ปลายทางของ funnel จึงอยู่แกนเดียวกับต้นทาง
+    campaign: source.campaign, version: USAGE_VERSION,
   }
   const rows: UsageRow[] = []
   const createdAt = usableTime(account.createdAt)
