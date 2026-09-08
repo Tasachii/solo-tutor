@@ -2,7 +2,9 @@
 
 อัปเดต 8 กันยายน 2569 · ใช้ Supabase Free ต่อสำหรับ Demo/pitching งานนี้ไม่เปลี่ยนแพ็กและไม่สร้างพื้นที่เก็บที่มีค่าใช้จ่าย
 
-## สำเนาเข้ารหัสรายสัปดาห์
+## สำเนาเข้ารหัสรายวัน
+
+`backup.yml` รันทุกวัน 03:35 น. ไทย (เดิมรายสัปดาห์) ให้ตรงกับ RPO 24 ชม. ที่ตั้งไว้ใน `docs/incident-runbook.md` ข้อ 5 · `operations.yml` เตือนเมื่อไม่มี backup สำเร็จเกิน 2 วัน
 
 `.github/workflows/backup.yml` เก็บ schema ของ `public`, ข้อมูล COPY ของ `public` + `auth`, roles และ Auth DDL เป็นไฟล์อ้างอิงเท่านั้น (ปลายทางต้องมี Auth schema ที่เข้ากันได้อยู่แล้ว ห้ามใช้ test bootstrap ที่มี `auth.users` คอลัมน์เดียว)
 

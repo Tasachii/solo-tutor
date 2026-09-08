@@ -47,7 +47,7 @@ jobs:
           # Technical anti-abuse counters expire after 2h; no teacher records are touched.
           psql "$OPERATIONS_DATABASE_URL" -X -v ON_ERROR_STOP=1 -c 'select public.cleanup_public_rate_limits();' >/dev/null
           bash scripts/check-operations.sh
-      - name: Verify weekly backup freshness
+      - name: Verify daily backup freshness
         if: always()
         env:
           GH_TOKEN: ${{ github.token }}

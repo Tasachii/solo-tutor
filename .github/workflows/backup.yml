@@ -4,10 +4,11 @@
 # repo เป็นสาธารณะ ใครล็อกอิน GitHub ก็โหลด artifact ได้ จึงเข้ารหัสเสมอ ไม่มีข้อยกเว้น
 # รูปแบบไฟล์ .tar.gz.solobak = AES-256-GCM มี authentication tag (scripts/backup-crypto.mjs) ถอดกลับเทียบทุกไบต์ก่อนเก็บ
 # วิธีกู้และข้อจำกัดอยู่ใน docs/backup-restore.md · ล้มเมื่อไหร่เปิด GitHub Issue ป้าย ops-alert
-name: Weekly database backup
+name: Daily database backup
 on:
   schedule:
-    - cron: '35 20 * * 0'
+    # ทุกวัน 03:35 เวลาไทย — RPO ที่ทีมตั้งไว้คือ 24 ชม. (docs/incident-runbook.md ข้อ 5)
+    - cron: '35 20 * * *'
   workflow_dispatch:
 permissions:
   contents: read

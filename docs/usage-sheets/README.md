@@ -27,6 +27,11 @@ one teacher can appear as multiple IDs. Do not present it as an exact teacher co
    `SpreadsheetApp.openById` instead of relying on editor-only active context.
 4. In **Project Settings → Script properties**, add `USAGE_WEBHOOK_SECRET` with
    a random value of at least 24 characters.
+
+   > The names differ on purpose and are easy to mix up. Apps Script reads the
+   > property `USAGE_WEBHOOK_SECRET`; Supabase reads the Edge Function secrets
+   > `USAGE_SHEETS_WEBHOOK_SECRET` (same value) and `USAGE_SHEETS_WEBHOOK_URL`
+   > (the `/exec` URL). Set all three or the receiver rejects every request.
 5. Choose **Deploy → New deployment → Web app** with these exact settings:
 
    - **Execute as:** Me

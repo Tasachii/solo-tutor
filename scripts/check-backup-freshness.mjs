@@ -4,7 +4,7 @@ export function backupIsFresh(runs, now = Date.now()) {
   return runs.some((run) => {
     const created = Date.parse(run.created_at)
     return run.status === 'completed' && run.conclusion === 'success'
-      && Number.isFinite(created) && created <= now && now - created <= 8 * 24 * 60 * 60 * 1000
+      && Number.isFinite(created) && created <= now && now - created <= 2 * 24 * 60 * 60 * 1000
   })
 }
 
@@ -19,7 +19,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   if (!response.ok) throw new Error(`Backup monitor API failed (${response.status})`)
   const result = await response.json()
   if (!Array.isArray(result.workflow_runs) || !backupIsFresh(result.workflow_runs)) {
-    throw new Error('No successful weekly backup within 8 days; investigate backup workflow and restore readiness')
+    throw new Error('No successful backup within 2 days; investigate backup workflow and restore readiness')
   }
-  console.log('A weekly backup workflow succeeded within the last 8 days. This does not prove restore integrity.')
+  console.log('A backup workflow succeeded within the last 2 days. This does not prove restore integrity.')
 }
