@@ -21,9 +21,9 @@
 - `Google-Sheets-Setup/`: Apps Script และขั้นตอนตั้งค่า
 - `SHA256SUMS.txt`: ตรวจว่าไฟล์สำเนาตรงกัน
 
-## อัปเดต 8 ก.ย. ค่ำ — แท็บค้างจ่าย/การบ้านบนแอดมิน + งาน ops ที่ปิดแล้ว (ยังไม่ push)
+## อัปเดต 8 ก.ย. ค่ำ — แท็บค้างจ่าย/การบ้านบนแอดมิน + งาน ops ที่ปิดแล้ว (push + deploy แล้ว)
 
-commit ใหม่บน `main` ในเครื่องนี้: `19f57e3` (ops) และ `8fa2294` (feature) — **ยังไม่ได้ push** เพราะ push = deploy ผ่าน `deploy.yml` ต้องรอคำสั่งเจ้าของ
+commit ใหม่บน `main`: `19f57e3` (ops), `8fa2294` (feature), `93e2932` (handoff) — **push แล้ว 8 ก.ย. 19:18 น. ตามคำสั่งเจ้าของ** · CI "Verify and deploy" run `34225372808` เขียวทั้ง 4 งาน (test / integrations / build / deploy) · หน้าเว็บจริง `tasachii.github.io/solo-tutor` เสิร์ฟ build ใหม่แล้ว (ตรวจว่า chunk Admin มีแท็บ "ค้างจ่าย"/"การบ้าน")
 
 **หน้าแอดมินมีสองแท็บใหม่** (ทำตามคำขอ "ระบบทวงเงิน + ทวงการบ้าน ส่งผ่าน LINE OA ได้จริง")
 
@@ -36,7 +36,7 @@ commit ใหม่บน `main` ในเครื่องนี้: `19f57e3`
 **หลักฐานรอบนี้** (เครื่อง Mac เดิม, HEAD `8fa2294`): unit **516 ผ่าน** · edge **32 ผ่าน** · SQL suite postgres:17 ผ่าน · cross-browser e2e **209 ผ่าน / 43 skipped / 0 ล้ม** (E-01 WebKit ไม่ล้มแล้ว) · LINE mock e2e **45 ผ่าน** (mobile/desktop/webkit) · typecheck + diff-check ผ่าน · สรุปผลอยู่ใน `.omx/evidence/20260908-evening.json` (ไม่ commit)
 
 **ยังไม่ยืนยัน / ต้องเจ้าของ (เพิ่มจากรายการเดิม)**
-1. `git push origin main` → รอ CI "Verify and deploy" เขียว → หน้าเว็บจริงได้สองแท็บใหม่ (ผมทำให้ได้เมื่อสั่ง)
+1. ~~`git push origin main` → รอ CI เขียว~~ **ทำแล้ว** (run `34225372808` ผ่าน, หน้าเว็บจริงมีสองแท็บใหม่) — ที่เหลือคือกด **Run workflow** ของ `Uptime and keep-alive` หนึ่งครั้ง (ข้อ 3)
 2. ส่งจริงถึงโทรศัพท์ทีมผ่านแท็บค้างจ่าย: ขั้นตอนเดิมข้อ 1 ด้านล่าง แล้วกด **ส่งทวงทั้งหมดผ่าน LINE OA** กับรายชื่อทดสอบ 1 คน ตรวจว่าได้รับ 1 ข้อความและแถวขึ้น "ทวงล่าสุด"
 3. E-02 ยังไม่เคย dispatch จริง — หลัง push ให้กด Run workflow ที่ `Uptime and keep-alive` หนึ่งครั้งเพื่อดูว่างานผ่าน (ถ้าล้มจะเห็น Issue `ops-alert` เปิดเอง)
 4. `docs/data-inventory.md` และ `docs/incident-runbook.md` มีช่อง "รอเจ้าของ" (retention, ผู้ถือกุญแจ, ผู้รับ alert, RTO/RPO) ต้องเติมก่อนส่งผู้เชี่ยวชาญ
