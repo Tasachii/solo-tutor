@@ -30,6 +30,8 @@ for path in "$repo_dir"/supabase/migrations/*.sql; do
   name=$(basename "$path")
   case "$name" in
     0007_*) migration_args+=(-f /work/tests/sql/pre_production_safety.sql) ;;
+    # 0012 ต้องยกแถวรุ่นเดิมมาให้ครบ จึงต้องมีแถวรุ่นเดิมอยู่ก่อนไมเกรชันจะรัน
+    0012_*) migration_args+=(-f /work/tests/sql/pre_usage_events_v2.sql) ;;
   esac
   migration_args+=(-f "/work/supabase/migrations/$name")
   case "$name" in
@@ -54,6 +56,7 @@ docker exec "$container_name" psql -v ON_ERROR_STOP=1 -U postgres \
   -f /work/tests/sql/payment_evidence.sql \
   -f /work/tests/sql/operations_role.sql \
   -f /work/tests/sql/retention.sql \
+  -f /work/tests/sql/usage_events_v2.sql \
   -f /work/scripts/paid-usage.sql \
   -f /work/scripts/pitch-metrics.sql
 

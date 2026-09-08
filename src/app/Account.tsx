@@ -18,7 +18,7 @@ const when = (iso: string | null): string => {
 
 /** หน้าบัญชีครู — เข้าสู่ระบบ ดูสถานะซิงก์ แก้กรณีสองฝั่งต่างกัน และลบข้อมูลบนคลาวด์ */
 export default function Account() {
-  const { state, writeStatus } = useStore()
+  const { state, writeStatus, dispatch, track } = useStore()
   const cloud = useCloudSync()
   const toast = useToast()
   const a = copy.account
@@ -65,7 +65,14 @@ export default function Account() {
 
   return <div className="pane line-settings">
     <div className="rowhead"><h1 className="h1">{a.title}</h1><Link to="/app/today">{copy.common.back}</Link></div>
-    {state.mode !== 'real' ? <p>{a.demoOnly}</p>
+    {state.mode !== 'real' ? (
+      // ครูที่มาลบบัญชีหรือดูคลาวด์เจอหน้านี้ทั้งหน้า — บอกทางออกแล้วพาไปเลย ดีกว่าให้ไปหาเมนูเอง
+      <>
+        <p data-testid="account-needs-real">{a.demoOnly}</p>
+        <button className="btn btn--secondary btn--sm" data-testid="account-switch-real"
+          onClick={() => { if (dispatch({ type: 'startReal' })) track('start_real') }}>{a.deleteSwitchToReal}</button>
+      </>
+    )
       : !config ? <div className="card"><h2 className="h2">{a.notConfigured}</h2><p>{a.notConfiguredBody}</p></div>
       : !cloud.session ? <>
         <div className="card"><p>{a.intro}</p><p className="hint">{a.encrypted}</p></div>
