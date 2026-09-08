@@ -14,6 +14,7 @@ import { BottomSheet } from './components'
 import { useToast } from './components/Toast'
 import { readPlanInfo, studentCapIssue, type CapIssue } from '../core/plan'
 import { PlanSheet } from './PlanSheet'
+import { parseMoneyInput } from './SubjectSheet'
 
 const FIELDS: Field[] = ['name', 'payer', 'line', 'price']
 
@@ -56,17 +57,19 @@ export function ImportSheet({ onClose }: { onClose: () => void }) {
   const rows = deduped.rows
   const good = rows.filter((r) => !r.error)
   const [packTotal, setPackTotal] = useState('10')
-  const packNum = Math.round(Number(packTotal))
-  const packOk = Number.isInteger(packNum) && packNum > 0
+  const packNum = parseMoneyInput(packTotal)
+  const packOk = packNum !== null
   const bad = rows.length - good.length
-  const priceNum = Math.round(Number(price))
-  const priceOk = Number.isFinite(priceNum) && priceNum > 0
+  const priceNum = parseMoneyInput(price)
+  const priceOk = priceNum !== null
 
   const billingFor = (rowPrice?: number): Subject['billing'] | undefined => {
     const amount = rowPrice ?? priceNum
+    if (amount === null) return undefined
     if (mode === 'per_unit') return { mode, rate: amount }
     if (mode === 'flat_monthly') return { mode, amount }
     // แพ็ก: ราคาเป็นราคาต่อแพ็ก จำนวนครั้งใช้ค่าเริ่มต้นเดียวกันทุกคน ซื้อวันนี้
+    if (packNum === null) return undefined
     return { mode: 'package', total: packNum, price: amount, purchasedAt: state.today }
   }
 
@@ -78,7 +81,7 @@ export function ImportSheet({ onClose }: { onClose: () => void }) {
     if (bad > 0 && !confirmSkipped) { setConfirmSkipped(true); return }
     const ok = dispatch({
       type: 'bulkAddSubjects',
-      billing: billingFor() ?? { mode: 'per_unit', rate: priceNum },
+      billing: billingFor() ?? { mode: 'per_unit', rate: priceNum! },
       rows: good.map((r) => ({
         name: r.name, clientName: r.clientName, lineId: r.lineId,
         billing: r.price ? billingFor(r.price) : undefined,

@@ -22,13 +22,16 @@ describe('รายงาน error', () => {
     configure()
     const send = vi.fn().mockResolvedValue(new Response('{}'))
     const err = new TypeError('boom')
+    err.stack = 'TypeError: boom\n at https://qa.example/solo-tutor/assets/index-Abc.js:12:34'
     const report = buildErrorReport(err, { route: '#/app/billing', mode: 'real', userAgent: 'ua', appVersion: 'abc' })
     expect(reportError(report, send as unknown as typeof fetch)).toBe(true)
     const [url, init] = send.mock.calls[0]
     expect(url).toBe(`${projectUrl}/functions/v1/report-error`)
     const body = JSON.parse((init as RequestInit).body as string)
     expect(Object.keys(body).sort()).toEqual(['appVersion', 'message', 'mode', 'route', 'stack', 'userAgent'])
-    expect(body.message).toBe('TypeError: boom')
+    expect(body.message).toBe('TypeError: application failure')
+    expect(body.stack).toBe('assets/index-Abc.js:12:34')
+    expect(JSON.stringify(body)).not.toContain('boom')
   })
 
   it('ไม่มีโปรเจกต์ = ไม่ส่งอะไรออกไปเลย', () => {
@@ -39,11 +42,11 @@ describe('รายงาน error', () => {
   })
 
   it('ตัดความยาวทุกช่อง และอ่านเวอร์ชันจาก hash ของบันเดิล', () => {
-    const long = new Error('m'.repeat(600)); long.stack = 's'.repeat(9000)
+    const long = new Error('m'.repeat(600)); long.stack = ' at https://qa.example/assets/index-Abc.js:12:34\n'.repeat(500)
     const r = buildErrorReport(long, { route: 'r'.repeat(300) })
-    expect(r.message.length).toBe(500)
+    expect(r.message).toBe('Error: application failure')
     expect(r.stack!.length).toBe(4000)
-    expect(r.route!.length).toBe(200)
+    expect(r.route).toBe('#/unknown')
     const doc = document.implementation.createHTMLDocument('')
     doc.body.innerHTML = '<script src="/solo-tutor/assets/index-Ab9_x1.js"></script>'
     expect(bundleVersion(doc)).toBe('Ab9_x1')
@@ -60,7 +63,7 @@ describe('รายงาน error', () => {
     await waitFor(() => expect(fetchMock).toHaveBeenCalled())
     const [url, init] = fetchMock.mock.calls[0]
     expect(String(url)).toContain('/functions/v1/report-error')
-    expect(JSON.parse((init as RequestInit).body as string).message).toContain('render exploded')
+    expect(JSON.parse((init as RequestInit).body as string).message).toBe('Error: application failure')
     expect(screen.getByText('หน้านี้มีปัญหา')).toBeTruthy()
   })
 })

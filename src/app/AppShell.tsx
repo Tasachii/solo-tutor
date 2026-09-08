@@ -21,11 +21,13 @@ import { applySize, readSize, type DisplaySize } from '../core/display'
 import { ACCENTS, applyAccent, readAccent, type Accent } from '../core/accent'
 import { applyFrame, isFullscreen, readFrame, toggleFullscreen, type Frame } from '../core/present'
 import { useCloudSync } from './CloudSync'
+import StorageStatus from './StorageStatus'
+import { readPlanIntent } from '../platform/plans'
 
 type MenuTab = 'general' | 'display' | 'demo'
 
 export default function AppShell() {
-  const { state, dispatch, resetDemo, track } = useStore()
+  const { state, dispatch, resetDemo, track, didReset } = useStore()
   const prof = professionById(state.professionId)
   const nav = useNavigate()
   const loc = useLocation()
@@ -62,9 +64,10 @@ export default function AppShell() {
   // ยังไม่มีข้อมูลเลย = พาไป onboarding ก่อน
   useEffect(() => {
     if (!state.onboarded && state.subjects.length === 0 && !loc.pathname.endsWith('/onboarding')) {
-      nav('/app/onboarding', { replace: true })
+      const requestedPlan = readPlanIntent()
+      nav(`/app/onboarding${loc.search || (requestedPlan ? `?plan=${requestedPlan}` : '')}`, { replace: true })
     }
-  }, [state.onboarded, state.subjects.length, loc.pathname, nav])
+  }, [state.onboarded, state.subjects.length, loc.pathname, loc.search, nav])
 
   // ส่งขึ้นชีตเมื่อข้อมูลเปลี่ยน — หน่วงไว้ ไม่ยิงทุกการกด และไม่ยิงในโหมดเดโม
   useEffect(() => {
@@ -120,6 +123,8 @@ export default function AppShell() {
     { to: '/app/billing', label: copy.nav.billing, icon: 'bill' as IconName },
     { to: '/app/admin', label: copy.nav.admin, badge: drafts, icon: 'chat' as IconName },
   ]
+
+  if (didReset) return <StorageStatus />
 
   return (
     <div className="shell">
@@ -195,6 +200,7 @@ export default function AppShell() {
                 <button className="row" onClick={() => { setMenu(false); nav('/app/settings/account') }}>{copy.account.menu}{real && cloud.session ? ` · ${copy.account.status[cloud.status]}` : ''}</button>
                 <button className="row" onClick={() => { setMenu(false); nav('/app/settings/line') }}>เชื่อม LINE OA</button>
                 <button className="row" onClick={() => { setMenu(false); setSheetsOpen(true) }}>{copy.sheets.menu}</button>
+                <button className="row" onClick={() => { setMenu(false); nav('/app/help') }}>{copy.help.menu}</button>
                 {!real && <button className="row" onClick={() => { resetDemo(); setMenu(false) }}>{copy.menu.reset}</button>}
               </div>
             </>
@@ -311,7 +317,8 @@ export default function AppShell() {
           onConfirm={() => {
             if (!dispatch({ type: 'startReal' })) return false
             track('start_real')
-            setMenu(false); nav('/app/onboarding')
+            const requestedPlan = readPlanIntent()
+            setMenu(false); nav(`/app/onboarding${requestedPlan ? `?plan=${requestedPlan}` : ''}`)
             return true
           }} />
       )}

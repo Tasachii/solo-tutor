@@ -6,7 +6,7 @@ import { copy } from '../copy'
 import { daysSinceBackup } from '../core/backup'
 import { diffDays } from '../core/format'
 import { dashboard, invoiceToActOn } from '../core/selectors'
-import { closableSubjects } from '../core/billing'
+import { closableSubjects, flatBillablePeriods } from '../core/billing'
 import { balanceDue, packageStatus } from '../core/ledger'
 import { download, monthCsv } from '../core/export'
 import { receiptOfInvoice } from '../core/receipts'
@@ -27,6 +27,7 @@ export function availableBillingPeriods(state: AppState): string[] {
     const unit = state.units.find((candidate) => candidate.id === completion.unitId)
     if (unit) periods.add(periodOf(unit.scheduledAt))
   })
+  state.subjects.forEach(subject => flatBillablePeriods(state, subject).forEach(period => periods.add(period)))
   return [...periods].sort((a, b) => b.localeCompare(a))
 }
 

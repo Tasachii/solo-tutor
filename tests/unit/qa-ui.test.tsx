@@ -31,6 +31,14 @@ describe('QA UI regression guards', () => {
     expect(availableBillingPeriods(state)[0]).toBe('2025-09')
   })
 
+  it('offers a zero-session flat month inside the agreement interval', () => {
+    const state = { ...buildScenario('empty'), today: '2025-09-01', clients: [{ id: 'c', name: 'ผู้จ่าย' }], subjects: [{
+      id: 'flat', clientId: 'c', name: 'เหมา', active: true, createdAt: '2025-07-15',
+      billing: { mode: 'flat_monthly' as const, amount: 3000 },
+    }] }
+    expect(availableBillingPeriods(state)).toEqual(['2025-09', '2025-08', '2025-07'])
+  })
+
   it('warns about an overlapping appointment while allowing the save', () => {
     const state = buildScenario('default')
     const occupied = state.units[0]

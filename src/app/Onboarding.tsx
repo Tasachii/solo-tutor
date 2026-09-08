@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { useStore } from '../core/store'
 import { professionById, fillVocab } from '../professions'
 import { copy } from '../copy'
@@ -10,6 +10,7 @@ import { normalizePaymentDestination, isPaymentDestination } from '../core/payme
 import { parseMoneyInput } from './SubjectSheet'
 import { readPlanInfo, studentCapIssue, type CapIssue } from '../core/plan'
 import { PlanSheet } from './PlanSheet'
+import { readPlanIntent, validPaidPlanMonths } from '../platform/plans'
 
 interface Row { name: string; clientName: string; lineId?: string; error?: string }
 
@@ -29,6 +30,7 @@ export default function Onboarding() {
   const prof = professionById(state.professionId)
   const v = prof.vocab
   const nav = useNavigate()
+  const loc = useLocation()
   const [step, setStep] = useState(1)
   const [name, setName] = useState(state.provider.name)
   const [pp, setPp] = useState(state.provider.promptpayId)
@@ -49,6 +51,10 @@ export default function Onboarding() {
   const priceOk = mode === 'per_unit' ? parseMoneyInput(rate) !== null
     : mode === 'flat_monthly' ? parseMoneyInput(flat) !== null
       : parseMoneyInput(packTotal) !== null && parseMoneyInput(packPrice) !== null
+  const requestedPlan = validPaidPlanMonths(new URLSearchParams(loc.search).get('plan')) ?? readPlanIntent()
+  const afterOnboarding = requestedPlan
+    ? `/app/settings/account?plan=${requestedPlan}`
+    : '/app/today'
 
   const rows = useMemo(() => parseRoster(text), [text])
   const good = rows.filter((r) => !r.error)
@@ -71,7 +77,7 @@ export default function Onboarding() {
       ...(mode === 'package' ? { packageIntent } : {}),
     })) return
     track('onboarding_finish', { count: good.length })
-    nav('/app/today')
+    nav(afterOnboarding)
   }
 
   return (
@@ -187,7 +193,7 @@ export default function Onboarding() {
           )}
           <span className="hint">{copy.subjects.priceHint}</span>
 
-          {!priceOk && <span className="hint hint--bad">{copy.common.numberPositive}</span>}
+          {!priceOk && <span className="hint hint--bad" role="alert">{copy.common.numberPositive}</span>}
           {badCount > 0 && <p className="warnbar" role="alert">มี {badCount} แถวข้อมูลไม่ครบ ระบบจะไม่นำเข้าแถวเหล่านี้ กดอีกครั้งเพื่อยืนยัน</p>}
           <button className="btn btn--primary btn--block" disabled={good.length === 0 || !priceOk || !promptpayOk} onClick={finish}>
             {confirmBadRows && badCount > 0 ? `ยืนยันข้าม ${badCount} แถว` : copy.onboarding.finish} ({good.length})
@@ -195,6 +201,7 @@ export default function Onboarding() {
           {/* ครูที่ไม่มีลิสต์อยู่ในมือ ต้องออกไปเพิ่มทีละคนได้ ไม่ใช่ถูกขังหรือถูกพากลับเดโม */}
           <button className="linkbtn" onClick={() => {
             if (!promptpayOk) { setStep(1); setPromptpayError(true); return }
+            if (!priceOk) return
             if (!dispatch({
               type: 'finishOnboarding',
               provider: { name: name.trim() || state.provider.name, promptpayId: normalizedPromptpay ?? '', particle },
@@ -204,7 +211,7 @@ export default function Onboarding() {
                   : { mode: 'package', total: parseMoneyInput(packTotal)!, price: parseMoneyInput(packPrice)!, purchasedAt: state.today },
               ...(mode === 'package' ? { packageIntent } : {}),
             })) return
-            track('onboarding_skip'); nav('/app/subjects')
+            track('onboarding_skip'); nav(afterOnboarding === '/app/today' ? '/app/subjects' : afterOnboarding)
           }}>{copy.onboarding.skip}</button>
           <button className="linkbtn" onClick={() => setStep(1)}>{copy.common.back}แก้ข้อมูลผู้ให้บริการ</button>
           {state.mode !== 'real' && (

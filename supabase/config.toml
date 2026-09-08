@@ -31,3 +31,7 @@ verify_jwt = false
 
 [functions.usage]
 verify_jwt = false
+
+# Handler verifies bearer with Auth and requires password reauthentication.
+[functions.delete-account]
+verify_jwt = false

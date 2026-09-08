@@ -1,5 +1,5 @@
 /** รับรายชื่อจองสิทธิ์รุ่นแรกจากหน้าเว็บ — แทน Google Form ที่ไม่เคยถูกตั้งค่า */
-import { admin, jsonBody, jsonError, ok, serveErrors, withCors } from '../_shared/db.ts'
+import { admin, enforcePublicRateLimit, jsonBody, jsonError, ok, serveErrors, withCors } from '../_shared/db.ts'
 
 const SIZES = new Set(['<10', '10–30', '31–50', '50+'])
 const MODES = new Set(['per_unit', 'flat_monthly', 'package'])
@@ -27,11 +27,16 @@ export function normalizeWaitlist(body: Record<string, unknown>): Record<string,
 
 export const handler = serveErrors(withCors(async (req) => {
   if (req.method !== 'POST') return jsonError(405, 'method-not-allowed')
-  const row = normalizeWaitlist(await jsonBody(req))
+  const db = admin()
+  const limited = await enforcePublicRateLimit(req, 'waitlist', {
+    client: 5, global: 200, windowSeconds: 600,
+  }, db)
+  if (limited) return limited
+  const row = normalizeWaitlist(await jsonBody(req, 4_096))
   if (!row) return jsonError(400, 'invalid-entry')
-  const { error } = await admin().from('waitlist').insert(row)
+  const { error } = await db.from('waitlist').insert(row)
   if (error) throw error
   return ok()
-}))
+}, undefined, true))
 
 if (import.meta.main) Deno.serve(handler)

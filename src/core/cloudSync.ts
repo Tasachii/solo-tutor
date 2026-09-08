@@ -1,6 +1,7 @@
 import type { AppState } from './types'
 import { fromBackup, toBackup, type RestoreResult } from './backup'
 import { open, seal, type Sealed } from './cloudCrypto'
+import { KDF_ID } from './cloudCrypto'
 
 /**
  * ซิงก์สมุดบัญชีทั้งก้อนขึ้นคลาวด์เป็น snapshot เดียวต่อครู
@@ -9,6 +10,7 @@ import { open, seal, type Sealed } from './cloudCrypto'
  */
 
 export const SYNC_META_KEY = 'solo-cloud-sync'
+export const PRE_PULL_BACKUP_KEY = 'solo-cloud-pre-pull-backup'
 
 /** สิ่งที่เครื่องนี้รู้เกี่ยวกับรอบซิงก์ล่าสุด — อยู่นอก AppState เพราะเป็นเรื่องของเครื่อง ไม่ใช่ของบัญชี */
 export interface SyncMeta {
@@ -50,6 +52,8 @@ export interface CloudSnapshot {
   iv: string
   updated_at: string
   device: string | null
+  /** Missing only on snapshots written before the KDF column was returned to clients. */
+  kdf?: string
 }
 
 export type SyncDecision = 'push' | 'pull' | 'conflict' | 'idle'
@@ -100,15 +104,39 @@ export const writeSyncMeta = (m: SyncMeta | null): void => {
   } catch { /* ไม่มีที่เก็บ = รอบหน้าถามใหม่ ปลอดภัยกว่าเดาว่าซิงก์แล้ว */ }
 }
 
+/** Last local ledger before a cloud pull. It is deliberately separate from the live storage key. */
+export function writePrePullBackup(state: AppState, at: string): boolean {
+  try {
+    localStorage.setItem(PRE_PULL_BACKUP_KEY, toBackup(state, at))
+    return true
+  } catch {
+    return false
+  }
+}
+
+/** Clear account-linked browser artifacts while preserving unrelated storage and UI preferences. */
+export function clearAccountLocalArtifacts(
+  persistent: Pick<Storage, 'removeItem'> = localStorage,
+  temporary: Pick<Storage, 'removeItem'> = sessionStorage,
+): void {
+  for (const key of [PRE_PULL_BACKUP_KEY, 'solo-demo-v3-before-restore', 'solo-sheets', 'solo-usage-id']) {
+    try { persistent.removeItem(key) } catch { /* best effort after confirmed server deletion */ }
+  }
+  try { temporary.removeItem('solo-tutor:requested-plan') } catch { /* best effort */ }
+}
+
 /** ห่อ state เป็นไฟล์สำรองแล้วเข้ารหัส — ใช้ format เดียวกับไฟล์ที่ครูดาวน์โหลด จึง validate ด้วยตัวเดียวกัน */
 export async function packSnapshot(state: AppState, key: CryptoKey, at: string): Promise<Sealed> {
   return seal(key, toBackup(state, at))
 }
 
-export type UnpackResult = RestoreResult | { ok: false; reason: 'locked' }
+export type UnpackResult = RestoreResult | { ok: false; reason: 'locked' | 'unsupportedKdf' }
 
 /** ถอดแล้ว validate ทุกครั้ง — ciphertext ที่ถอดได้แต่ข้างในพัง ต้องไม่ทับข้อมูลในเครื่อง */
-export async function unpackSnapshot(snapshot: Sealed, key: CryptoKey, schema: number): Promise<UnpackResult> {
+export async function unpackSnapshot(snapshot: Sealed & { kdf?: string }, key: CryptoKey, schema: number): Promise<UnpackResult> {
+  if ('kdf' in snapshot && snapshot.kdf !== undefined && snapshot.kdf !== KDF_ID) {
+    return { ok: false, reason: 'unsupportedKdf' }
+  }
   const text = await open(key, snapshot)
   if (text === null) return { ok: false, reason: 'locked' }
   return fromBackup(text, schema)

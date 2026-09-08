@@ -59,7 +59,8 @@ export default function Pricing() {
                 {p.features.map((f) => <li key={f}>{f}</li>)}
               </ul>
               {/* ทุกแพ็กเข้าไปลองได้เลย ไม่มีฟอร์มมาขวาง */}
-              <Link className={`btn plan__cta ${i === HIGHLIGHT ? 'btn--primary' : 'btn--ghost'}`} to="/start">{p.cta}</Link>
+              <Link className={`btn plan__cta ${i === HIGHLIGHT ? 'btn--primary' : 'btn--ghost'}`}
+                to={MONTHS[i] > 0 ? `/start?plan=${MONTHS[i]}` : '/start'}>{p.cta}</Link>
             </li>
           ))}
         </ul>

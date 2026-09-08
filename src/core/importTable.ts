@@ -201,10 +201,12 @@ const cell = (row: string[], at: number): string => (at >= 0 ? (row[at] ?? '').t
 /** ราคาในไฟล์จริงมักมี "บาท" หรือ comma ปน — เอาเฉพาะตัวเลขและต้องเป็นจำนวนเต็มบวก */
 export function parsePrice(raw: string): number | undefined {
   if (!raw) return undefined
-  const digits = raw.replace(/[^\d.]/g, '')
+  const cleaned = raw.trim().replace(/[฿,\s]|บาท/g, '')
+  if (!/^\d+$/.test(cleaned)) return undefined
+  const digits = cleaned
   if (!digits) return undefined
-  const n = Math.round(Number(digits))
-  return Number.isFinite(n) && n > 0 ? n : undefined
+  const n = Number(digits)
+  return Number.isSafeInteger(n) && n > 0 ? n : undefined
 }
 
 /** ชื่อเทียบกันแบบไม่สนช่องว่างซ้อนและตัวพิมพ์ — "น้องปลา " กับ "น้องปลา" คือคนเดียวกัน */

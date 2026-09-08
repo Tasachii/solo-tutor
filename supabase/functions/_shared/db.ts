@@ -72,6 +72,71 @@ export const jsonError = (status: number, error: string): Response =>
     status, headers: { 'Content-Type': 'application/json' },
   })
 
+export interface PublicRateLimit {
+  client: number
+  global: number
+  windowSeconds: number
+}
+
+const requestAddress = (req: Request): string | null => {
+  const value = req.headers.get('cf-connecting-ip')
+    ?? req.headers.get('x-forwarded-for')?.split(',')[0]
+    ?? req.headers.get('x-real-ip')
+  const trimmed = value?.trim() ?? ''
+  return trimmed && trimmed.length <= 64 && !/[\r\n]/.test(trimmed) ? trimmed : null
+}
+
+const hashClient = async (address: string): Promise<string> => {
+  const secret = requireEnv('PUBLIC_RATE_LIMIT_SECRET')
+  if (secret.length < 32) throw new Error('PUBLIC_RATE_LIMIT_SECRET must contain at least 32 characters')
+  const bytes = new TextEncoder().encode(`${secret}\0${address}`)
+  const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', bytes))
+  return Array.from(digest, (byte) => byte.toString(16).padStart(2, '0')).join('')
+}
+
+/**
+ * Public browser functions have no user account to key on. The database performs
+ * one atomic global + pseudonymous-client decision; raw network addresses never persist.
+ */
+export async function enforcePublicRateLimit(
+  req: Request,
+  endpoint: 'waitlist' | 'report-error' | 'usage' | 'delete-account',
+  limit: PublicRateLimit,
+  db: unknown = admin(),
+): Promise<Response | null> {
+  const address = requestAddress(req)
+  if (!address) throw new Error('Trusted client address header is missing')
+  const client = db as {
+    rpc: (functionName: string, args: Record<string, unknown>) => PromiseLike<{ data: unknown; error: unknown }>
+  }
+  const { data, error } = await client.rpc('take_public_rate_limit', {
+    p_endpoint: endpoint,
+    p_client_hash: await hashClient(address),
+    p_client_limit: limit.client,
+    p_global_limit: limit.global,
+    p_window_seconds: limit.windowSeconds,
+  })
+  if (error) throw error
+  const result = (Array.isArray(data) ? data[0] : data) as
+    | { allowed?: unknown; retry_after?: unknown }
+    | null
+  if (result?.allowed === true) return null
+  const retryAfter = typeof result?.retry_after === 'number' && Number.isFinite(result.retry_after)
+    ? Math.max(1, Math.ceil(result.retry_after))
+    : limit.windowSeconds
+  const response = jsonError(429, 'rate-limited')
+  response.headers.set('Retry-After', String(retryAfter))
+  return response
+}
+
+/** Missing bearer means anonymous; a supplied bearer must always verify successfully. */
+export async function optionalUserId(
+  req: Request,
+  verify: typeof requireUserId = requireUserId,
+): Promise<string | null> {
+  return req.headers.has('authorization') ? await verify(req) : null
+}
+
 const corsHeaders = (origin: string): Record<string, string> => ({
   'Access-Control-Allow-Origin': origin,
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
@@ -84,6 +149,7 @@ const corsHeaders = (origin: string): Record<string, string> => ({
 export const withCors = (
   handler: (req: Request) => Promise<Response>,
   allowedOrigin: () => string = () => requireEnv('LINE_ALLOWED_ORIGIN'),
+  requireOrigin = false,
 ) => async (req: Request): Promise<Response> => {
   let allowed: string
   try {
@@ -92,6 +158,7 @@ export const withCors = (
     return jsonError(500, 'server-configuration')
   }
   const origin = req.headers.get('origin')
+  if (!origin && requireOrigin) return jsonError(403, 'origin-required')
   if (origin && origin !== allowed) return jsonError(403, 'origin-not-allowed')
   if (req.method === 'OPTIONS') {
     if (!origin) return jsonError(400, 'missing-origin')
@@ -104,12 +171,42 @@ export const withCors = (
   return response
 }
 
-export async function jsonBody(req: Request): Promise<Record<string, unknown>> {
+/** Read a JSON object without buffering an unbounded request body. */
+export async function jsonBody(req: Request, maxBytes = 65_536): Promise<Record<string, unknown>> {
   try {
-    const value: unknown = await req.json()
+    const declared = Number(req.headers.get('content-length'))
+    if (Number.isFinite(declared) && declared > maxBytes) {
+      throw new Response(JSON.stringify({ ok: false, error: 'payload-too-large' }), {
+        status: 413, headers: { 'Content-Type': 'application/json' },
+      })
+    }
+    if (!req.body) throw new Error()
+    const reader = req.body.getReader()
+    const chunks: Uint8Array[] = []
+    let size = 0
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+      size += value.byteLength
+      if (size > maxBytes) {
+        await reader.cancel().catch(() => undefined)
+        throw new Response(JSON.stringify({ ok: false, error: 'payload-too-large' }), {
+          status: 413, headers: { 'Content-Type': 'application/json' },
+        })
+      }
+      chunks.push(value)
+    }
+    const bytes = new Uint8Array(size)
+    let offset = 0
+    for (const chunk of chunks) {
+      bytes.set(chunk, offset)
+      offset += chunk.byteLength
+    }
+    const value: unknown = JSON.parse(new TextDecoder().decode(bytes))
     if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error()
     return value as Record<string, unknown>
-  } catch {
+  } catch (error) {
+    if (error instanceof Response) throw error
     throw new Response(JSON.stringify({ ok: false, error: 'invalid-json' }), {
       status: 400, headers: { 'Content-Type': 'application/json' },
     })
@@ -122,7 +219,7 @@ export const serveErrors = (handler: (req: Request) => Promise<Response>) => asy
   } catch (error) {
     if (error instanceof Response) return error
     // Do not leak configuration, database, token, or crypto details to callers.
-    console.error('LINE function failed', error instanceof Error ? error.name : 'unknown')
+    console.error('Edge function failed', error instanceof Error ? error.name : 'unknown')
     return jsonError(500, 'server-configuration')
   }
 }

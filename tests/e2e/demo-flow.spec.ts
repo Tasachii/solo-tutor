@@ -244,7 +244,9 @@ test('ทุกทางเข้าพาไปใช้งานได้เ�
   await page.goto('#/pricing')
   const ctas = page.locator('.plan__cta')
   await expect(ctas).toHaveCount(4)
-  for (let i = 0; i < 4; i++) await expect(ctas.nth(i)).toHaveAttribute('href', /\/start$/)
+  for (const [i, href] of ['#/start', '#/start?plan=1', '#/start?plan=3', '#/start?plan=12'].entries()) {
+    await expect(ctas.nth(i)).toHaveAttribute('href', href)
+  }
   await expect(page.getByText('Concierge')).toHaveCount(0)
   await expect(page.getByText('เปิดรับรุ่นแรก 10 คน — เราตั้งระบบให้ฟรี', { exact: true })).toBeVisible()
   // ข้อความเรื่องชำระเงินตามหน้าบัญชีครู (เฟส 4) — อ้างจาก copy เพื่อไม่ให้เทสผูกกับถ้อยคำ

@@ -1,0 +1,77 @@
+
+> solo-tutor@1.0.0 test
+> vitest run
+
+
+ RUN  v3.2.7 /Users/tasachi/Documents/solo-tutor
+
+ ✓ tests/unit/cloud-crypto.test.ts (4 tests) 385ms
+ ✓ tests/unit/ui-accessibility.test.tsx (4 tests) 150ms
+ ✓ tests/unit/persistence.test.tsx (10 tests) 212ms
+ ✓ tests/unit/cloud-sync.test.ts (12 tests) 197ms
+ ✓ tests/unit/plan-card-regressions.test.tsx (3 tests) 256ms
+ ✓ tests/unit/subject-sheet-guard.test.tsx (3 tests) 261ms
+ ✓ tests/unit/qa-save-failures.test.tsx (3 tests) 303ms
+ ✓ tests/unit/promptpay.test.ts (12 tests) 46ms
+ ✓ tests/unit/cloud-key.test.ts (2 tests) 122ms
+ ✓ tests/unit/demo-date.test.tsx (10 tests) 368ms
+ ✓ tests/unit/intake.test.tsx (7 tests) 614ms
+   ✓ ปลายทางฟอร์มจองสิทธิ์ > ส่ง JSON ที่มีเฉพาะช่องในฟอร์ม  405ms
+ ✓ tests/unit/slip-sheet.test.tsx (2 tests) 787ms
+   ✓ demo slip fallback > can confirm the remaining balance when the simulated slip is unreadable  428ms
+   ✓ demo slip mismatch > สลิปเกินยอดบิล: รับได้ทันทีเท่ายอดบิล และจดยอดในสลิปไว้ — ไม่ใช่ปุ่มปิดให้ครูค้าง  357ms
+ ✓ tests/unit/schedule.test.ts (16 tests) 304ms
+ ✓ tests/unit/production-readiness-ui.test.tsx (7 tests) 1346ms
+   ✓ paid-plan intent survives setup without erasing demo behavior > keeps the existing demo scenario switch and never starts real mode implicitly  548ms
+   ✓ paid-plan intent survives setup without erasing demo behavior > changes only style when an existing real workspace follows a paid-plan link  393ms
+   ✓ money input safety > does not let onboarding skip save an invalid decimal price  362ms
+ ✓ tests/unit/qa-ui.test.tsx (8 tests) 1342ms
+   ✓ QA UI regression guards > reuses an existing payer and sends null when LINE is explicitly cleared  971ms
+ ✓ tests/unit/supabase-rest.test.ts (16 tests) 133ms
+ ✓ tests/unit/sending.test.ts (4 tests) 221ms
+ ✓ tests/unit/messages.test.ts (10 tests) 195ms
+ ✓ tests/unit/reducer.test.ts (16 tests) 575ms
+ ✓ tests/unit/line-app-state.test.ts (11 tests) 421ms
+ ✓ tests/unit/delivery-safety.test.ts (2 tests) 189ms
+ ✓ tests/unit/delete.test.ts (6 tests) 203ms
+ ✓ tests/unit/realmode.test.ts (8 tests) 209ms
+ ✓ tests/unit/style.test.ts (6 tests) 181ms
+ ✓ tests/unit/qa-core-regressions.test.ts (14 tests) 502ms
+ ✓ tests/unit/sheets.test.ts (10 tests) 231ms
+ ✓ tests/unit/realgate.test.ts (4 tests) 23ms
+ ✓ tests/unit/line-protocol.test.ts (20 tests) 164ms
+ ✓ tests/unit/particle.test.ts (7 tests) 223ms
+ ✓ tests/unit/backup.test.ts (55 tests) 658ms
+ ✓ tests/unit/selectors.test.ts (7 tests) 170ms
+ ✓ tests/unit/account-deletion-store.test.tsx (2 tests) 363ms
+ ✓ tests/unit/retract.test.ts (5 tests) 121ms
+ ✓ tests/unit/plan.test.ts (6 tests) 42ms
+ ✓ tests/unit/cloud-api.test.ts (3 tests) 100ms
+ ✓ tests/unit/billing.test.ts (19 tests) 344ms
+ ✓ tests/unit/error-monitoring-safety.test.ts (3 tests) 22ms
+ ✓ tests/unit/regress.test.ts (6 tests) 136ms
+ ✓ tests/unit/import-table.test.ts (15 tests) 34ms
+ ✓ tests/unit/nudge.test.ts (5 tests) 18ms
+ ✓ tests/unit/service-worker-safety.test.ts (5 tests) 29ms
+ ✓ tests/unit/share.test.ts (6 tests) 44ms
+ ✓ tests/unit/documents.test.ts (3 tests) 149ms
+ ✓ tests/unit/account-deletion-cloud.test.tsx (3 tests) 68ms
+ ✓ tests/unit/export.test.ts (6 tests) 6ms
+ ✓ tests/unit/faq.test.ts (8 tests) 20ms
+ ✓ tests/unit/line-delivery.test.ts (14 tests) 11ms
+ ✓ tests/unit/ui-validation.test.ts (4 tests) 12ms
+ ✓ tests/unit/payment-destination.test.ts (3 tests) 4ms
+ ✓ tests/unit/homework.test.ts (3 tests) 9ms
+ ✓ tests/unit/pwa.test.ts (7 tests) 4ms
+ ✓ tests/unit/usage.test.ts (5 tests) 7ms
+ ✓ tests/unit/bulk-add.test.ts (8 tests) 8ms
+ ✓ tests/unit/backup-monitor.test.ts (1 test) 3ms
+ ✓ tests/unit/share-launch.test.ts (3 tests) 5ms
+ ✓ tests/unit/professions.test.ts (2 tests) 7ms
+ ✓ tests/unit/pricing.test.ts (6 tests) 7ms
+ ✓ tests/unit/ledger.test.ts (4 tests) 2ms
+
+ Test Files  58 passed (58)
+      Tests  454 passed (454)
+   Start at  12:37:51
+   Duration  21.48s (transform 1.65s, setup 1.90s, collect 13.26s, tests 12.57s, environment 84.74s, prepare 12.82s)

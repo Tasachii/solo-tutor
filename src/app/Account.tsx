@@ -4,7 +4,7 @@ import { useStore } from '../core/store'
 import { copy } from '../copy'
 import { getSupabaseConfig } from '../integrations/supabaseRest'
 import { AuthForm } from './components/AuthForm'
-import { ConfirmSheet } from './components'
+import { BottomSheet, ConfirmSheet } from './components'
 import { useToast } from './components/Toast'
 import { useCloudSync } from './CloudSync'
 import { PlanCard } from './PlanCard'
@@ -17,13 +17,16 @@ const when = (iso: string | null): string => {
 
 /** หน้าบัญชีครู — เข้าสู่ระบบ ดูสถานะซิงก์ แก้กรณีสองฝั่งต่างกัน และลบข้อมูลบนคลาวด์ */
 export default function Account() {
-  const { state } = useStore()
+  const { state, writeStatus } = useStore()
   const cloud = useCloudSync()
   const toast = useToast()
   const a = copy.account
-  const [ask, setAsk] = useState<null | 'pull' | 'push' | 'delete'>(null)
+  const [ask, setAsk] = useState<null | 'pull' | 'push' | 'delete' | 'account'>(null)
   const [password, setPassword] = useState('')
   const [busy, setBusy] = useState(false)
+  const [recoveryBusy, setRecoveryBusy] = useState(false)
+  const [deletePassword, setDeletePassword] = useState('')
+  const [deleteConfirm, setDeleteConfirm] = useState('')
   const config = getSupabaseConfig()
 
   const unlock = (e: FormEvent) => {
@@ -33,6 +36,30 @@ export default function Account() {
       setPassword(''); setBusy(false)
       if (ok) toast.push({ text: a.unlocked, tone: 'ok' })
     })
+  }
+
+  const downloadRecovery = async () => {
+    setRecoveryBusy(true)
+    const recovery = await cloud.exportRecovery()
+    setRecoveryBusy(false)
+    if (!recovery) return
+    const href = URL.createObjectURL(new Blob([recovery], { type: 'application/json' }))
+    const anchor = document.createElement('a')
+    anchor.href = href
+    anchor.download = `solo-tutor-recovery-${cloud.session?.user.id.slice(0, 8) ?? 'key'}.json`
+    document.body.appendChild(anchor)
+    anchor.click()
+    anchor.remove()
+    window.setTimeout(() => URL.revokeObjectURL(href), 0)
+    toast.push({ text: a.recoveryExported, tone: 'ok' })
+  }
+
+  const loadRecovery = async (file: File | undefined) => {
+    if (!file || file.size > 32_000) { if (file) toast.push({ text: a.recoveryInvalid, tone: 'warn' }); return }
+    setRecoveryBusy(true)
+    let ok = false
+    try { ok = await cloud.importRecovery(await file.text()) } finally { setRecoveryBusy(false) }
+    toast.push({ text: ok ? a.recoveryReady : a.recoveryInvalid, tone: ok ? 'ok' : 'warn' })
   }
 
   return <div className="pane line-settings">
@@ -64,6 +91,7 @@ export default function Account() {
         {cloud.status === 'conflict' && <section className="card" style={{ borderColor: 'var(--warn)' }}>
           <h2 className="h2">{a.conflictTitle}</h2>
           <p>{a.conflictBody.replace('{at}', when(cloud.cloud?.updated_at ?? null)).replace('{device}', cloud.cloud?.device ?? a.unknownDevice)}</p>
+          {cloud.conflictCounts && <p className="hint">เครื่องนี้ {cloud.conflictCounts.localSubjects} คน · คลาวด์ {cloud.conflictCounts.cloudSubjects} คน</p>}
           <div className="btnrow">
             <button className="btn btn--primary" onClick={() => setAsk('pull')}>{a.useCloud}</button>
             <button className="btn btn--secondary" onClick={() => setAsk('push')}>{a.useLocal}</button>
@@ -72,10 +100,28 @@ export default function Account() {
 
         <PlanCard />
 
+        {cloud.status !== 'locked' && <section className="card">
+          <h2 className="h2">{a.recoveryTitle}</h2>
+          <p className="hint">{a.recoveryHint}</p>
+          <button className="btn btn--secondary" disabled={recoveryBusy} onClick={() => void downloadRecovery()}>{a.recoveryExport}</button>
+        </section>}
+
+        <section className="card">
+          <h2 className="h2">{a.recoveryImport}</h2>
+          <p className="hint">{a.recoveryImportHint}</p>
+          <input type="file" accept="application/json,.json" disabled={recoveryBusy}
+            aria-label={a.recoveryImport} onChange={(event) => { void loadRecovery(event.currentTarget.files?.[0]); event.currentTarget.value = '' }} />
+        </section>
+
         <section className="card">
           <h2 className="h2">{a.deleteTitle}</h2>
           <p className="hint">{a.deleteBody}</p>
           <button className="btn btn--ghost btn--sm" onClick={() => setAsk('delete')}>{a.deleteTitle}</button>
+        </section>
+        <section className="card" style={{ borderColor: 'var(--danger)' }}>
+          <h2 className="h2">{a.deleteAccountTitle}</h2>
+          <p className="hint">{a.deleteAccountBody}</p>
+          <button className="btn btn--ghost btn--sm" disabled={writeStatus !== 'writable'} onClick={() => setAsk('account')}>{a.deleteAccountTitle}</button>
         </section>
         <p className="hint">{a.encrypted}</p>
       </>}
@@ -86,5 +132,26 @@ export default function Account() {
       onConfirm={async () => { const ok = await cloud.resolve('push'); if (ok) toast.push({ text: a.pushed, tone: 'ok' }); return ok }} />}
     {ask === 'delete' && <ConfirmSheet title={a.deleteTitle} body={a.deleteConfirm} confirmLabel={a.deleteTitle} danger onClose={() => setAsk(null)}
       onConfirm={async () => { const ok = await cloud.deleteCloud(); if (ok) toast.push({ text: a.deleteDone, tone: 'ok' }); return ok }} />}
+    {ask === 'account' && <BottomSheet title={a.deleteAccountTitle} sub={a.deleteAccountBody}
+      onClose={() => { if (!busy) { setAsk(null); setDeletePassword(''); setDeleteConfirm('') } }}
+      footer={<button className="btn btn--primary btn--block" disabled={busy || !deletePassword || deleteConfirm !== 'ลบบัญชี'} onClick={() => {
+        setBusy(true)
+        void cloud.deleteAccount(deletePassword).then((result) => {
+          setBusy(false)
+          if (result === 'deleted') {
+            setAsk(null); setDeletePassword(''); setDeleteConfirm('')
+            toast.push({ text: a.deleteAccountDone, tone: 'ok' })
+          } else if (result === 'deleted-local-retained') {
+            setAsk(null); setDeletePassword(''); setDeleteConfirm('')
+            toast.push({ text: a.deleteAccountLocalRetained, tone: 'warn' })
+          } else if (result === 'retention-required') toast.push({ text: a.retentionRequired, tone: 'warn' })
+          else toast.push({ text: a.deleteAccountFailed, tone: 'danger' })
+        })
+      }}>{busy ? copy.common.loading : a.deleteAccountConfirm}</button>}>
+      <label className="fld"><span className="fld__l">{a.deleteAccountPassword}</span>
+        <input className="inp" type="password" autoComplete="current-password" value={deletePassword} onChange={(event) => setDeletePassword(event.target.value)} /></label>
+      <label className="fld"><span className="fld__l">{a.deleteAccountType}</span>
+        <input className="inp" value={deleteConfirm} onChange={(event) => setDeleteConfirm(event.target.value)} /></label>
+    </BottomSheet>}
   </div>
 }

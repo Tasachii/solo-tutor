@@ -1,0 +1,276 @@
+
+> solo-tutor@1.0.0 e2e
+> playwright test
+
+[WebServer] (node:23557) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+[WebServer]
+[WebServer] (!) Some chunks are larger than 500 kB after minification. Consider:
+[WebServer] - Using dynamic import() to code-split the application
+[WebServer] - Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+[WebServer] - Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+[WebServer] (node:23628) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+[WebServer] (node:23649) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+Running 231 tests using 4 workers
+
+(node:23668) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:23665) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:23667) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:23666) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓    2 [mobile] › tests/e2e/accessibility.spec.ts:34:3 › bottom sheet stays inside a 320px viewport without runtime errors (929ms)
+  ✓    4 [mobile] › tests/e2e/accessibility.spec.ts:34:3 › bottom sheet stays inside a 390px viewport without runtime errors (933ms)
+  -    5 [mobile] › tests/e2e/account.spec.ts:135:3 › ซิงก์คลาวด์กับ Supabase จำลอง › ลบบัญชีจากแท็บอ่านอย่างเดียวไม่ได้ และเมื่อแท็บหลักลบแล้วอีกแท็บไม่คืนข้อมูลเก่า
+  -    6 [mobile] › tests/e2e/account.spec.ts:171:3 › ซิงก์คลาวด์กับ Supabase จำลอง › paid-retention refusal preserves the teacher ledger and account session
+  -    7 [mobile] › tests/e2e/account.spec.ts:197:3 › ซิงก์คลาวด์กับ Supabase จำลอง › ไฟล์กู้คืนปลดล็อก ciphertext หลังเปลี่ยนรหัส โดยไม่ต้องลบข้อมูลบนคลาวด์
+  -    8 [mobile] › tests/e2e/account.spec.ts:222:3 › ซิงก์คลาวด์กับ Supabase จำลอง › เข้าสู่ระบบแล้วสมุดบัญชีขึ้นคลาวด์เอง — เป็น ciphertext ไม่มีชื่อนักเรียน และแก้ข้อมูลแล้วขึ้นรอบใหม่
+  -    9 [mobile] › tests/e2e/account.spec.ts:243:3 › ซิงก์คลาวด์กับ Supabase จำลอง › เครื่องมีข้อมูลและคลาวด์ก็มี — ไม่เดา ถามครู แล้ว "ใช้ข้อมูลเครื่องนี้" เขียนทับด้วย revision ของคลาวด์
+  ✓    1 [mobile] › tests/e2e/account.spec.ts:30:1 › เมนูมีทางเข้าหน้าบัญชีครู และในโหมดเดโมหน้านั้นบอกให้เริ่มใช้จริงก่อน (1.2s)
+  -   12 [mobile] › tests/e2e/account.spec.ts:293:3 › แพ็กสมาชิกกับ Supabase จำลอง › ขอเปิด Pro 3 เดือน — ส่งแค่จำนวนเดือน ยอดมาจากเซิร์ฟเวอร์ แล้วเห็นสถานะรอตรวจยอด ยกเลิกได้
+  -   13 [mobile] › tests/e2e/account.spec.ts:311:3 › แพ็กสมาชิกกับ Supabase จำลอง › วงจรรายได้ครบ: เลือกแพ็ก → เริ่มใช้จริง → ขอ Pro → อนุมัติ → ใบเสร็จ → พัก/ใช้ต่อ → หมดอายุแล้วยังส่งออกข้อมูลได้
+  ✓    3 [mobile] › tests/e2e/accessibility.spec.ts:9:1 › bottom sheet traps focus and isolates the page behind it (1.2s)
+  ✓   10 [mobile] › tests/e2e/account.spec.ts:39:1 › โหมดจริงเห็นฟอร์มบัญชีครูหรือการ์ดรอตั้งค่า — ไม่มีอย่างอื่น และไม่มีข้อมูลออกจากเครื่องก่อนเข้าสู่ระบบ (1.1s)
+  ✓   14 [mobile] › tests/e2e/bulk-add.spec.ts:8:1 › เพิ่มหลายคนจากหน้ารายชื่อ: ตัดซ้ำ ข้ามคนเดิม แล้วสร้างครบในคลิกเดียว (1.1s)
+  ✓   15 [mobile] › tests/e2e/bulk-add.spec.ts:34:1 › ค่าเริ่มต้นแบบแพ็กใช้ได้ และต้องใส่จำนวนครั้งก่อน (1.2s)
+  ✓   11 [mobile] › tests/e2e/account.spec.ts:263:1 › แพ็กฟรีรับได้ 5 คนที่ยังเรียนอยู่ — คนที่ 6 เจอชีทแพ็ก ไม่ถูกเพิ่มเงียบ ๆ (1.6s)
+  ✓   16 [mobile] › tests/e2e/copy-nudge.spec.ts:9:1 › บิลค้างมีปุ่มคัดลอกข้อความแจ้งเตือน วางได้เลย และสถานะบิลไม่เปลี่ยน (765ms)
+  ✓   17 [mobile] › tests/e2e/copy-nudge.spec.ts:29:1 › บิลที่จ่ายแล้วไม่มีปุ่มคัดลอกข้อความแจ้งเตือน (673ms)
+  ✓   18 [mobile] › tests/e2e/demo-flow.spec.ts:13:1 › หน้าแรกมีทางเข้าเดียว ไม่ใช่เมนูให้เลือก (773ms)
+  ✓   19 [mobile] › tests/e2e/demo-flow.spec.ts:36:1 › หน้าราคามีปุ่มกลับหน้าแรก (690ms)
+  ✓   20 [mobile] › tests/e2e/demo-flow.spec.ts:45:1 › เส้นทางที่ไม่มีจริงพากลับหน้าแรก ไม่ใช่จอว่าง (586ms)
+  ✓   21 [mobile] › tests/e2e/demo-flow.spec.ts:52:1 › วันนี้มี 4 คาบ ยืนยันแล้ว 1 รอ 3 (683ms)
+  ✓   22 [mobile] › tests/e2e/demo-flow.spec.ts:59:1 › เช็คชื่อคาบที่แพ็กหมดแล้ว ได้คำเตือนและร่างชวนต่อเพิ่มมาหนึ่งใบ (731ms)
+  ✓   23 [mobile] › tests/e2e/demo-flow.spec.ts:70:1 › ปิดยอดเดือนนี้สร้างบิลให้ 5 คน (823ms)
+  ✓   26 [mobile] › tests/e2e/demo-flow.spec.ts:111:1 › ผู้จ่ายกดลิงก์แล้วเจอบิลใบที่ทวง พร้อม QR (395ms)
+  ✓   25 [mobile] › tests/e2e/demo-flow.spec.ts:97:1 › ข้อความถึงผู้ปกครองใช้ลิงก์เต็ม และไม่ซ้ำคำนำหน้า (690ms)
+  ✓   27 [mobile] › tests/e2e/demo-flow.spec.ts:119:1 › ไม่มีข้อความไหนส่งออกโดยผู้ใช้ไม่ได้กดส่ง (744ms)
+  ✓   28 [mobile] › tests/e2e/demo-flow.spec.ts:127:1 › เปิด LINE แล้วยังไม่นับว่าส่ง จนกว่าครูจะยืนยัน (815ms)
+  ✓   29 [mobile] › tests/e2e/demo-flow.spec.ts:162:1 › เลื่อนคาบแล้วยอดบิลไม่ขยับ และมีร่างแจ้งผู้ปกครองรออยู่ (895ms)
+  ✓   31 [mobile] › tests/e2e/demo-flow.spec.ts:211:1 › ส่งสรุปให้ผู้ปกครองเปิด LINE พร้อมจำนวนครั้งจริง (643ms)
+  ✓   30 [mobile] › tests/e2e/demo-flow.spec.ts:188:1 › สำรองข้อมูลแล้วได้ไฟล์ที่กู้คืนได้ (871ms)
+  ✓   24 [mobile] › tests/e2e/demo-flow.spec.ts:80:1 › สลิปตรงยอด ยืนยันแล้วได้ใบเสร็จ (2.7s)
+  ✓   32 [mobile] › tests/e2e/demo-flow.spec.ts:230:1 › ทุกทางเข้าพาไปใช้งานได้เลย ไม่มีฟอร์มมาขวาง (836ms)
+  ✓   36 [mobile] › tests/e2e/financial-safety.spec.ts:70:1 › corrupt storage is preserved and requires recovery (296ms)
+  ✓   35 [mobile] › tests/e2e/financial-safety.spec.ts:59:1 › quota failure cannot acknowledge or commit a payment (893ms)
+  ✓   33 [mobile] › tests/e2e/demo-flow.spec.ts:271:1 › ไม่มี dialog ของเบราว์เซอร์เหลืออยู่ — งดคาบใช้ชีทที่แปลได้ (1.3s)
+  ✓   37 [mobile] › tests/e2e/financial-safety.spec.ts:78:1 › missing payment destination prevents sending and keeps queue empty (869ms)
+  ✓   34 [mobile] › tests/e2e/financial-safety.spec.ts:25:1 › installments agree across balances, reminder, client, receipt and fresh recipient context (2.1s)
+  ✓   40 [mobile] › tests/e2e/homework.spec.ts:39:1 › เดโมไม่มีปุ่มการบ้าน — ไม่อยู่ในเส้นทางที่โชว์ (547ms)
+  ✓   39 [mobile] › tests/e2e/homework.spec.ts:21:1 › โหมดจริง: พิมพ์การบ้านแล้วคัดลอก ได้ข้อความพร้อมคำลงท้ายของครู และไม่บันทึกอะไร (1.0s)
+  ✓   38 [mobile] › tests/e2e/financial-safety.spec.ts:86:1 › issued receipt keeps the original payee after profile changes and reload (1.6s)
+  ✓   41 [mobile] › tests/e2e/interaction-regressions.spec.ts:23:1 › primary navigation and list rows stay inside the app (814ms)
+  ✓   42 [mobile] › tests/e2e/interaction-regressions.spec.ts:46:1 › clicking controls inside a sheet never dismisses it or changes route (1.1s)
+  ✓   44 [mobile] › tests/e2e/interaction-regressions.spec.ts:92:1 › nested cancellation confirmation closes one layer at a time (846ms)
+  -   47 [mobile] › tests/e2e/line-oa.spec.ts:163:1 › เชื่อม OA ล้าง credentials สร้างรหัส จับคู่ผู้ปกครอง และยืนยันส่งในเครื่องเมื่อ server ส่งสำเร็จ
+  -   48 [mobile] › tests/e2e/line-oa.spec.ts:201:1 › timeout หลังเข้าคิวเก็บ marker ข้าม reload ปิดแชร์ส่วนตัว และ reconcile โดยไม่ push ซ้ำ
+  -   49 [mobile] › tests/e2e/line-oa.spec.ts:231:1 › ตรวจรายการ processing หลัง worker หยุด โดยเรียก targeted send เดิมให้เซิร์ฟเวอร์กู้ claim ได้
+  ✓   45 [mobile] › tests/e2e/interaction-regressions.spec.ts:111:1 › editing a subject and changing billing controls does not jump away or close (893ms)
+  ✓   46 [mobile] › tests/e2e/interaction-regressions.spec.ts:130:1 › only an explicit LINE action opens an external window (623ms)
+  ✓   43 [mobile] › tests/e2e/interaction-regressions.spec.ts:66:1 › switching between demo and real mode uses one confirmation layer (1.6s)
+  ✓   52 [mobile] › tests/e2e/menu.spec.ts:49:1 › no page calls the product plain "Solo" any more (541ms)
+  ✓   50 [mobile] › tests/e2e/menu.spec.ts:4:1 › the menu works from the keyboard: arrows move focus and switch tabs (779ms)
+  ✓   53 [mobile] › tests/e2e/menu.spec.ts:58:1 › every sub-page has a way back to where it came from (1.1s)
+  ✓   55 [mobile] › tests/e2e/production-browser-safety.spec.ts:3:1 › first installation can reopen offline without a preparatory reload (739ms)
+  ✓   51 [mobile] › tests/e2e/menu.spec.ts:30:1 › four real themes plus system, each stamps its own data-theme (1.5s)
+  ✓   58 [mobile] › tests/e2e/production-browser-safety.spec.ts:46:1 › built page blocks injected inline scripts with CSP (468ms)
+  ✓   56 [mobile] › tests/e2e/production-browser-safety.spec.ts:19:1 › installing Solo Tutor preserves another application cache (707ms)
+  ✓   54 [mobile] › tests/e2e/menu.spec.ts:78:1 › a tutor can paste an existing client list from a spreadsheet and it lands in the app (1.4s)
+  ✓   57 [mobile] › tests/e2e/production-browser-safety.spec.ts:33:1 › embedded pages offer a direct link without rendering tutor data (676ms)
+  ✓   60 [mobile] › tests/e2e/pwa.spec.ts:7:1 › theme-color meta matches the real --bg of each theme (200ms)
+  ✓   61 [mobile] › tests/e2e/pwa.spec.ts:21:1 › installed app opens on today, not the marketing page (552ms)
+  ✓   59 [mobile] › tests/e2e/promptpay-qr.spec.ts:12:1 › the parent page shows a scannable PromptPay QR only in real mode (747ms)
+  ✓   62 [mobile] › tests/e2e/pwa.spec.ts:36:1 › the service worker is registered and the app opens offline (880ms)
+  ✓   63 [mobile] › tests/e2e/pwa.spec.ts:55:1 › privacy and terms are reachable and say what the app really does (772ms)
+  ✓   64 [mobile] › tests/e2e/qa-data-regressions.spec.ts:33:1 › two tabs preserve writes, follow updates, and transfer writer ownership on close (1.0s)
+  ✓   66 [mobile] › tests/e2e/qa-data-regressions.spec.ts:70:1 › opening an unknown chat cannot create orphan data or break reload (691ms)
+  ✓   65 [mobile] › tests/e2e/qa-data-regressions.spec.ts:55:1 › past periods can be closed using the saved price after a rate change (1.3s)
+  ✓   67 [mobile] › tests/e2e/qa-data-regressions.spec.ts:80:1 › a version 4 backup restores through the file picker and upgrades to version 5 (1.4s)
+  ✓   70 [mobile] › tests/e2e/qa-data-regressions.spec.ts:149:1 › an explicit demo scenario change survives acquiring the writer lock (593ms)
+  ✓   69 [mobile] › tests/e2e/qa-data-regressions.spec.ts:129:1 › backup passes a valid restorable file to the native share API (954ms)
+  ✓   68 [mobile] › tests/e2e/qa-data-regressions.spec.ts:103:1 › a new package price and quantity preserve only the actual old credits (1.2s)
+  ✓   74 [mobile] › tests/e2e/start.spec.ts:60:1 › the theme toggle on the landing and start pages flips dark/light and the app remembers it (667ms)
+  ✓   73 [mobile] › tests/e2e/start.spec.ts:38:1 › in real mode the picker changes defaults only — nothing is wiped (1.4s)
+  ✓   72 [mobile] › tests/e2e/start.spec.ts:5:1 › picking a style shapes the demo, the filters and the add-sheet default; the menu can change it (1.5s)
+  -   77 [mobile] › tests/e2e/ux-copy.spec.ts:25:1 › the parent page keeps its readable width even in web frame
+  ✓   76 [mobile] › tests/e2e/ux-copy.spec.ts:4:1 › history speaks Thai, the parent sees the month of the bill, and ค้าง says it accumulates (493ms)
+(node:23858) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   75 [mobile] › tests/e2e/start.spec.ts:79:1 › an accent picked on the landing page follows the visitor into the app (1.7s)
+(node:23862) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   71 [mobile] › tests/e2e/real-onboarding.spec.ts:20:1 › a female tutor never has to say ครับ — and can flip it later from the menu (3.0s)
+(node:23870) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   78 [desktop] › tests/e2e/accessibility.spec.ts:9:1 › bottom sheet traps focus and isolates the page behind it (466ms)
+  ✓   79 [desktop] › tests/e2e/accessibility.spec.ts:34:3 › bottom sheet stays inside a 320px viewport without runtime errors (394ms)
+  -   81 [desktop] › tests/e2e/account.spec.ts:135:3 › ซิงก์คลาวด์กับ Supabase จำลอง › ลบบัญชีจากแท็บอ่านอย่างเดียวไม่ได้ และเมื่อแท็บหลักลบแล้วอีกแท็บไม่คืนข้อมูลเก่า
+  -   82 [desktop] › tests/e2e/account.spec.ts:171:3 › ซิงก์คลาวด์กับ Supabase จำลอง › paid-retention refusal preserves the teacher ledger and account session
+  -   83 [desktop] › tests/e2e/account.spec.ts:197:3 › ซิงก์คลาวด์กับ Supabase จำลอง › ไฟล์กู้คืนปลดล็อก ciphertext หลังเปลี่ยนรหัส โดยไม่ต้องลบข้อมูลบนคลาวด์
+  -   84 [desktop] › tests/e2e/account.spec.ts:222:3 › ซิงก์คลาวด์กับ Supabase จำลอง › เข้าสู่ระบบแล้วสมุดบัญชีขึ้นคลาวด์เอง — เป็น ciphertext ไม่มีชื่อนักเรียน และแก้ข้อมูลแล้วขึ้นรอบใหม่
+  -   85 [desktop] › tests/e2e/account.spec.ts:243:3 › ซิงก์คลาวด์กับ Supabase จำลอง › เครื่องมีข้อมูลและคลาวด์ก็มี — ไม่เดา ถามครู แล้ว "ใช้ข้อมูลเครื่องนี้" เขียนทับด้วย revision ของคลาวด์
+(node:23882) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   80 [desktop] › tests/e2e/account.spec.ts:39:1 › โหมดจริงเห็นฟอร์มบัญชีครูหรือการ์ดรอตั้งค่า — ไม่มีอย่างอื่น และไม่มีข้อมูลออกจากเครื่องก่อนเข้าสู่ระบบ (477ms)
+  -   89 [desktop] › tests/e2e/account.spec.ts:293:3 › แพ็กสมาชิกกับ Supabase จำลอง › ขอเปิด Pro 3 เดือน — ส่งแค่จำนวนเดือน ยอดมาจากเซิร์ฟเวอร์ แล้วเห็นสถานะรอตรวจยอด ยกเลิกได้
+  -   90 [desktop] › tests/e2e/account.spec.ts:311:3 › แพ็กสมาชิกกับ Supabase จำลอง › วงจรรายได้ครบ: เลือกแพ็ก → เริ่มใช้จริง → ขอ Pro → อนุมัติ → ใบเสร็จ → พัก/ใช้ต่อ → หมดอายุแล้วยังส่งออกข้อมูลได้
+  ✓   87 [desktop] › tests/e2e/accessibility.spec.ts:34:3 › bottom sheet stays inside a 390px viewport without runtime errors (466ms)
+  ✓   86 [desktop] › tests/e2e/account.spec.ts:263:1 › แพ็กฟรีรับได้ 5 คนที่ยังเรียนอยู่ — คนที่ 6 เจอชีทแพ็ก ไม่ถูกเพิ่มเงียบ ๆ (1.1s)
+  ✓   91 [desktop] › tests/e2e/bulk-add.spec.ts:8:1 › เพิ่มหลายคนจากหน้ารายชื่อ: ตัดซ้ำ ข้ามคนเดิม แล้วสร้างครบในคลิกเดียว (725ms)
+  ✓   88 [desktop] › tests/e2e/account.spec.ts:30:1 › เมนูมีทางเข้าหน้าบัญชีครู และในโหมดเดโมหน้านั้นบอกให้เริ่มใช้จริงก่อน (708ms)
+  ✓   93 [desktop] › tests/e2e/copy-nudge.spec.ts:9:1 › บิลค้างมีปุ่มคัดลอกข้อความแจ้งเตือน วางได้เลย และสถานะบิลไม่เปลี่ยน (343ms)
+  ✓   94 [desktop] › tests/e2e/copy-nudge.spec.ts:29:1 › บิลที่จ่ายแล้วไม่มีปุ่มคัดลอกข้อความแจ้งเตือน (296ms)
+  ✓   92 [desktop] › tests/e2e/bulk-add.spec.ts:34:1 › ค่าเริ่มต้นแบบแพ็กใช้ได้ และต้องใส่จำนวนครั้งก่อน (749ms)
+  ✓   95 [desktop] › tests/e2e/demo-flow.spec.ts:13:1 › หน้าแรกมีทางเข้าเดียว ไม่ใช่เมนูให้เลือก (379ms)
+  ✓   97 [desktop] › tests/e2e/demo-flow.spec.ts:45:1 › เส้นทางที่ไม่มีจริงพากลับหน้าแรก ไม่ใช่จอว่าง (278ms)
+  ✓   96 [desktop] › tests/e2e/demo-flow.spec.ts:36:1 › หน้าราคามีปุ่มกลับหน้าแรก (377ms)
+  ✓   98 [desktop] › tests/e2e/demo-flow.spec.ts:52:1 › วันนี้มี 4 คาบ ยืนยันแล้ว 1 รอ 3 (291ms)
+  ✓   99 [desktop] › tests/e2e/demo-flow.spec.ts:59:1 › เช็คชื่อคาบที่แพ็กหมดแล้ว ได้คำเตือนและร่างชวนต่อเพิ่มมาหนึ่งใบ (341ms)
+  ✓  102 [desktop] › tests/e2e/demo-flow.spec.ts:97:1 › ข้อความถึงผู้ปกครองใช้ลิงก์เต็ม และไม่ซ้ำคำนำหน้า (314ms)
+  ✓  103 [desktop] › tests/e2e/demo-flow.spec.ts:111:1 › ผู้จ่ายกดลิงก์แล้วเจอบิลใบที่ทวง พร้อม QR (291ms)
+  ✓  100 [desktop] › tests/e2e/demo-flow.spec.ts:70:1 › ปิดยอดเดือนนี้สร้างบิลให้ 5 คน (584ms)
+  ✓  104 [desktop] › tests/e2e/demo-flow.spec.ts:119:1 › ไม่มีข้อความไหนส่งออกโดยผู้ใช้ไม่ได้กดส่ง (365ms)
+  ✓  105 [desktop] › tests/e2e/demo-flow.spec.ts:127:1 › เปิด LINE แล้วยังไม่นับว่าส่ง จนกว่าครูจะยืนยัน (482ms)
+  ✓  106 [desktop] › tests/e2e/demo-flow.spec.ts:162:1 › เลื่อนคาบแล้วยอดบิลไม่ขยับ และมีร่างแจ้งผู้ปกครองรออยู่ (651ms)
+  ✓  108 [desktop] › tests/e2e/demo-flow.spec.ts:211:1 › ส่งสรุปให้ผู้ปกครองเปิด LINE พร้อมจำนวนครั้งจริง (345ms)
+  ✓  107 [desktop] › tests/e2e/demo-flow.spec.ts:188:1 › สำรองข้อมูลแล้วได้ไฟล์ที่กู้คืนได้ (646ms)
+  ✓  109 [desktop] › tests/e2e/demo-flow.spec.ts:230:1 › ทุกทางเข้าพาไปใช้งานได้เลย ไม่มีฟอร์มมาขวาง (394ms)
+  ✓  110 [desktop] › tests/e2e/demo-flow.spec.ts:271:1 › ไม่มี dialog ของเบราว์เซอร์เหลืออยู่ — งดคาบใช้ชีทที่แปลได้ (887ms)
+  ✓  113 [desktop] › tests/e2e/financial-safety.spec.ts:70:1 › corrupt storage is preserved and requires recovery (184ms)
+  ✓  112 [desktop] › tests/e2e/financial-safety.spec.ts:59:1 › quota failure cannot acknowledge or commit a payment (813ms)
+  ✓  101 [desktop] › tests/e2e/demo-flow.spec.ts:80:1 › สลิปตรงยอด ยืนยันแล้วได้ใบเสร็จ (2.5s)
+  ✓  114 [desktop] › tests/e2e/financial-safety.spec.ts:78:1 › missing payment destination prevents sending and keeps queue empty (454ms)
+  ✓  111 [desktop] › tests/e2e/financial-safety.spec.ts:25:1 › installments agree across balances, reminder, client, receipt and fresh recipient context (1.6s)
+  ✓  116 [desktop] › tests/e2e/homework.spec.ts:21:1 › โหมดจริง: พิมพ์การบ้านแล้วคัดลอก ได้ข้อความพร้อมคำลงท้ายของครู และไม่บันทึกอะไร (858ms)
+  ✓  117 [desktop] › tests/e2e/homework.spec.ts:39:1 › เดโมไม่มีปุ่มการบ้าน — ไม่อยู่ในเส้นทางที่โชว์ (511ms)
+  ✓  118 [desktop] › tests/e2e/interaction-regressions.spec.ts:23:1 › primary navigation and list rows stay inside the app (749ms)
+  ✓  115 [desktop] › tests/e2e/financial-safety.spec.ts:86:1 › issued receipt keeps the original payee after profile changes and reload (1.6s)
+  ✓  119 [desktop] › tests/e2e/interaction-regressions.spec.ts:46:1 › clicking controls inside a sheet never dismisses it or changes route (928ms)
+  ✓  121 [desktop] › tests/e2e/interaction-regressions.spec.ts:92:1 › nested cancellation confirmation closes one layer at a time (654ms)
+  -  124 [desktop] › tests/e2e/line-oa.spec.ts:163:1 › เชื่อม OA ล้าง credentials สร้างรหัส จับคู่ผู้ปกครอง และยืนยันส่งในเครื่องเมื่อ server ส่งสำเร็จ
+  -  125 [desktop] › tests/e2e/line-oa.spec.ts:201:1 › timeout หลังเข้าคิวเก็บ marker ข้าม reload ปิดแชร์ส่วนตัว และ reconcile โดยไม่ push ซ้ำ
+  -  126 [desktop] › tests/e2e/line-oa.spec.ts:231:1 › ตรวจรายการ processing หลัง worker หยุด โดยเรียก targeted send เดิมให้เซิร์ฟเวอร์กู้ claim ได้
+  ✓  122 [desktop] › tests/e2e/interaction-regressions.spec.ts:111:1 › editing a subject and changing billing controls does not jump away or close (611ms)
+  ✓  123 [desktop] › tests/e2e/interaction-regressions.spec.ts:130:1 › only an explicit LINE action opens an external window (484ms)
+  ✓  127 [desktop] › tests/e2e/menu.spec.ts:4:1 › the menu works from the keyboard: arrows move focus and switch tabs (439ms)
+  ✓  120 [desktop] › tests/e2e/interaction-regressions.spec.ts:66:1 › switching between demo and real mode uses one confirmation layer (1.7s)
+  ✓  129 [desktop] › tests/e2e/menu.spec.ts:49:1 › no page calls the product plain "Solo" any more (387ms)
+  ✓  130 [desktop] › tests/e2e/menu.spec.ts:58:1 › every sub-page has a way back to where it came from (726ms)
+  ✓  128 [desktop] › tests/e2e/menu.spec.ts:30:1 › four real themes plus system, each stamps its own data-theme (1.1s)
+  ✓  132 [desktop] › tests/e2e/production-browser-safety.spec.ts:3:1 › first installation can reopen offline without a preparatory reload (566ms)
+  ✓  133 [desktop] › tests/e2e/production-browser-safety.spec.ts:19:1 › installing Solo Tutor preserves another application cache (405ms)
+  ✓  134 [desktop] › tests/e2e/production-browser-safety.spec.ts:33:1 › embedded pages offer a direct link without rendering tutor data (362ms)
+  ✓  135 [desktop] › tests/e2e/production-browser-safety.spec.ts:46:1 › built page blocks injected inline scripts with CSP (326ms)
+  ✓  131 [desktop] › tests/e2e/menu.spec.ts:78:1 › a tutor can paste an existing client list from a spreadsheet and it lands in the app (1.0s)
+  ✓  137 [desktop] › tests/e2e/pwa.spec.ts:7:1 › theme-color meta matches the real --bg of each theme (112ms)
+  ✓  136 [desktop] › tests/e2e/promptpay-qr.spec.ts:12:1 › the parent page shows a scannable PromptPay QR only in real mode (469ms)
+  ✓  138 [desktop] › tests/e2e/pwa.spec.ts:21:1 › installed app opens on today, not the marketing page (387ms)
+  ✓  139 [desktop] › tests/e2e/pwa.spec.ts:36:1 › the service worker is registered and the app opens offline (719ms)
+  ✓  140 [desktop] › tests/e2e/pwa.spec.ts:55:1 › privacy and terms are reachable and say what the app really does (727ms)
+  ✓  141 [desktop] › tests/e2e/qa-data-regressions.spec.ts:33:1 › two tabs preserve writes, follow updates, and transfer writer ownership on close (817ms)
+  ✓  143 [desktop] › tests/e2e/qa-data-regressions.spec.ts:70:1 › opening an unknown chat cannot create orphan data or break reload (446ms)
+  ✓  142 [desktop] › tests/e2e/qa-data-regressions.spec.ts:55:1 › past periods can be closed using the saved price after a rate change (932ms)
+  ✓  147 [desktop] › tests/e2e/qa-data-regressions.spec.ts:149:1 › an explicit demo scenario change survives acquiring the writer lock (412ms)
+  ✓  146 [desktop] › tests/e2e/qa-data-regressions.spec.ts:129:1 › backup passes a valid restorable file to the native share API (740ms)
+  ✓  144 [desktop] › tests/e2e/qa-data-regressions.spec.ts:80:1 › a version 4 backup restores through the file picker and upgrades to version 5 (1.1s)
+  ✓  145 [desktop] › tests/e2e/qa-data-regressions.spec.ts:103:1 › a new package price and quantity preserve only the actual old credits (780ms)
+  ✓  151 [desktop] › tests/e2e/start.spec.ts:60:1 › the theme toggle on the landing and start pages flips dark/light and the app remembers it (611ms)
+  ✓  149 [desktop] › tests/e2e/start.spec.ts:5:1 › picking a style shapes the demo, the filters and the add-sheet default; the menu can change it (1.2s)
+  ✓  150 [desktop] › tests/e2e/start.spec.ts:38:1 › in real mode the picker changes defaults only — nothing is wiped (1.4s)
+  ✓  153 [desktop] › tests/e2e/ux-copy.spec.ts:4:1 › history speaks Thai, the parent sees the month of the bill, and ค้าง says it accumulates (513ms)
+  ✓  154 [desktop] › tests/e2e/ux-copy.spec.ts:25:1 › the parent page keeps its readable width even in web frame (367ms)
+  ✓  152 [desktop] › tests/e2e/start.spec.ts:79:1 › an accent picked on the landing page follows the visitor into the app (1.4s)
+(node:23999) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:24001) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:24002) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  148 [desktop] › tests/e2e/real-onboarding.spec.ts:20:1 › a female tutor never has to say ครับ — and can flip it later from the menu (2.8s)
+(node:24018) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  156 [webkit] › tests/e2e/accessibility.spec.ts:34:3 › bottom sheet stays inside a 320px viewport without runtime errors (1.5s)
+  ✓  157 [webkit] › tests/e2e/accessibility.spec.ts:34:3 › bottom sheet stays inside a 390px viewport without runtime errors (1.4s)
+  -  159 [webkit] › tests/e2e/account.spec.ts:135:3 › ซิงก์คลาวด์กับ Supabase จำลอง › ลบบัญชีจากแท็บอ่านอย่างเดียวไม่ได้ และเมื่อแท็บหลักลบแล้วอีกแท็บไม่คืนข้อมูลเก่า
+  -  160 [webkit] › tests/e2e/account.spec.ts:171:3 › ซิงก์คลาวด์กับ Supabase จำลอง › paid-retention refusal preserves the teacher ledger and account session
+  -  161 [webkit] › tests/e2e/account.spec.ts:197:3 › ซิงก์คลาวด์กับ Supabase จำลอง › ไฟล์กู้คืนปลดล็อก ciphertext หลังเปลี่ยนรหัส โดยไม่ต้องลบข้อมูลบนคลาวด์
+  -  162 [webkit] › tests/e2e/account.spec.ts:222:3 › ซิงก์คลาวด์กับ Supabase จำลอง › เข้าสู่ระบบแล้วสมุดบัญชีขึ้นคลาวด์เอง — เป็น ciphertext ไม่มีชื่อนักเรียน และแก้ข้อมูลแล้วขึ้นรอบใหม่
+  -  163 [webkit] › tests/e2e/account.spec.ts:243:3 › ซิงก์คลาวด์กับ Supabase จำลอง › เครื่องมีข้อมูลและคลาวด์ก็มี — ไม่เดา ถามครู แล้ว "ใช้ข้อมูลเครื่องนี้" เขียนทับด้วย revision ของคลาวด์
+  ✓  155 [webkit] › tests/e2e/accessibility.spec.ts:9:1 › bottom sheet traps focus and isolates the page behind it (1.5s)
+  -  166 [webkit] › tests/e2e/account.spec.ts:293:3 › แพ็กสมาชิกกับ Supabase จำลอง › ขอเปิด Pro 3 เดือน — ส่งแค่จำนวนเดือน ยอดมาจากเซิร์ฟเวอร์ แล้วเห็นสถานะรอตรวจยอด ยกเลิกได้
+  -  167 [webkit] › tests/e2e/account.spec.ts:311:3 › แพ็กสมาชิกกับ Supabase จำลอง › วงจรรายได้ครบ: เลือกแพ็ก → เริ่มใช้จริง → ขอ Pro → อนุมัติ → ใบเสร็จ → พัก/ใช้ต่อ → หมดอายุแล้วยังส่งออกข้อมูลได้
+  ✓  158 [webkit] › tests/e2e/account.spec.ts:30:1 › เมนูมีทางเข้าหน้าบัญชีครู และในโหมดเดโมหน้านั้นบอกให้เริ่มใช้จริงก่อน (1.6s)
+  ✓  164 [webkit] › tests/e2e/account.spec.ts:39:1 › โหมดจริงเห็นฟอร์มบัญชีครูหรือการ์ดรอตั้งค่า — ไม่มีอย่างอื่น และไม่มีข้อมูลออกจากเครื่องก่อนเข้าสู่ระบบ (1.1s)
+  ✓  168 [webkit] › tests/e2e/bulk-add.spec.ts:8:1 › เพิ่มหลายคนจากหน้ารายชื่อ: ตัดซ้ำ ข้ามคนเดิม แล้วสร้างครบในคลิกเดียว (1.1s)
+  -  170 [webkit] › tests/e2e/copy-nudge.spec.ts:9:1 › บิลค้างมีปุ่มคัดลอกข้อความแจ้งเตือน วางได้เลย และสถานะบิลไม่เปลี่ยน
+  ✓  165 [webkit] › tests/e2e/account.spec.ts:263:1 › แพ็กฟรีรับได้ 5 คนที่ยังเรียนอยู่ — คนที่ 6 เจอชีทแพ็ก ไม่ถูกเพิ่มเงียบ ๆ (1.8s)
+  ✓  171 [webkit] › tests/e2e/copy-nudge.spec.ts:29:1 › บิลที่จ่ายแล้วไม่มีปุ่มคัดลอกข้อความแจ้งเตือน (737ms)
+  ✓  169 [webkit] › tests/e2e/bulk-add.spec.ts:34:1 › ค่าเริ่มต้นแบบแพ็กใช้ได้ และต้องใส่จำนวนครั้งก่อน (1.3s)
+  ✓  172 [webkit] › tests/e2e/demo-flow.spec.ts:13:1 › หน้าแรกมีทางเข้าเดียว ไม่ใช่เมนูให้เลือก (891ms)
+  ✓  174 [webkit] › tests/e2e/demo-flow.spec.ts:45:1 › เส้นทางที่ไม่มีจริงพากลับหน้าแรก ไม่ใช่จอว่าง (586ms)
+  ✓  173 [webkit] › tests/e2e/demo-flow.spec.ts:36:1 › หน้าราคามีปุ่มกลับหน้าแรก (740ms)
+  ✓  175 [webkit] › tests/e2e/demo-flow.spec.ts:52:1 › วันนี้มี 4 คาบ ยืนยันแล้ว 1 รอ 3 (640ms)
+  ✓  176 [webkit] › tests/e2e/demo-flow.spec.ts:59:1 › เช็คชื่อคาบที่แพ็กหมดแล้ว ได้คำเตือนและร่างชวนต่อเพิ่มมาหนึ่งใบ (752ms)
+  ✓  179 [webkit] › tests/e2e/demo-flow.spec.ts:97:1 › ข้อความถึงผู้ปกครองใช้ลิงก์เต็ม และไม่ซ้ำคำนำหน้า (497ms)
+  ✓  180 [webkit] › tests/e2e/demo-flow.spec.ts:111:1 › ผู้จ่ายกดลิงก์แล้วเจอบิลใบที่ทวง พร้อม QR (456ms)
+  ✓  177 [webkit] › tests/e2e/demo-flow.spec.ts:70:1 › ปิดยอดเดือนนี้สร้างบิลให้ 5 คน (1.0s)
+  ✓  181 [webkit] › tests/e2e/demo-flow.spec.ts:119:1 › ไม่มีข้อความไหนส่งออกโดยผู้ใช้ไม่ได้กดส่ง (783ms)
+  ✓  182 [webkit] › tests/e2e/demo-flow.spec.ts:127:1 › เปิด LINE แล้วยังไม่นับว่าส่ง จนกว่าครูจะยืนยัน (875ms)
+  ✓  183 [webkit] › tests/e2e/demo-flow.spec.ts:162:1 › เลื่อนคาบแล้วยอดบิลไม่ขยับ และมีร่างแจ้งผู้ปกครองรออยู่ (1.1s)
+  ✓  185 [webkit] › tests/e2e/demo-flow.spec.ts:211:1 › ส่งสรุปให้ผู้ปกครองเปิด LINE พร้อมจำนวนครั้งจริง (618ms)
+  ✓  184 [webkit] › tests/e2e/demo-flow.spec.ts:188:1 › สำรองข้อมูลแล้วได้ไฟล์ที่กู้คืนได้ (850ms)
+  ✓  178 [webkit] › tests/e2e/demo-flow.spec.ts:80:1 › สลิปตรงยอด ยืนยันแล้วได้ใบเสร็จ (2.8s)
+  ✓  186 [webkit] › tests/e2e/demo-flow.spec.ts:230:1 › ทุกทางเข้าพาไปใช้งานได้เลย ไม่มีฟอร์มมาขวาง (1.1s)
+  ✓  190 [webkit] › tests/e2e/financial-safety.spec.ts:70:1 › corrupt storage is preserved and requires recovery (429ms)
+  ✓  187 [webkit] › tests/e2e/demo-flow.spec.ts:271:1 › ไม่มี dialog ของเบราว์เซอร์เหลืออยู่ — งดคาบใช้ชีทที่แปลได้ (1.3s)
+  ✓  189 [webkit] › tests/e2e/financial-safety.spec.ts:59:1 › quota failure cannot acknowledge or commit a payment (1.4s)
+  -  193 [webkit] › tests/e2e/homework.spec.ts:21:1 › โหมดจริง: พิมพ์การบ้านแล้วคัดลอก ได้ข้อความพร้อมคำลงท้ายของครู และไม่บันทึกอะไร
+  ✓  191 [webkit] › tests/e2e/financial-safety.spec.ts:78:1 › missing payment destination prevents sending and keeps queue empty (1.1s)
+  ✓  188 [webkit] › tests/e2e/financial-safety.spec.ts:25:1 › installments agree across balances, reminder, client, receipt and fresh recipient context (2.6s)
+  ✓  194 [webkit] › tests/e2e/homework.spec.ts:39:1 › เดโมไม่มีปุ่มการบ้าน — ไม่อยู่ในเส้นทางที่โชว์ (739ms)
+  ✓  195 [webkit] › tests/e2e/interaction-regressions.spec.ts:23:1 › primary navigation and list rows stay inside the app (912ms)
+  ✓  192 [webkit] › tests/e2e/financial-safety.spec.ts:86:1 › issued receipt keeps the original payee after profile changes and reload (2.1s)
+  ✓  196 [webkit] › tests/e2e/interaction-regressions.spec.ts:46:1 › clicking controls inside a sheet never dismisses it or changes route (1.2s)
+  ✓  198 [webkit] › tests/e2e/interaction-regressions.spec.ts:92:1 › nested cancellation confirmation closes one layer at a time (981ms)
+  -  201 [webkit] › tests/e2e/line-oa.spec.ts:163:1 › เชื่อม OA ล้าง credentials สร้างรหัส จับคู่ผู้ปกครอง และยืนยันส่งในเครื่องเมื่อ server ส่งสำเร็จ
+  -  202 [webkit] › tests/e2e/line-oa.spec.ts:201:1 › timeout หลังเข้าคิวเก็บ marker ข้าม reload ปิดแชร์ส่วนตัว และ reconcile โดยไม่ push ซ้ำ
+  -  203 [webkit] › tests/e2e/line-oa.spec.ts:231:1 › ตรวจรายการ processing หลัง worker หยุด โดยเรียก targeted send เดิมให้เซิร์ฟเวอร์กู้ claim ได้
+  ✓  199 [webkit] › tests/e2e/interaction-regressions.spec.ts:111:1 › editing a subject and changing billing controls does not jump away or close (997ms)
+  ✓  197 [webkit] › tests/e2e/interaction-regressions.spec.ts:66:1 › switching between demo and real mode uses one confirmation layer (1.8s)
+  ✓  200 [webkit] › tests/e2e/interaction-regressions.spec.ts:130:1 › only an explicit LINE action opens an external window (942ms)
+  ✓  204 [webkit] › tests/e2e/menu.spec.ts:4:1 › the menu works from the keyboard: arrows move focus and switch tabs (1.0s)
+  ✓  206 [webkit] › tests/e2e/menu.spec.ts:49:1 › no page calls the product plain "Solo" any more (793ms)
+  -  209 [webkit] › tests/e2e/production-browser-safety.spec.ts:3:1 › first installation can reopen offline without a preparatory reload
+  -  210 [webkit] › tests/e2e/production-browser-safety.spec.ts:19:1 › installing Solo Tutor preserves another application cache
+  ✓  205 [webkit] › tests/e2e/menu.spec.ts:30:1 › four real themes plus system, each stamps its own data-theme (1.5s)
+  ✓  207 [webkit] › tests/e2e/menu.spec.ts:58:1 › every sub-page has a way back to where it came from (1.2s)
+  ✓  211 [webkit] › tests/e2e/production-browser-safety.spec.ts:33:1 › embedded pages offer a direct link without rendering tutor data (393ms)
+  ✓  212 [webkit] › tests/e2e/production-browser-safety.spec.ts:46:1 › built page blocks injected inline scripts with CSP (545ms)
+  ✓  208 [webkit] › tests/e2e/menu.spec.ts:78:1 › a tutor can paste an existing client list from a spreadsheet and it lands in the app (1.3s)
+  ✓  214 [webkit] › tests/e2e/pwa.spec.ts:7:1 › theme-color meta matches the real --bg of each theme (318ms)
+  -  216 [webkit] › tests/e2e/pwa.spec.ts:36:1 › the service worker is registered and the app opens offline
+  ✓  213 [webkit] › tests/e2e/promptpay-qr.spec.ts:12:1 › the parent page shows a scannable PromptPay QR only in real mode (884ms)
+  ✓  215 [webkit] › tests/e2e/pwa.spec.ts:21:1 › installed app opens on today, not the marketing page (658ms)
+  ✓  217 [webkit] › tests/e2e/pwa.spec.ts:55:1 › privacy and terms are reachable and say what the app really does (733ms)
+  ✓  220 [webkit] › tests/e2e/qa-data-regressions.spec.ts:70:1 › opening an unknown chat cannot create orphan data or break reload (825ms)
+  ✓  218 [webkit] › tests/e2e/qa-data-regressions.spec.ts:33:1 › two tabs preserve writes, follow updates, and transfer writer ownership on close (1.2s)
+  ✓  219 [webkit] › tests/e2e/qa-data-regressions.spec.ts:55:1 › past periods can be closed using the saved price after a rate change (1.2s)
+  ✓  221 [webkit] › tests/e2e/qa-data-regressions.spec.ts:80:1 › a version 4 backup restores through the file picker and upgrades to version 5 (1.4s)
+  ✓  224 [webkit] › tests/e2e/qa-data-regressions.spec.ts:149:1 › an explicit demo scenario change survives acquiring the writer lock (739ms)
+  ✓  223 [webkit] › tests/e2e/qa-data-regressions.spec.ts:129:1 › backup passes a valid restorable file to the native share API (909ms)
+  ✓  222 [webkit] › tests/e2e/qa-data-regressions.spec.ts:103:1 › a new package price and quantity preserve only the actual old credits (1.1s)
+  ✓  228 [webkit] › tests/e2e/start.spec.ts:60:1 › the theme toggle on the landing and start pages flips dark/light and the app remembers it (863ms)
+  ✓  226 [webkit] › tests/e2e/start.spec.ts:5:1 › picking a style shapes the demo, the filters and the add-sheet default; the menu can change it (1.4s)
+  ✓  227 [webkit] › tests/e2e/start.spec.ts:38:1 › in real mode the picker changes defaults only — nothing is wiped (1.7s)
+  -  231 [webkit] › tests/e2e/ux-copy.spec.ts:25:1 › the parent page keeps its readable width even in web frame
+  ✓  230 [webkit] › tests/e2e/ux-copy.spec.ts:4:1 › history speaks Thai, the parent sees the month of the bill, and ค้าง says it accumulates (655ms)
+  ✓  229 [webkit] › tests/e2e/start.spec.ts:79:1 › an accent picked on the landing page follows the visitor into the app (1.7s)
+  ✓  225 [webkit] › tests/e2e/real-onboarding.spec.ts:20:1 › a female tutor never has to say ครับ — and can flip it later from the menu (3.1s)
+
+  37 skipped
+  194 passed (54.8s)

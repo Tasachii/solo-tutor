@@ -113,7 +113,7 @@ describe('จับคอลัมน์เข้ากับช่องขอ�
   it('ราคาที่มีคอมมาหรือคำว่าบาทยังอ่านออก · ค่าที่ไม่ใช่ราคาไม่ถูกเดา', () => {
     expect(parsePrice('1,200 บาท')).toBe(1200)
     expect(parsePrice('฿450')).toBe(450)
-    expect(parsePrice('400.4')).toBe(400)
+    expect(parsePrice('400.4')).toBeUndefined()
     expect(parsePrice('ฟรี')).toBeUndefined()
     expect(parsePrice('0')).toBeUndefined()
     expect(parsePrice('')).toBeUndefined()

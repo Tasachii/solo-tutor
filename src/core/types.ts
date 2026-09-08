@@ -3,7 +3,7 @@ export type Money = number // บาท จำนวนเต็ม
 
 export type BillingMode =
   | { mode: 'per_unit'; rate: Money }
-  | { mode: 'flat_monthly'; amount: Money }
+  | { mode: 'flat_monthly'; amount: Money; /** เริ่มใช้เงื่อนไขเหมานี้วันไหน; ข้อมูลเก่า fallback เป็น createdAt */ effectiveFrom?: ISODate }
   | { mode: 'package'; total: number; price: Money; purchasedAt: ISODate // used = derive จาก completions
       /** สิทธิ์คงเหลือจากแพ็กก่อนหน้า แยกจากจำนวนที่ซื้อรอบนี้เพื่อไม่ให้ยอดบิลพอง */
       carriedCredits?: number
@@ -14,6 +14,10 @@ export interface Client { id: string; name: string; lineId?: string; phone?: str
 export interface Subject {
   id: string; name: string; clientId: string; billing: BillingMode
   label?: string; active: boolean; createdAt: ISODate
+  /** วันที่หยุดให้บริการ ใช้ปิดช่วงเหมาเดือนในอนาคต; ข้อมูลเก่าอาจไม่มีค่านี้ */
+  inactiveAt?: ISODate
+  /** Immutable service spans preserve stopped months across later reactivation. */
+  billingIntervals?: { from: ISODate; to?: ISODate }[]
 }
 export interface ServiceUnit {
   id: string; subjectId: string; scheduledAt: ISODate; time: string

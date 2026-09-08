@@ -64,6 +64,11 @@ describe('QA core regressions', () => {
       (app: any) => { app.clients[0].name = '\t' },
       (app: any) => { app.waitlist.push({ professionId: ' ', name: 'ชื่อ', contact: 'ไลน์', at: app.today }) },
       (app: any) => { app.events.push({ at: new Date().toISOString(), name: ' ' }) },
+      (app: any) => { app.subjects.find((subject: any) => subject.billing.mode === 'flat_monthly').billing.effectiveFrom = 'not-a-date' },
+      (app: any) => {
+        const subject = app.subjects.find((row: any) => row.billing.mode === 'flat_monthly')
+        subject.billing.effectiveFrom = '2000-01-01'
+      },
     ]) {
       const malformed = JSON.parse(JSON.stringify(buildScenario('default')))
       mutate(malformed)
@@ -193,6 +198,20 @@ describe('QA core regressions', () => {
     expect(archived.subjects.find(row => row.id === subject.id)?.active).toBe(false)
     const active = reducer(archived, { type: 'reactivateSubject', subjectId: subject.id })
     expect(active.subjects.find(row => row.id === subject.id)?.active).toBe(true)
+  })
+
+  it('clears all teacher identity and ledger rows after confirmed server account deletion', () => {
+    const seeded = buildScenario('default')
+    const base = { ...seeded, mode: 'real' as const, messages: seeded.messages.map((message, index) => index === 0
+      ? { ...message, oaDelivery: { providerId: 'provider', workspaceId: 'workspace', recipientId: 'recipient', dedupeKey: 'key', body: message.draft } }
+      : message) }
+    const cleared = reducer(base, { type: 'deleteAccountLocal' })
+    expect(cleared).toMatchObject({ mode: 'real', scenarioId: 'real', onboarded: false })
+    expect(cleared.provider).toMatchObject({ name: '', promptpayId: '' })
+    expect(cleared.subjects).toEqual([])
+    expect(cleared.clients).toEqual([])
+    expect(cleared.invoices).toEqual([])
+    expect(cleared.events).toEqual([])
   })
 
   it('rejects unknown chat clients and blank text', () => {

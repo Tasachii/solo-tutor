@@ -4,8 +4,8 @@ import { useStore } from '../core/store'
 import { copy } from '../copy'
 import { dateThai, money } from '../core/format'
 import { FREE_STUDENT_CAP, daysLeft, isPro } from '../core/plan'
-import { PLANS } from '../platform/plans'
-import { SOLO_PROMPTPAY } from '../platform/config'
+import { PLANS, readPlanIntent, rememberPlanIntent, validPaidPlanMonths } from '../platform/plans'
+import { PAID_PLAN_AVAILABLE, PROVIDER_LEGAL_NAME, SOLO_PROMPTPAY, SUPPORT_CONTACT } from '../platform/config'
 import { cancelPlanRequest, listPlanRequests, pausePlan, requestPlan, resumePlan, type PlanRequestRow } from '../integrations/planApi'
 import { BottomSheet, ConfirmSheet, PromptPayQR } from './components'
 import { useToast } from './components/Toast'
@@ -31,8 +31,7 @@ export function PlanCard() {
   const pro = isPro(plan, state.today)
   const [rows, setRows] = useState<PlanRequestRow[]>([])
   const [months, setMonths] = useState(() => {
-    const want = Number(new URLSearchParams(loc.search).get('plan'))
-    return PLANS.some((x) => x.months === want && want > 0) ? want : 1
+    return validPaidPlanMonths(new URLSearchParams(loc.search).get('plan')) ?? readPlanIntent() ?? 1
   })
   const [note, setNote] = useState('')
   const [busy, setBusy] = useState(false)
@@ -42,20 +41,47 @@ export function PlanCard() {
   const approved = rows.filter((r) => r.status === 'approved')
   const price = PLANS.find((x) => x.months === months)?.price ?? 0
 
-  const reload = async () => { try { setRows(await listPlanRequests()) } catch { /* แสดงเท่าที่มี ค่อยลองใหม่รอบหน้า */ } }
+  const reload = async (): Promise<PlanRequestRow[] | null> => {
+    try {
+      const next = await listPlanRequests()
+      setRows(next)
+      return next
+    } catch {
+      return null
+    }
+  }
   useEffect(() => { if (cloud.session) void reload() }, [cloud.session?.user.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const submit = (e: FormEvent) => {
+  const submit = async (e: FormEvent) => {
     e.preventDefault()
+    if (!PAID_PLAN_AVAILABLE) {
+      toast.push({ text: p.unavailable, tone: 'danger' })
+      return
+    }
     setBusy(true)
-    void requestPlan(months, note).then(async () => {
-      setNote(''); toast.push({ text: p.submitted, tone: 'ok' }); await reload()
-    }).catch(() => toast.push({ text: p.alreadyPending, tone: 'warn' })).finally(() => setBusy(false))
+    try {
+      const current = await reload()
+      if (current?.some((row) => row.status === 'pending')) {
+        toast.push({ text: p.alreadyPending, tone: 'warn' })
+        return
+      }
+      const created = await requestPlan(months, note)
+      if (!Array.isArray(created) || created.length !== 1 || created[0].status !== 'pending') throw new Error('invalid plan response')
+      setRows((existing) => [created[0], ...existing.filter((row) => row.id !== created[0].id)])
+      rememberPlanIntent(null)
+      setNote('')
+      toast.push({ text: p.submitted, tone: 'ok' })
+    } catch {
+      const current = await reload()
+      const duplicate = current?.some((row) => row.status === 'pending') === true
+      toast.push({ text: duplicate ? p.alreadyPending : p.requestFailed, tone: duplicate ? 'warn' : 'danger' })
+    } finally { setBusy(false) }
   }
   const toggle = async (): Promise<boolean> => {
     try {
       const next = plan?.pausedAt ? await resumePlan() : await pausePlan()
-      if (next) { toast.push({ text: plan?.pausedAt ? p.resumed : p.paused, tone: 'ok' }) }
+      if (!next || next.plan !== 'pro') throw new Error('plan state unchanged')
+      toast.push({ text: plan?.pausedAt ? p.resumed : p.paused, tone: 'ok' })
       await cloud.refreshPlan()
       return true
     } catch { toast.push({ text: copy.common.saveFailed, tone: 'danger' }); return false }
@@ -71,7 +97,7 @@ export function PlanCard() {
     <section className="card" data-testid="plan-card">
       <h2 className="h2">{p.title}</h2>
       <p role="status">{statusLine}</p>
-      {plan?.plan === 'pro' && (daysLeft(plan, state.today) ?? 0) > 0 && <>
+      {plan?.plan === 'pro' && (!!plan.pausedAt || (daysLeft(plan, state.today) ?? 0) > 0) && <>
         <p className="hint">{p.pauseBody}</p>
         {plan.pausedAt
           ? <button className="btn btn--secondary btn--sm" onClick={() => void toggle()}>{p.resume}</button>
@@ -81,7 +107,10 @@ export function PlanCard() {
       {pending ? <div className="warnbar" role="status">
         {p.pending.replace('{months}', String(pending.months)).replace('{amount}', money(pending.amount))}
         <div className="btnrow"><button className="btn btn--ghost btn--sm" onClick={() => setAsk('cancel')}>{p.cancel}</button></div>
-      </div> : <form onSubmit={submit}>
+      </div> : !PAID_PLAN_AVAILABLE ? <div className="warnbar" role="status">
+        <b>{p.unavailableTitle}</b><p>{p.unavailable}</p>
+        {SUPPORT_CONTACT && <p>{p.contact.replace('{contact}', SUPPORT_CONTACT)}</p>}
+      </div> : <form onSubmit={(event) => void submit(event)}>
         <h3 className="h2">{p.requestTitle}</h3>
         <p className="hint">{p.requestBody}</p>
         <div className="seg" role="radiogroup" aria-label={p.pickPlan}>
@@ -110,7 +139,18 @@ export function PlanCard() {
 
     {ask === 'pause' && <ConfirmSheet title={p.pause} body={p.pauseBody} confirmLabel={p.pause} onClose={() => setAsk(null)} onConfirm={toggle} />}
     {ask === 'cancel' && <ConfirmSheet title={p.cancel} confirmLabel={p.cancel} danger onClose={() => setAsk(null)}
-      onConfirm={async () => { try { await cancelPlanRequest(); toast.push({ text: p.cancelled, tone: 'ok' }); await reload(); return true } catch { return false } }} />}
+      onConfirm={async () => {
+        try {
+          if (!(await cancelPlanRequest())) throw new Error('no pending request cancelled')
+          const current = await reload()
+          if (current === null || current.some((row) => row.status === 'pending')) throw new Error('pending request remains')
+          toast.push({ text: p.cancelled, tone: 'ok' })
+          return true
+        } catch {
+          toast.push({ text: p.cancelFailed, tone: 'danger' })
+          return false
+        }
+      }} />}
     {receipt && <BottomSheet title={p.receiptTitle} sub={receipt.receipt_no ?? ''} onClose={() => setReceipt(null)}>
       <dl className="paper__meta">
         <div><dt>{copy.receipt.no}</dt><dd className="num">{receipt.receipt_no}</dd></div>
@@ -118,7 +158,7 @@ export function PlanCard() {
         <div><dt>{copy.receipt.item}</dt><dd>{p.receiptItem.replace('{months}', String(receipt.months))}</dd></div>
         <div><dt>{copy.receipt.amount}</dt><dd className="num">{money(receipt.amount)} {copy.common.baht}</dd></div>
         <div><dt>{copy.receipt.payer}</dt><dd>{cloud.session?.user.email ?? '—'}</dd></div>
-        <div><dt>{copy.receipt.payee}</dt><dd>{copy.brand.name}</dd></div>
+        <div><dt>{copy.receipt.payee}</dt><dd>{PROVIDER_LEGAL_NAME || copy.brand.name}</dd></div>
       </dl>
     </BottomSheet>}
   </>

@@ -11,6 +11,12 @@ import ErrorBoundary from './app/ErrorBoundary'
 import { StoreProvider } from './core/store'
 import { ToastProvider } from './app/components/Toast'
 import './index.css'
+import { installErrorMonitoring } from './core/errorReport'
+
+if (window.top === window.self) {
+  const stopMonitoring = installErrorMonitoring()
+  import.meta.hot?.dispose(stopMonitoring)
+}
 
 applyTheme(readTheme())
 applySize(readSize())
@@ -28,7 +34,14 @@ if (import.meta.env.PROD && 'serviceWorker' in navigator) {
 }
 
 createRoot(document.getElementById('root')!).render(
-  <React.StrictMode>
+  // A Pages deployment cannot set frame-ancestors. Refuse to render account data
+  // inside a frame; the production hosting header remains the stronger boundary.
+  window.top !== window.self
+    ? <main className="pane"><h1 className="h1">เปิด Solo Tutor ในหน้าต่างหลัก</h1>
+        <p>เปิดลิงก์นี้โดยตรงเพื่อดูเอกสารหรือใช้งานบัญชีของคุณ</p>
+        <a className="btn btn--primary" href={window.location.href} target="_top">เปิดหน้าต่างหลัก</a>
+      </main>
+    : <React.StrictMode>
     <HashRouter>
       <Routes>
         <Route path="/document/:token" element={<SharedDocument />} />

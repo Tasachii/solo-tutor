@@ -31,6 +31,10 @@ const REFRESH_EARLY_SECONDS = 30
 let authGeneration = 0
 let refreshInFlight: Promise<SupabaseSession> | null = null
 
+const reportRequestFailure = (): void => {
+  if (typeof window !== 'undefined') window.dispatchEvent(new Event('solo:request-error'))
+}
+
 export class SupabaseRestError extends Error {
   readonly code: string
   readonly status?: number
@@ -194,8 +198,10 @@ const fetchWithTimeout = async (url: string, init: RequestInit): Promise<Respons
     return await fetch(url, { ...init, signal: controller.signal })
   } catch (error) {
     if (controller.signal.aborted) {
+      if (!externalSignal?.aborted) reportRequestFailure()
       throw new SupabaseRestError(externalSignal?.aborted ? 'aborted' : 'timeout', externalSignal?.aborted ? 'ยกเลิกคำขอแล้ว' : 'Supabase ใช้เวลาตอบกลับนานเกินไป')
     }
+    reportRequestFailure()
     throw new SupabaseRestError('network', 'เชื่อมต่อ Supabase ไม่สำเร็จ กรุณาตรวจสอบอินเทอร์เน็ต')
   } finally {
     clearTimeout(timer)
@@ -213,7 +219,10 @@ const safeJson = async (response: Response): Promise<unknown> => {
   }
 }
 
-const responseError = (status: number, auth = false): SupabaseRestError => {
+const responseError = (status: number, auth = false, body?: unknown): SupabaseRestError => {
+  const remoteCode = body && typeof body === 'object' && 'error' in body
+    && (body as { error?: unknown }).error === 'retention-required' ? 'retention-required' : null
+  if (remoteCode) return new SupabaseRestError(remoteCode, 'รายการนี้ต้องดำเนินการตามระยะเวลาเก็บข้อมูลทางกฎหมาย', status)
   if (status === 401 || status === 403) {
     return new SupabaseRestError(auth ? 'invalid-credentials' : 'unauthorized', auth ? 'อีเมลหรือรหัสผ่านไม่ถูกต้อง' : 'เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่', status)
   }
@@ -228,6 +237,7 @@ const authRequest = async (config: SupabaseConfig, grant: 'password' | 'refresh_
     body: JSON.stringify(body),
   })
   const data = await safeJson(response)
+  if (response.status >= 500) reportRequestFailure()
   if (!response.ok) throw responseError(response.status, grant === 'password')
   return sessionFromAuth((data ?? {}) as AuthResponse)
 }
@@ -260,6 +270,7 @@ export const signUp = async (email: string, password: string): Promise<SupabaseS
     body: JSON.stringify({ email: email.trim(), password }),
   })
   const data = await safeJson(response)
+  if (response.status >= 500) reportRequestFailure()
   if (!response.ok) {
     const body = (data ?? {}) as { error_code?: string; msg?: string; message?: string }
     const code = body.error_code ?? ''
@@ -328,18 +339,22 @@ const endpoint = (config: SupabaseConfig, path: string): string => {
 }
 
 const authenticatedFetch = async <T>(config: SupabaseConfig, path: string, options: RequestInit, allowRetry: boolean): Promise<T> => {
+  const generation = authGeneration
   const session = await freshSession(config)
+  if (generation !== authGeneration) throw new SupabaseRestError('auth-cancelled', 'เซสชันนี้ถูกเปลี่ยนแล้ว')
   const headers = new Headers(options.headers)
   headers.set('apikey', config.publishableKey)
   headers.set('Authorization', `Bearer ${session.access_token}`)
   if (options.body !== undefined && !headers.has('Content-Type')) headers.set('Content-Type', 'application/json')
   const response = await fetchWithTimeout(endpoint(config, path), { ...options, headers })
+  if (generation !== authGeneration) throw new SupabaseRestError('auth-cancelled', 'เซสชันนี้ถูกเปลี่ยนแล้ว')
   if (response.status === 401 && allowRetry) {
     await freshSession(config, true)
     return authenticatedFetch<T>(config, path, options, false)
   }
   const data = await safeJson(response)
-  if (!response.ok) throw responseError(response.status)
+  if (response.status >= 500) reportRequestFailure()
+  if (!response.ok) throw responseError(response.status, false, data)
   return data as T
 }
 
@@ -348,12 +363,12 @@ export const request = async <T>(path: string, options: RequestInit = {}): Promi
   return authenticatedFetch<T>(config, path, options, true)
 }
 
-export const rpc = <T>(name: string, body: unknown): Promise<T> => {
+export const rpc = <T>(name: string, body: unknown, signal?: AbortSignal): Promise<T> => {
   if (!name || /[^a-zA-Z0-9_]/.test(name)) return Promise.reject(new SupabaseRestError('invalid-path', 'ชื่อคำสั่ง Supabase ไม่ถูกต้อง'))
-  return request<T>(`/rest/v1/rpc/${encodeURIComponent(name)}`, { method: 'POST', body: JSON.stringify(body) })
+  return request<T>(`/rest/v1/rpc/${encodeURIComponent(name)}`, { method: 'POST', body: JSON.stringify(body), signal })
 }
 
-export const invoke = <T>(name: string, body: unknown): Promise<T> => {
+export const invoke = <T>(name: string, body: unknown, signal?: AbortSignal): Promise<T> => {
   if (!name || /[^a-zA-Z0-9_-]/.test(name)) return Promise.reject(new SupabaseRestError('invalid-path', 'ชื่อฟังก์ชัน Supabase ไม่ถูกต้อง'))
-  return request<T>(`/functions/v1/${encodeURIComponent(name)}`, { method: 'POST', body: JSON.stringify(body) })
+  return request<T>(`/functions/v1/${encodeURIComponent(name)}`, { method: 'POST', body: JSON.stringify(body), signal })
 }

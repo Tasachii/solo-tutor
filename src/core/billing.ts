@@ -20,6 +20,65 @@ export function mutationTouchesFinalizedPeriod(state: AppState, unitId: string, 
 export const dueDaysOf = (s: AppState): number => professionById(s.professionId).dueDays ?? 3
 
 export type BillingChangeIssue = 'unbilled-mode-change' | 'unbilled-flat-price-change' | 'package-history-mode-change'
+const MAX_BILLING_MONTHS = 120
+
+const monthNumber = (period: string): number => {
+  const [year, month] = period.split('-').map(Number)
+  return year * 12 + month - 1
+}
+const periodFromMonthNumber = (value: number): string => {
+  const year = Math.floor(value / 12)
+  const month = value % 12 + 1
+  return `${year}-${String(month).padStart(2, '0')}`
+}
+
+/** Eligible flat-month periods, bounded to ten years for damaged/extreme legacy dates. */
+export function flatBillablePeriods(state: AppState, subject: Subject): string[] {
+  if (subject.billing.mode !== 'flat_monthly') return []
+  const today = monthNumber(periodOf(state.today))
+  const spans = subject.billingIntervals?.length
+    ? subject.billingIntervals
+    : subject.active
+      ? [{ from: subject.createdAt }]
+      : subject.inactiveAt
+        ? [{ from: subject.createdAt, to: subject.inactiveAt }]
+        : []
+  const periods = new Set<string>()
+  const termsStart = monthNumber(periodOf(subject.billing.effectiveFrom ?? subject.createdAt))
+  for (const span of spans) {
+    const end = Math.min(today, monthNumber(periodOf(span.to ?? state.today)))
+    const start = Math.max(monthNumber(periodOf(span.from)), termsStart, end - MAX_BILLING_MONTHS + 1)
+    for (let month = start; month <= end; month += 1) periods.add(periodFromMonthNumber(month))
+  }
+  return [...periods].sort()
+}
+
+function isFlatPeriodEffective(state: AppState, subject: Subject, period: string): boolean {
+  const target = monthNumber(period)
+  if (target > monthNumber(periodOf(state.today))) return false
+  const spans = subject.billingIntervals?.length
+    ? subject.billingIntervals
+    : subject.active
+      ? [{ from: subject.createdAt }]
+      : subject.inactiveAt
+        ? [{ from: subject.createdAt, to: subject.inactiveAt }]
+        : []
+  const termsStart = monthNumber(periodOf(subject.billing.mode === 'flat_monthly'
+    ? subject.billing.effectiveFrom ?? subject.createdAt : subject.createdAt))
+  return target >= termsStart && spans.some(span => target >= monthNumber(periodOf(span.from))
+    && target <= monthNumber(periodOf(span.to ?? state.today)))
+}
+
+const hasUnbilledFlatPeriod = (state: AppState, subject: Subject): boolean =>
+  flatBillablePeriods(state, subject).some(period => !invoiceFor(state, subject.id, period))
+
+const billingTermsChanged = (current: BillingMode, next: BillingMode): boolean => {
+  if (current.mode !== next.mode) return true
+  if (current.mode === 'per_unit' && next.mode === 'per_unit') return current.rate !== next.rate
+  if (current.mode === 'flat_monthly' && next.mode === 'flat_monthly') return current.amount !== next.amount
+  return current.mode === 'package' && next.mode === 'package'
+    && (current.total !== next.total || current.price !== next.price)
+}
 
 export function hasUnbilledCompletions(state: AppState, subjectId: string): boolean {
   const periods = new Set(completionsOfSubject(state, subjectId).map((completion) => periodOf(occurredAt(state, completion))))
@@ -32,6 +91,16 @@ export function billingChangeIssue(state: AppState, current: Subject, next: Bill
   if (current.billing.mode === 'package' && next.mode !== 'package'
     && (completionsOfSubject(state, current.id).length > 0
       || state.invoices.some(i => i.subjectId === current.id && i.kind === 'package'))) return 'package-history-mode-change'
+  const billingChanged = billingTermsChanged(current.billing, next)
+  if (billingChanged && state.invoices.some(invoice => invoice.subjectId === current.id
+    && invoice.kind === 'monthly' && invoice.status === 'draft')) {
+    return current.billing.mode === 'flat_monthly' && next.mode === 'flat_monthly'
+      ? 'unbilled-flat-price-change' : 'unbilled-mode-change'
+  }
+  if (current.billing.mode === 'flat_monthly' && hasUnbilledFlatPeriod(state, current)) {
+    if (next.mode !== 'flat_monthly') return 'unbilled-mode-change'
+    if (current.billing.amount !== next.amount) return 'unbilled-flat-price-change'
+  }
   if (!hasUnbilledCompletions(state, current.id)) return null
   if (current.billing.mode !== next.mode) return 'unbilled-mode-change'
   if (current.billing.mode === 'flat_monthly' && next.mode === 'flat_monthly'
@@ -60,6 +129,8 @@ export function buildInvoice(subject: Subject, period: string, state: AppState):
       qty: count, unitPrice: rate, amount: count * rate,
     }))
   } else if (b.mode === 'flat_monthly') {
+    if (!isFlatPeriodEffective(state, subject, period)
+      && !(qty > 0 && b.effectiveFrom === undefined && !subject.billingIntervals?.length && !subject.inactiveAt)) return null
     // เหมาเดือน = 1 รายการ ไม่ใช่ qty × ยอดเหมา (ไม่งั้น qty × unitPrice ไม่เท่ากับ amount)
     lines = [{
       description: `${label} ${periodThai(period)} (เหมา · ${qty} ${profession.vocab.units})`,
@@ -122,7 +193,8 @@ export function ladderFor(state: AppState, inv: Invoice): 'soft' | 'clear' | 'fi
 export function closableSubjects(state: AppState, period: string): { subject: Subject; invoice: Invoice }[] {
   const out: { subject: Subject; invoice: Invoice }[] = []
   for (const subject of state.subjects) {
-    if (!subject.active && completionsIn(state, subject.id, period).length === 0) continue
+    if (!subject.active && subject.billing.mode !== 'flat_monthly'
+      && completionsIn(state, subject.id, period).length === 0) continue
     if (invoiceFor(state, subject.id, period)) continue
     const inv = buildInvoice(subject, period, state)
     if (inv) out.push({ subject, invoice: inv })
@@ -136,6 +208,7 @@ export function closablePeriods(state: AppState): string[] {
     const unit = state.units.find(row => row.id === completion.unitId)
     return unit && !unit.cancelled ? periodOf(unit.scheduledAt) : null
   }).filter((period): period is string => !!period))
+  state.subjects.forEach(subject => flatBillablePeriods(state, subject).forEach(period => periods.add(period)))
   return [...periods].filter(period => closableSubjects(state, period).length > 0).sort()
 }
 

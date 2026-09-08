@@ -1,8 +1,9 @@
-import { getSupabaseConfig } from '../integrations/supabaseRest'
+import { getSession, getSupabaseConfig } from '../integrations/supabaseRest'
 
 /**
  * ตัวนับการใช้งานสำหรับทีม — ส่งแค่ 4 เหตุการณ์ ไม่มีชื่อเด็ก ชื่อครู หรือยอดเงิน
- * teacher_id เป็น uuid สุ่มครั้งเดียวในเครื่องนี้ ไม่ผูกกับอีเมลหรือบัญชีใด
+ * teacher_id เป็น uuid ของเครื่อง; เมื่อเข้าสู่ระบบส่ง bearer ให้เซิร์ฟเวอร์ผูกบัญชีที่ตรวจแล้ว
+ * ไม่ส่ง provider_id จาก client เพราะใช้เป็นหลักฐานยืนยันเจ้าของไม่ได้
  */
 export type UsageEvent = 'app_open' | 'students_changed' | 'invoice_issued' | 'payment_recorded'
 export interface UsagePayload { teacher_id: string; event: UsageEvent; count: number; time: string; mode?: 'demo' | 'real' }
@@ -32,8 +33,10 @@ export function sendUsage(event: UsageEvent, count: number, mode?: 'demo' | 'rea
   const config = getSupabaseConfig()
   if (!config) return false
   try {
+    const session = mode === 'real' ? getSession() : null
+    const token = session && session.expires_at > Math.floor(Date.now() / 1000) ? session.access_token : null
     void send(`${config.url}/functions/v1/usage`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      method: 'POST', headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
       body: JSON.stringify(usagePayload(event, count, mode)), keepalive: true, signal: AbortSignal.timeout(5000),
     }).catch(() => undefined)
     return true

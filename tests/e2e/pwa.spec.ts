@@ -57,7 +57,7 @@ test('privacy and terms are reachable and say what the app really does', async (
   await page.getByRole('link', { name: copy.legal.footerPrivacy }).click()
   await expect(page).toHaveURL(/#\/privacy$/)
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(copy.legal.privacyTitle)
-  await expect(page.getByText('เฉพาะเมื่อคุณเชื่อม LINE OA')).toBeVisible()
+  await expect(page.getByRole('heading', { name: /LINE OA/ })).toBeVisible()
   await expect(page.getByText('พิมพ์ "หยุด"', { exact: false })).toBeVisible()
 
   await page.getByRole('link', { name: copy.legal.termsTitle }).click()

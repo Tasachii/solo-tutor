@@ -1,0 +1,7 @@
+
+> solo-tutor@1.0.0 check
+> npm run typecheck && git diff --check
+
+
+> solo-tutor@1.0.0 typecheck
+> tsc --noEmit

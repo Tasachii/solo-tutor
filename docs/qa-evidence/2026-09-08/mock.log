@@ -1,0 +1,83 @@
+
+> solo-tutor@1.0.0 e2e:mock
+> node scripts/test-mock.mjs
+
+[WebServer] (node:24538) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+[WebServer]
+[WebServer] (!) Some chunks are larger than 500 kB after minification. Consider:
+[WebServer] - Using dynamic import() to code-split the application
+[WebServer] - Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+[WebServer] - Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+[WebServer] (node:24542) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+[WebServer] (node:24563) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+Running 39 tests using 4 workers
+
+(node:24565) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:24568) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:24567) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:24566) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   3 [mobile] › tests/e2e/account.spec.ts:30:1 › เมนูมีทางเข้าหน้าบัญชีครู และในโหมดเดโมหน้านั้นบอกให้เริ่มใช้จริงก่อน (1.1s)
+  ✓   1 [mobile] › tests/e2e/account.spec.ts:39:1 › โหมดจริงเห็นฟอร์มบัญชีครูหรือการ์ดรอตั้งค่า — ไม่มีอย่างอื่น และไม่มีข้อมูลออกจากเครื่องก่อนเข้าสู่ระบบ (1.2s)
+  ✓   2 [mobile] › tests/e2e/account.spec.ts:171:3 › ซิงก์คลาวด์กับ Supabase จำลอง › paid-retention refusal preserves the teacher ledger and account session (4.2s)
+  ✓   4 [mobile] › tests/e2e/account.spec.ts:135:3 › ซิงก์คลาวด์กับ Supabase จำลอง › ลบบัญชีจากแท็บอ่านอย่างเดียวไม่ได้ และเมื่อแท็บหลักลบแล้วอีกแท็บไม่คืนข้อมูลเก่า (4.7s)
+  ✓   8 [mobile] › tests/e2e/account.spec.ts:263:1 › แพ็กฟรีรับได้ 5 คนที่ยังเรียนอยู่ — คนที่ 6 เจอชีทแพ็ก ไม่ถูกเพิ่มเงียบ ๆ (1.1s)
+  ✓   9 [mobile] › tests/e2e/account.spec.ts:293:3 › แพ็กสมาชิกกับ Supabase จำลอง › ขอเปิด Pro 3 เดือน — ส่งแค่จำนวนเดือน ยอดมาจากเซิร์ฟเวอร์ แล้วเห็นสถานะรอตรวจยอด ยกเลิกได้ (1.1s)
+  ✓   6 [mobile] › tests/e2e/account.spec.ts:222:3 › ซิงก์คลาวด์กับ Supabase จำลอง › เข้าสู่ระบบแล้วสมุดบัญชีขึ้นคลาวด์เอง — เป็น ciphertext ไม่มีชื่อนักเรียน และแก้ข้อมูลแล้วขึ้นรอบใหม่ (6.3s)
+  ✓   5 [mobile] › tests/e2e/account.spec.ts:197:3 › ซิงก์คลาวด์กับ Supabase จำลอง › ไฟล์กู้คืนปลดล็อก ciphertext หลังเปลี่ยนรหัส โดยไม่ต้องลบข้อมูลบนคลาวด์ (6.5s)
+  ✓   7 [mobile] › tests/e2e/account.spec.ts:243:3 › ซิงก์คลาวด์กับ Supabase จำลอง › เครื่องมีข้อมูลและคลาวด์ก็มี — ไม่เดา ถามครู แล้ว "ใช้ข้อมูลเครื่องนี้" เขียนทับด้วย revision ของคลาวด์ (4.0s)
+  ✓  13 [mobile] › tests/e2e/line-oa.spec.ts:231:1 › ตรวจรายการ processing หลัง worker หยุด โดยเรียก targeted send เดิมให้เซิร์ฟเวอร์กู้ claim ได้ (593ms)
+  ✓  11 [mobile] › tests/e2e/line-oa.spec.ts:163:1 › เชื่อม OA ล้าง credentials สร้างรหัส จับคู่ผู้ปกครอง และยืนยันส่งในเครื่องเมื่อ server ส่งสำเร็จ (1.4s)
+(node:24613) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:24612) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  15 [desktop] › tests/e2e/account.spec.ts:39:1 › โหมดจริงเห็นฟอร์มบัญชีครูหรือการ์ดรอตั้งค่า — ไม่มีอย่างอื่น และไม่มีข้อมูลออกจากเครื่องก่อนเข้าสู่ระบบ (462ms)
+  ✓  14 [desktop] › tests/e2e/account.spec.ts:30:1 › เมนูมีทางเข้าหน้าบัญชีครู และในโหมดเดโมหน้านั้นบอกให้เริ่มใช้จริงก่อน (573ms)
+  ✓  17 [desktop] › tests/e2e/account.spec.ts:171:3 › ซิงก์คลาวด์กับ Supabase จำลอง › paid-retention refusal preserves the teacher ledger and account session (3.5s)
+  ✓  16 [desktop] › tests/e2e/account.spec.ts:135:3 › ซิงก์คลาวด์กับ Supabase จำลอง › ลบบัญชีจากแท็บอ่านอย่างเดียวไม่ได้ และเมื่อแท็บหลักลบแล้วอีกแท็บไม่คืนข้อมูลเก่า (3.9s)
+  ✓  10 [mobile] › tests/e2e/account.spec.ts:311:3 › แพ็กสมาชิกกับ Supabase จำลอง › วงจรรายได้ครบ: เลือกแพ็ก → เริ่มใช้จริง → ขอ Pro → อนุมัติ → ใบเสร็จ → พัก/ใช้ต่อ → หมดอายุแล้วยังส่งออกข้อมูลได้ (8.7s)
+(node:24647) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  18 [desktop] › tests/e2e/account.spec.ts:197:3 › ซิงก์คลาวด์กับ Supabase จำลอง › ไฟล์กู้คืนปลดล็อก ciphertext หลังเปลี่ยนรหัส โดยไม่ต้องลบข้อมูลบนคลาวด์ (6.1s)
+  ✓  20 [desktop] › tests/e2e/account.spec.ts:243:3 › ซิงก์คลาวด์กับ Supabase จำลอง › เครื่องมีข้อมูลและคลาวด์ก็มี — ไม่เดา ถามครู แล้ว "ใช้ข้อมูลเครื่องนี้" เขียนทับด้วย revision ของคลาวด์ (3.7s)
+  ✓  19 [desktop] › tests/e2e/account.spec.ts:222:3 › ซิงก์คลาวด์กับ Supabase จำลอง › เข้าสู่ระบบแล้วสมุดบัญชีขึ้นคลาวด์เอง — เป็น ciphertext ไม่มีชื่อนักเรียน และแก้ข้อมูลแล้วขึ้นรอบใหม่ (6.1s)
+  ✓  21 [desktop] › tests/e2e/account.spec.ts:263:1 › แพ็กฟรีรับได้ 5 คนที่ยังเรียนอยู่ — คนที่ 6 เจอชีทแพ็ก ไม่ถูกเพิ่มเงียบ ๆ (1.1s)
+  ✓  12 [mobile] › tests/e2e/line-oa.spec.ts:201:1 › timeout หลังเข้าคิวเก็บ marker ข้าม reload ปิดแชร์ส่วนตัว และ reconcile โดยไม่ push ซ้ำ (13.2s)
+  ✓  22 [desktop] › tests/e2e/account.spec.ts:293:3 › แพ็กสมาชิกกับ Supabase จำลอง › ขอเปิด Pro 3 เดือน — ส่งแค่จำนวนเดือน ยอดมาจากเซิร์ฟเวอร์ แล้วเห็นสถานะรอตรวจยอด ยกเลิกได้ (1.2s)
+(node:24656) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  25 [desktop] › tests/e2e/line-oa.spec.ts:231:1 › ตรวจรายการ processing หลัง worker หยุด โดยเรียก targeted send เดิมให้เซิร์ฟเวอร์กู้ claim ได้ (658ms)
+  ✓  24 [desktop] › tests/e2e/line-oa.spec.ts:163:1 › เชื่อม OA ล้าง credentials สร้างรหัส จับคู่ผู้ปกครอง และยืนยันส่งในเครื่องเมื่อ server ส่งสำเร็จ (897ms)
+(node:24659) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:24664) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  27 [webkit] › tests/e2e/account.spec.ts:30:1 › เมนูมีทางเข้าหน้าบัญชีครู และในโหมดเดโมหน้านั้นบอกให้เริ่มใช้จริงก่อน (1.2s)
+  ✓  28 [webkit] › tests/e2e/account.spec.ts:39:1 › โหมดจริงเห็นฟอร์มบัญชีครูหรือการ์ดรอตั้งค่า — ไม่มีอย่างอื่น และไม่มีข้อมูลออกจากเครื่องก่อนเข้าสู่ระบบ (1.2s)
+  ✓  30 [webkit] › tests/e2e/account.spec.ts:171:3 › ซิงก์คลาวด์กับ Supabase จำลอง › paid-retention refusal preserves the teacher ledger and account session (4.0s)
+  ✓  29 [webkit] › tests/e2e/account.spec.ts:135:3 › ซิงก์คลาวด์กับ Supabase จำลอง › ลบบัญชีจากแท็บอ่านอย่างเดียวไม่ได้ และเมื่อแท็บหลักลบแล้วอีกแท็บไม่คืนข้อมูลเก่า (4.5s)
+  ✓  23 [desktop] › tests/e2e/account.spec.ts:311:3 › แพ็กสมาชิกกับ Supabase จำลอง › วงจรรายได้ครบ: เลือกแพ็ก → เริ่มใช้จริง → ขอ Pro → อนุมัติ → ใบเสร็จ → พัก/ใช้ต่อ → หมดอายุแล้วยังส่งออกข้อมูลได้ (8.6s)
+(node:24736) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  33 [webkit] › tests/e2e/account.spec.ts:243:3 › ซิงก์คลาวด์กับ Supabase จำลอง › เครื่องมีข้อมูลและคลาวด์ก็มี — ไม่เดา ถามครู แล้ว "ใช้ข้อมูลเครื่องนี้" เขียนทับด้วย revision ของคลาวด์ (4.2s)
+  ✓  31 [webkit] › tests/e2e/account.spec.ts:197:3 › ซิงก์คลาวด์กับ Supabase จำลอง › ไฟล์กู้คืนปลดล็อก ciphertext หลังเปลี่ยนรหัส โดยไม่ต้องลบข้อมูลบนคลาวด์ (6.7s)
+  ✓  32 [webkit] › tests/e2e/account.spec.ts:222:3 › ซิงก์คลาวด์กับ Supabase จำลอง › เข้าสู่ระบบแล้วสมุดบัญชีขึ้นคลาวด์เอง — เป็น ciphertext ไม่มีชื่อนักเรียน และแก้ข้อมูลแล้วขึ้นรอบใหม่ (6.5s)
+  ✓  34 [webkit] › tests/e2e/account.spec.ts:263:1 › แพ็กฟรีรับได้ 5 คนที่ยังเรียนอยู่ — คนที่ 6 เจอชีทแพ็ก ไม่ถูกเพิ่มเงียบ ๆ (1.3s)
+  ✓  26 [desktop] › tests/e2e/line-oa.spec.ts:201:1 › timeout หลังเข้าคิวเก็บ marker ข้าม reload ปิดแชร์ส่วนตัว และ reconcile โดยไม่ push ซ้ำ (13.2s)
+(node:24762) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  35 [webkit] › tests/e2e/account.spec.ts:293:3 › แพ็กสมาชิกกับ Supabase จำลอง › ขอเปิด Pro 3 เดือน — ส่งแค่จำนวนเดือน ยอดมาจากเซิร์ฟเวอร์ แล้วเห็นสถานะรอตรวจยอด ยกเลิกได้ (1.8s)
+  ✓  37 [webkit] › tests/e2e/line-oa.spec.ts:163:1 › เชื่อม OA ล้าง credentials สร้างรหัส จับคู่ผู้ปกครอง และยืนยันส่งในเครื่องเมื่อ server ส่งสำเร็จ (1.7s)
+  ✓  39 [webkit] › tests/e2e/line-oa.spec.ts:231:1 › ตรวจรายการ processing หลัง worker หยุด โดยเรียก targeted send เดิมให้เซิร์ฟเวอร์กู้ claim ได้ (824ms)
+  ✓  36 [webkit] › tests/e2e/account.spec.ts:311:3 › แพ็กสมาชิกกับ Supabase จำลอง › วงจรรายได้ครบ: เลือกแพ็ก → เริ่มใช้จริง → ขอ Pro → อนุมัติ → ใบเสร็จ → พัก/ใช้ต่อ → หมดอายุแล้วยังส่งออกข้อมูลได้ (9.3s)
+  ✓  38 [webkit] › tests/e2e/line-oa.spec.ts:201:1 › timeout หลังเข้าคิวเก็บ marker ข้าม reload ปิดแชร์ส่วนตัว และ reconcile โดยไม่ push ซ้ำ (13.9s)
+
+  39 passed (52.6s)

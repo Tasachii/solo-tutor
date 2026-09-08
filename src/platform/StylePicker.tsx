@@ -1,4 +1,4 @@
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useStore } from '../core/store'
 import { professionById, fillVocab } from '../professions'
 import { copy } from '../copy'
@@ -6,6 +6,7 @@ import { STYLES, scenarioForStyle } from '../core/style'
 import type { WorkStyle } from '../core/types'
 import { DemoBadge, PenguinMark } from '../app/components'
 import { AppearanceButton, ThemeToggle } from './ThemeToggle'
+import { rememberPlanIntent, validPaidPlanMonths } from './plans'
 
 /**
  * หน้าแรกก่อนเข้าใช้ — เลือกว่าเก็บเงินแบบไหน แตะเดียวเข้าแอป
@@ -15,15 +16,18 @@ import { AppearanceButton, ThemeToggle } from './ThemeToggle'
 export default function StylePicker() {
   const { state, dispatch, resetDemo, track } = useStore()
   const nav = useNavigate()
+  const loc = useLocation()
   const v = professionById(state.professionId).vocab
   const real = state.mode === 'real'
   const fill = (t: string) => fillVocab(t, v)
+  const paidPlan = validPaidPlanMonths(new URLSearchParams(loc.search).get('plan'))
 
   const pick = (style: WorkStyle) => {
     if (real) dispatch({ type: 'setStyle', style })
     else resetDemo(scenarioForStyle[style])
+    rememberPlanIntent(paidPlan)
     track(`style_${style}`)
-    nav('/app/today')
+    nav(real && paidPlan ? `/app/settings/account?plan=${paidPlan}` : '/app/today')
   }
 
   return (

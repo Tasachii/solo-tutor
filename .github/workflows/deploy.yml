@@ -39,9 +39,35 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
 
+  integrations:
+    runs-on: ubuntu-latest
+    env:
+      SOLO_LINE_QA: '1'
+      SOLO_CROSS_BROWSER: '1'
+      VITE_SUPABASE_URL: https://line-qa.supabase.co
+      VITE_SUPABASE_PUBLISHABLE_KEY: sb_publishable_qa
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium webkit
+      - run: npm run e2e:mock
+      - if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: integration-evidence
+          path: |
+            playwright-report/
+            test-results/
+          if-no-files-found: ignore
+          retention-days: 7
+
   build:
     if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
-    needs: test
+    needs: [test, integrations]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -54,6 +80,9 @@ jobs:
         env:
           VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
           VITE_SUPABASE_PUBLISHABLE_KEY: ${{ vars.VITE_SUPABASE_PUBLISHABLE_KEY }}
+          VITE_SUPPORT_CONTACT: ${{ vars.VITE_SUPPORT_CONTACT }}
+          VITE_PROVIDER_LEGAL_NAME: ${{ vars.VITE_PROVIDER_LEGAL_NAME }}
+          VITE_SOLO_PROMPTPAY: ${{ vars.VITE_SOLO_PROMPTPAY }}
       - uses: actions/upload-pages-artifact@v5
         with:
           path: dist

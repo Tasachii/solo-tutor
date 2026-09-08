@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { signIn, signOut } from '../../src/integrations/supabaseRest'
-import { readSnapshot, saveSnapshot } from '../../src/integrations/cloudApi'
+import { deleteTeacherAccount, readSnapshot, saveSnapshot } from '../../src/integrations/cloudApi'
 
 const projectUrl = 'https://project-ref.supabase.co'
 const jsonResponse = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
@@ -21,8 +21,8 @@ describe('cloudApi', () => {
     const fetchMock = await login()
     fetchMock.mockResolvedValueOnce(jsonResponse([]))
     expect(await readSnapshot()).toBeNull()
-    fetchMock.mockResolvedValueOnce(jsonResponse([{ revision: 3, schema_version: 5, cipher: 'c', iv: 'i', updated_at: '2025-09-02T00:00:00Z', device: 'Mac' }]))
-    expect(await readSnapshot()).toEqual({ revision: 3, schema_version: 5, cipher: 'c', iv: 'i', updated_at: '2025-09-02T00:00:00Z', device: 'Mac' })
+    fetchMock.mockResolvedValueOnce(jsonResponse([{ revision: 3, schema_version: 5, cipher: 'c', iv: 'i', kdf: 'pbkdf2-sha256-310000', updated_at: '2025-09-02T00:00:00Z', device: 'Mac' }]))
+    expect(await readSnapshot()).toEqual({ revision: 3, schema_version: 5, cipher: 'c', iv: 'i', kdf: 'pbkdf2-sha256-310000', updated_at: '2025-09-02T00:00:00Z', device: 'Mac' })
     fetchMock.mockResolvedValueOnce(jsonResponse([{ revision: '3', cipher: 'c' }]))
     expect(await readSnapshot()).toBeNull()
     expect(String(fetchMock.mock.calls[1][0])).toContain('/rest/v1/ledger_snapshots?select=')
@@ -41,5 +41,15 @@ describe('cloudApi', () => {
 
     fetchMock.mockResolvedValueOnce(jsonResponse([{ ok: false, revision: 9, updated_at: null }]))
     expect(await saveSnapshot({ expected: 3, revision: 4, schema: 5, cipher: 'c', iv: 'i', device: 'd' })).toEqual({ ok: false, revision: 9 })
+  })
+
+  it('account deletion sends re-authentication secret only to the authenticated edge function', async () => {
+    const fetchMock = await login()
+    fetchMock.mockResolvedValueOnce(jsonResponse({ ok: true }))
+    expect(await deleteTeacherAccount('current-password')).toBe(true)
+    const [url, init] = fetchMock.mock.calls[1]
+    expect(String(url)).toBe(`${projectUrl}/functions/v1/delete-account`)
+    expect(JSON.parse(String(init?.body))).toEqual({ password: 'current-password', confirmation: 'DELETE' })
+    expect(Object.values(localStorage).join('')).not.toContain('current-password')
   })
 })

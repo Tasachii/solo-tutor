@@ -1,5 +1,5 @@
 /** รับ error ที่ ErrorBoundary จับได้บนเครื่องผู้ใช้ — ไม่งั้นแอปพังที่ครูแล้วเราไม่มีทางรู้ */
-import { admin, jsonBody, jsonError, ok, serveErrors, withCors } from '../_shared/db.ts'
+import { admin, enforcePublicRateLimit, jsonBody, jsonError, ok, serveErrors, withCors } from '../_shared/db.ts'
 
 const clip = (value: unknown, max: number): string | null =>
   typeof value === 'string' && value.trim() ? value.trim().slice(0, max) : null
@@ -17,11 +17,16 @@ export function normalizeReport(body: Record<string, unknown>): Record<string, u
 
 export const handler = serveErrors(withCors(async (req) => {
   if (req.method !== 'POST') return jsonError(405, 'method-not-allowed')
-  const row = normalizeReport(await jsonBody(req))
+  const db = admin()
+  const limited = await enforcePublicRateLimit(req, 'report-error', {
+    client: 20, global: 1_000, windowSeconds: 600,
+  }, db)
+  if (limited) return limited
+  const row = normalizeReport(await jsonBody(req, 24_576))
   if (!row) return jsonError(400, 'invalid-report')
-  const { error } = await admin().from('client_errors').insert(row)
+  const { error } = await db.from('client_errors').insert(row)
   if (error) throw error
   return ok()
-}))
+}, undefined, true))
 
 if (import.meta.main) Deno.serve(handler)

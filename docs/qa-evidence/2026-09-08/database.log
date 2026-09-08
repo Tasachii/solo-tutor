@@ -1,0 +1,509 @@
+
+> solo-tutor@1.0.0 test:db
+> bash scripts/test-db.sh
+
+CREATE ROLE
+CREATE ROLE
+CREATE ROLE
+CREATE SCHEMA
+CREATE TABLE
+CREATE FUNCTION
+GRANT
+GRANT
+GRANT ROLE
+CREATE EXTENSION
+CREATE TABLE
+INSERT 0 0
+CREATE FUNCTION
+CREATE TRIGGER
+REVOKE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+CREATE POLICY
+CREATE POLICY
+CREATE POLICY
+CREATE POLICY
+CREATE POLICY
+CREATE POLICY
+CREATE POLICY
+REVOKE
+GRANT
+GRANT
+GRANT
+CREATE VIEW
+REVOKE
+GRANT
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+REVOKE
+REVOKE
+REVOKE
+REVOKE
+REVOKE
+GRANT
+GRANT
+GRANT
+REVOKE
+REVOKE
+GRANT
+GRANT
+GRANT
+GRANT
+ALTER TABLE
+GRANT
+ALTER TABLE
+CREATE TABLE
+CREATE TABLE
+ALTER TABLE
+ALTER TABLE
+CREATE POLICY
+CREATE POLICY
+REVOKE
+GRANT
+GRANT
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+DROP FUNCTION
+CREATE FUNCTION
+DROP VIEW
+CREATE VIEW
+REVOKE
+GRANT
+REVOKE
+REVOKE
+REVOKE
+REVOKE
+REVOKE
+REVOKE
+GRANT
+GRANT
+GRANT
+GRANT
+GRANT
+GRANT
+CREATE TABLE
+ALTER TABLE
+REVOKE
+GRANT
+CREATE TABLE
+ALTER TABLE
+REVOKE
+GRANT
+CREATE INDEX
+CREATE FUNCTION
+REVOKE
+GRANT
+CREATE TABLE
+ALTER TABLE
+REVOKE
+GRANT
+CREATE INDEX
+CREATE INDEX
+CREATE VIEW
+REVOKE
+GRANT
+CREATE TABLE
+ALTER TABLE
+CREATE POLICY
+REVOKE
+GRANT
+GRANT
+CREATE FUNCTION
+REVOKE
+GRANT
+CREATE FUNCTION
+REVOKE
+GRANT
+ALTER TABLE
+GRANT
+CREATE TABLE
+CREATE INDEX
+ALTER TABLE
+CREATE POLICY
+REVOKE
+GRANT
+GRANT
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+REVOKE
+GRANT
+CREATE FUNCTION
+REVOKE
+GRANT
+CREATE FUNCTION
+CREATE FUNCTION
+REVOKE
+REVOKE
+GRANT
+GRANT
+CREATE FUNCTION
+CREATE FUNCTION
+REVOKE
+REVOKE
+GRANT
+GRANT
+INSERT 0 1
+INSERT 0 1
+ALTER TABLE
+CREATE INDEX
+CREATE TABLE
+ALTER TABLE
+REVOKE
+GRANT
+CREATE FUNCTION
+REVOKE
+GRANT
+CREATE FUNCTION
+REVOKE
+GRANT
+CREATE INDEX
+CREATE TABLE
+ALTER TABLE
+REVOKE
+GRANT
+INSERT 0 1
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE VIEW
+REVOKE
+GRANT
+CREATE VIEW
+REVOKE
+GRANT
+DO
+DELETE 1
+CREATE FUNCTION
+REVOKE
+CREATE TRIGGER
+BEGIN
+ recent_client_errors
+----------------------
+                    0
+(1 row)
+
+ stale_plan_requests
+---------------------
+                   0
+(1 row)
+
+ manual_review_outbox | stale_processing_outbox | stale_queued_outbox
+----------------------+-------------------------+---------------------
+                    0 |                       0 |                   0
+(1 row)
+
+DO
+COMMIT
+INSERT 0 2
+DO
+INSERT 0 2
+INSERT 0 2
+INSERT 0 2
+SET
+              set_config
+--------------------------------------
+ 10000000-0000-0000-0000-000000000001
+(1 row)
+
+DO
+ set_config
+------------
+ 688288
+(1 row)
+
+DO
+              set_config
+--------------------------------------
+ a723059f-4b70-48b7-9b17-248214663bb7
+(1 row)
+
+DO
+RESET
+INSERT 0 2
+SET
+              set_config
+--------------------------------------
+ 10000000-0000-0000-0000-000000000001
+(1 row)
+
+DO
+RESET
+SET
+              set_config
+--------------------------------------
+ 10000000-0000-0000-0000-000000000001
+(1 row)
+
+              set_config
+--------------------------------------
+ 51ef3786-eff3-4bf3-bd61-1130c405d873
+(1 row)
+
+              set_config
+--------------------------------------
+ 51ef3786-eff3-4bf3-bd61-1130c405d873
+(1 row)
+
+DO
+RESET
+SET
+              set_config
+--------------------------------------
+ 20000000-0000-0000-0000-000000000002
+(1 row)
+
+DO
+RESET
+SET
+ replace_line_channel
+----------------------
+
+(1 row)
+
+RESET
+DO
+UPDATE 1
+SET
+              set_config
+--------------------------------------
+ 10000000-0000-0000-0000-000000000001
+(1 row)
+
+DO
+RESET
+UPDATE 1
+INSERT 0 1
+SET
+              set_config
+--------------------------------------
+ 10000000-0000-0000-0000-000000000001
+(1 row)
+
+DO
+RESET
+UPDATE 1
+UPDATE 1
+SET
+              set_config
+--------------------------------------
+ 10000000-0000-0000-0000-000000000001
+(1 row)
+
+              set_config
+--------------------------------------
+ 9d53c4c9-878f-4b3c-bbe7-9c0877accc89
+(1 row)
+
+              set_config
+--------------------------------------
+ 7f25d8d9-4ab7-40c5-9c69-ccd11d0cf2c1
+(1 row)
+
+DO
+              set_config
+--------------------------------------
+ cef53129-caea-41d7-9823-0a8524bf25d1
+(1 row)
+
+DO
+RESET
+UPDATE 1
+INSERT 0 2
+SET
+DO
+RESET
+UPDATE 1
+INSERT 0 1
+INSERT 0 1
+UPDATE 1
+SET
+              set_config
+--------------------------------------
+ 10000000-0000-0000-0000-000000000001
+(1 row)
+
+DO
+RESET
+DO
+UPDATE 1
+INSERT 0 1
+SET
+              set_config
+--------------------------------------
+ a4e41524-7698-4894-9862-1e37cd04da50
+(1 row)
+
+DO
+RESET
+UPDATE 0
+UPDATE 1
+INSERT 0 2
+SET
+DO
+RESET
+UPDATE 3
+UPDATE 1
+INSERT 0 1
+DO
+INSERT 0 1
+INSERT 0 1
+SET
+              set_config
+--------------------------------------
+ b03e28b9-6995-44cd-9f8f-946c41e9776f
+(1 row)
+
+              set_config
+--------------------------------------
+ 787f99fb-6dad-481c-a5b6-3b9a149aef58
+(1 row)
+
+              set_config
+--------------------------------------
+ b2f75b88-7300-46b7-9129-6183ea0b1cff
+(1 row)
+
+DO
+RESET
+DO
+INSERT 0 1
+SET
+DO
+RESET
+UPDATE 1
+INSERT 0 1
+SET
+DO
+RESET
+UPDATE 1
+INSERT 0 1
+SET
+DO
+RESET
+SET
+              set_config
+--------------------------------------
+ 10000000-0000-0000-0000-000000000001
+(1 row)
+
+DO
+              set_config
+--------------------------------------
+ 20000000-0000-0000-0000-000000000002
+(1 row)
+
+DO
+              set_config
+--------------------------------------
+ 10000000-0000-0000-0000-000000000001
+(1 row)
+
+DO
+RESET
+SET
+              set_config
+--------------------------------------
+ 10000000-0000-0000-0000-000000000001
+(1 row)
+
+DO
+RESET
+SET
+DO
+RESET
+SET
+              set_config
+--------------------------------------
+ 10000000-0000-0000-0000-000000000001
+(1 row)
+
+DO
+RESET
+UPDATE 1
+SET
+              set_config
+--------------------------------------
+ 10000000-0000-0000-0000-000000000001
+(1 row)
+
+DO
+              set_config
+--------------------------------------
+ 20000000-0000-0000-0000-000000000002
+(1 row)
+
+DO
+RESET
+DO
+SET
+DO
+RESET
+UPDATE 4
+SET
+DO
+RESET
+SET
+DO
+RESET
+DO
+INSERT 0 2
+DO
+UPDATE 1
+INSERT 0 1
+SET
+DO
+RESET
+INSERT 0 2
+DO
+BEGIN
+INSERT 0 2
+INSERT 0 2
+INSERT 0 2
+INSERT 0 1
+DELETE 1
+DO
+ROLLBACK
+BEGIN
+ paid_month | payments | paying_providers | gross_baht
+------------+----------+------------------+------------
+ 2026-09-01 |        3 |                1 |       1397
+ 2026-07-01 |        1 |                1 |        299
+ 2026-06-01 |        1 |                1 |        299
+(3 rows)
+
+ cohort_month | first_month_payers | renewed_in_month_2 | renewal_percent
+--------------+--------------------+--------------------+-----------------
+ 2026-06-01   |                  1 |                  1 |           100.0
+(1 row)
+
+ providers | active_pro | providers_opened_last_30_days | ever_paid_and_opened_last_30_days
+-----------+------------+-------------------------------+-----------------------------------
+         2 |          1 |                             0 |                                 0
+(1 row)
+
+COMMIT
+PostgreSQL 16 LINE backend contract tests passed

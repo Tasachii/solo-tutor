@@ -13,6 +13,8 @@ export default defineConfig({
   use: {
     baseURL,
     timezoneId: 'Asia/Bangkok',
+    // Mock API requests must reach Playwright routing, including on WebKit.
+    serviceWorkers: process.env.SOLO_LINE_QA === '1' ? 'block' : 'allow',
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
   },
@@ -23,9 +25,15 @@ export default defineConfig({
       ? [{ name: 'webkit', use: { ...devices['iPhone 13'] } }] : []),
   ],
   webServer: {
+    // Never let the default suite inherit a real project from .env.local.
+    // The separate mock command supplies its own intercepted API configuration.
+    env: process.env.SOLO_LINE_QA === '1' ? undefined : {
+      VITE_SUPABASE_URL: '', VITE_SUPABASE_PUBLISHABLE_KEY: '', VITE_SUPABASE_ANON_KEY: '',
+      VITE_SUPPORT_CONTACT: '', VITE_PROVIDER_LEGAL_NAME: '', VITE_SOLO_PROMPTPAY: '',
+    },
     command: `npm run build && npx vite preview --port ${port} --strictPort`,
     url: baseURL,
-    reuseExistingServer: !process.env.CI,
+    reuseExistingServer: false,
     timeout: 120_000,
   },
 })

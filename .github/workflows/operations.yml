@@ -1,0 +1,54 @@
+name: Hourly operations check
+
+on:
+  schedule:
+    - cron: '17 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: operations-check
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+      PROJECT_REF: qbuafdbmpkffzbkqoysb
+      POOLER_HOST: aws-0-ap-southeast-1.pooler.supabase.com
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+      - name: Verify database secret
+        run: |
+          test -n "$SUPABASE_DB_PASSWORD" || {
+            echo "::error::Missing SUPABASE_DB_PASSWORD (shared with backup.yml)"
+            exit 1
+          }
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes postgresql-client
+      - name: Count operational exceptions
+        run: |
+          encoded=$(python3 -c 'import os,urllib.parse; print(urllib.parse.quote(os.environ["SUPABASE_DB_PASSWORD"], safe=""))')
+          echo "::add-mask::$encoded"
+          OPERATIONS_DATABASE_URL="postgresql://postgres.${PROJECT_REF}:${encoded}@${POOLER_HOST}:5432/postgres?sslmode=require"
+          echo "::add-mask::$OPERATIONS_DATABASE_URL"
+          export OPERATIONS_DATABASE_URL
+          # Technical anti-abuse counters expire after 2h; no teacher records are touched.
+          psql "$OPERATIONS_DATABASE_URL" -X -v ON_ERROR_STOP=1 -c 'select public.cleanup_public_rate_limits();' >/dev/null
+          bash scripts/check-operations.sh
+      - name: Verify weekly backup freshness
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPOSITORY: ${{ github.repository }}
+        run: node scripts/check-backup-freshness.mjs

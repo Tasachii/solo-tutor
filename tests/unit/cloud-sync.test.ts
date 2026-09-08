@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { buildScenario } from '../../src/core/scenarios'
 import { deriveKey } from '../../src/core/cloudCrypto'
-import { decideSync, hasLedgerData, ledgerFingerprint, packSnapshot, readSyncMeta, unpackSnapshot, writeSyncMeta, SYNC_META_KEY, type SyncMeta } from '../../src/core/cloudSync'
+import { clearAccountLocalArtifacts, decideSync, hasLedgerData, ledgerFingerprint, packSnapshot, PRE_PULL_BACKUP_KEY, readSyncMeta, unpackSnapshot, writePrePullBackup, writeSyncMeta, SYNC_META_KEY, type SyncMeta } from '../../src/core/cloudSync'
 import { reducer } from '../../src/core/store'
 import { SCHEMA } from '../../src/core/store'
 
@@ -64,6 +64,13 @@ describe('snapshot pack/unpack', () => {
     expect(r.ok).toBe(false)
     if (!r.ok) expect(r.reason).toBe('wrongFile')
   })
+  it('ยอม snapshot เก่าที่ไม่มี kdf แต่ปฏิเสธอัลกอริทึมที่ไม่รองรับก่อนถอด', async () => {
+    const key = await deriveKey('pw-123456', uid)
+    const sealed = await packSnapshot(real, key, '2025-09-02T02:00:00.000Z')
+    expect((await unpackSnapshot(sealed, key, SCHEMA)).ok).toBe(true)
+    expect(await unpackSnapshot({ ...sealed, kdf: 'future-kdf' }, key, SCHEMA))
+      .toEqual({ ok: false, reason: 'unsupportedKdf' })
+  })
   it('hasLedgerData: เดโมมีข้อมูล เครื่องเปล่าไม่มี', () => {
     expect(hasLedgerData(real)).toBe(true)
     expect(hasLedgerData({ ...real, subjects: [], completions: [], invoices: [] })).toBe(false)
@@ -71,7 +78,7 @@ describe('snapshot pack/unpack', () => {
 })
 
 describe('sync meta', () => {
-  beforeEach(() => localStorage.removeItem(SYNC_META_KEY))
+  beforeEach(() => { localStorage.removeItem(SYNC_META_KEY); localStorage.removeItem(PRE_PULL_BACKUP_KEY) })
   it('เขียนแล้วอ่านกลับ · ค่าขยะอ่านเป็น null', () => {
     writeSyncMeta(meta(2, 'f7'))
     expect(readSyncMeta()).toEqual(meta(2, 'f7'))
@@ -79,5 +86,24 @@ describe('sync meta', () => {
     expect(readSyncMeta()).toBeNull()
     writeSyncMeta(null)
     expect(localStorage.getItem(SYNC_META_KEY)).toBeNull()
+  })
+  it('เก็บไฟล์สำรอง local แยกไว้ก่อน pull', () => {
+    const real = { ...buildScenario('empty'), mode: 'real' as const }
+    expect(writePrePullBackup(real, '2025-09-02T02:00:00.000Z')).toBe(true)
+    const saved = JSON.parse(localStorage.getItem(PRE_PULL_BACKUP_KEY)!)
+    expect(saved).toMatchObject({ format: 'solo-backup-1', app: { mode: 'real' } })
+  })
+  it('ลบบัญชีแล้วล้างเฉพาะ artifact ที่ผูกบัญชี ไม่ล้างค่าหน้าตาหรือข้อมูลเว็บอื่น', () => {
+    for (const key of [PRE_PULL_BACKUP_KEY, 'solo-demo-v3-before-restore', 'solo-sheets', 'solo-usage-id', 'unrelated']) {
+      localStorage.setItem(key, 'value')
+    }
+    sessionStorage.setItem('solo-tutor:requested-plan', '3')
+    clearAccountLocalArtifacts()
+    expect(localStorage.getItem(PRE_PULL_BACKUP_KEY)).toBeNull()
+    expect(localStorage.getItem('solo-demo-v3-before-restore')).toBeNull()
+    expect(localStorage.getItem('solo-sheets')).toBeNull()
+    expect(localStorage.getItem('solo-usage-id')).toBeNull()
+    expect(sessionStorage.getItem('solo-tutor:requested-plan')).toBeNull()
+    expect(localStorage.getItem('unrelated')).toBe('value')
   })
 })

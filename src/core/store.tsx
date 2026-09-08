@@ -18,7 +18,29 @@ import { financialRevision, messageSendIssue } from './messageDelivery'
 import { migrateCanonical } from './migrations'
 
 const KEY = 'solo-demo-v3'
+const ACCOUNT_DELETED_KEY = 'solo-tutor:account-deleted'
+const ACCOUNT_DELETED_EVENT = 'solo-tutor:account-deleted'
 const SCHEMA = 5
+
+type AccountDeletedMarker = { version: 1; state: AppState }
+
+function readDeletedMarker(raw: string | null): AppState | null {
+  if (!raw) return null
+  try {
+    const marker = JSON.parse(raw) as Partial<AccountDeletedMarker>
+    if (marker.version !== 1) return null
+    const state = migrateCanonical(marker.state)
+    return state?.mode === 'real' && !hasAccountLedgerData(state) ? state : null
+  } catch {
+    return null
+  }
+}
+
+function hasAccountLedgerData(state: AppState): boolean {
+  return state.clients.length > 0 || state.subjects.length > 0 || state.units.length > 0
+    || state.completions.length > 0 || state.invoices.length > 0 || state.payments.length > 0
+    || state.receipts.length > 0 || state.messages.length > 0 || state.chats.length > 0
+}
 
 export type Action =
   | { type: 'complete'; unitId: string }
@@ -59,6 +81,7 @@ export type Action =
   | { type: 'cancelUnit'; unitId: string }
   | { type: 'restoreUnit'; unitId: string }
   | { type: 'clearMessages' }
+  | { type: 'deleteAccountLocal' }
   | { type: 'replace'; state: AppState }
   | { type: 'track'; name: string; props?: Record<string, unknown> }
 
@@ -186,6 +209,7 @@ export function reducer(state: AppState, action: Action): AppState {
         || typeof action.subject.active !== 'boolean' || !isBillingMode(action.subject.billing)) return state
       const current = s.subjects.find((x) => x.id === action.subject.id)
       const exists = !!current
+      if (current && current.active !== action.subject.active) return state
       if (!exists && action.subject.billing.mode === 'package' && action.packageIntent === undefined) return state
       if (current && current.clientId !== action.subject.clientId
         && (s.invoices.some(invoice => invoice.subjectId === current.id)
@@ -194,7 +218,7 @@ export function reducer(state: AppState, action: Action): AppState {
         && (current.billing.total !== action.subject.billing.total || current.billing.price !== action.subject.billing.price)) return state
       if (current && billingChangeIssue(s, current, action.subject.billing)) return state
       if (current) s = snapshotLegacyPrices(s, current.id)
-      const billing = current?.billing.mode === 'package' && action.subject.billing.mode === 'package'
+      const historicalBilling = current?.billing.mode === 'package' && action.subject.billing.mode === 'package'
         ? {
             ...action.subject.billing,
             purchasedAt: current.billing.purchasedAt,
@@ -202,7 +226,17 @@ export function reducer(state: AppState, action: Action): AppState {
             ...(current.billing.carriedUnitIds ? { carriedUnitIds: current.billing.carriedUnitIds } : {}),
           }
         : action.subject.billing
-      const subject = { ...action.subject, billing }
+      const billing = historicalBilling.mode === 'flat_monthly'
+        ? { ...historicalBilling, effectiveFrom: current?.billing.mode === 'flat_monthly'
+            ? current.billing.effectiveFrom ?? current.createdAt
+            : current ? s.today : action.subject.createdAt }
+        : historicalBilling
+      const inactiveAt = action.subject.active
+        ? undefined
+        : action.subject.inactiveAt ?? current?.inactiveAt ?? s.today
+      if (inactiveAt !== undefined && (!isISODate(inactiveAt) || inactiveAt < action.subject.createdAt)) return state
+      const billingIntervals = action.subject.billingIntervals ?? current?.billingIntervals
+      const subject = { ...action.subject, billing, inactiveAt, billingIntervals }
       const clientExists = s.clients.some((c) => c.id === action.subject.clientId)
       s = {
         ...s,
@@ -219,11 +253,28 @@ export function reducer(state: AppState, action: Action): AppState {
       break
     }
     case 'deactivateSubject':
-      s = { ...s, subjects: s.subjects.map((x) => (x.id === action.subjectId ? { ...x, active: false } : x)) }
+      s = { ...s, subjects: s.subjects.map((x) => (x.id === action.subjectId
+        ? x.active
+          ? { ...x, active: false, inactiveAt: s.today,
+              billingIntervals: (x.billingIntervals?.length ? x.billingIntervals : [{ from: x.createdAt }])
+                .map((span, index, all) => index === all.length - 1 && span.to === undefined ? { ...span, to: s.today } : span) }
+          : x
+        : x)) }
       break
     case 'reactivateSubject':
       if (!s.subjects.some(x => x.id === action.subjectId)) return state
-      s = { ...s, subjects: s.subjects.map(x => x.id === action.subjectId ? { ...x, active: true } : x) }
+      s = { ...s, subjects: s.subjects.map(x => x.id === action.subjectId
+        ? x.active ? x : { ...x, active: true, inactiveAt: undefined,
+            billingIntervals: (() => {
+              const spans = x.billingIntervals?.length
+                ? x.billingIntervals
+                : x.inactiveAt ? [{ from: x.createdAt, to: x.inactiveAt }] : []
+              const last = spans.at(-1)
+              return last?.to === s.today
+                ? [...spans.slice(0, -1), { from: last.from }]
+                : [...spans, { from: s.today }]
+            })() }
+        : x) }
       break
     case 'addUnit':
       if (!s.subjects.some((subject) => subject.id === action.subjectId) || !isTime(action.time)
@@ -264,7 +315,9 @@ export function reducer(state: AppState, action: Action): AppState {
       action.rows.forEach((r, i) => {
         const cid = nid(`c${i}`)
         clients.push({ id: cid, name: r.clientName, lineId: r.lineId })
-        subjects.push({ id: nid(`s${i}`), name: r.name, clientId: cid, billing: r.billing ?? action.billing, active: true, createdAt: s.today })
+        const selected = r.billing ?? action.billing
+        const billing = selected.mode === 'flat_monthly' ? { ...selected, effectiveFrom: selected.effectiveFrom ?? s.today } : selected
+        subjects.push({ id: nid(`s${i}`), name: r.name, clientId: cid, billing, active: true, createdAt: s.today })
       })
       s = { ...s, clients, subjects }
       break
@@ -286,8 +339,11 @@ export function reducer(state: AppState, action: Action): AppState {
           existing.name = row.clientName
           if (row.lineId !== undefined) existing.lineId = row.lineId || undefined
         } else clients.push({ id: clientId, name: row.clientName, ...(row.lineId ? { lineId: row.lineId } : {}) })
+        const billing = action.billing.mode === 'flat_monthly'
+          ? { ...action.billing, effectiveFrom: action.billing.effectiveFrom ?? s.today }
+          : { ...action.billing }
         const subject: Subject = { id: nid(`s${index}`), name: row.name, clientId,
-          billing: { ...action.billing }, active: true, createdAt: s.today }
+          billing, active: true, createdAt: s.today }
         subjects.push(subject)
         added.push(subject)
       })
@@ -304,7 +360,12 @@ export function reducer(state: AppState, action: Action): AppState {
       const unitIds = new Set(s.units.filter((u) => u.subjectId === sub.id).map((u) => u.id))
       if (s.invoices.some((invoice) => invoice.subjectId === sub.id)
         || s.completions.some(completion => unitIds.has(completion.unitId))) {
-        s = { ...s, subjects: s.subjects.map((subject) => subject.id === sub.id ? { ...subject, active: false } : subject) }
+        s = { ...s, subjects: s.subjects.map((subject) => subject.id === sub.id
+          ? subject.active ? { ...subject, active: false, inactiveAt: s.today,
+              billingIntervals: (subject.billingIntervals?.length ? subject.billingIntervals : [{ from: subject.createdAt }])
+                .map((span, index, all) => index === all.length - 1 && span.to === undefined ? { ...span, to: s.today } : span) }
+            : subject
+          : subject) }
         break
       }
       const invIds = new Set(s.invoices.filter((i) => i.subjectId === sub.id).map((i) => i.id))
@@ -391,6 +452,10 @@ export function reducer(state: AppState, action: Action): AppState {
       // เก็บชื่อ/พร้อมเพย์ที่กรอกไว้ ทิ้งข้อมูลสมมติทั้งหมด
       s = buildReal(s.provider, s.style)
       break
+    case 'deleteAccountLocal':
+      // Server deletion succeeded before this action is allowed. Clear all teacher data and identity.
+      s = buildReal()
+      break
     case 'setStyle':
       // เปลี่ยนแค่หน้าจอและค่าเริ่มต้น — ข้อมูลลูกค้าและบิลอยู่ครบ
       if (!isStyle(action.style)) return state
@@ -416,7 +481,7 @@ export function reducer(state: AppState, action: Action): AppState {
   s = { ...s, messages: refreshDrafts(s) }
   const add = deriveDrafts(s)
   if (add.length) s = { ...s, messages: [...s.messages, ...add] }
-  if (action.type !== 'oaSent' && action.type !== 'oaCancelled' && state.messages.some(m => m.oaDelivery
+  if (action.type !== 'oaSent' && action.type !== 'oaCancelled' && action.type !== 'deleteAccountLocal' && state.messages.some(m => m.oaDelivery
     && financialRevision(state, m) !== financialRevision(s, m))) return state
   return s
 }
@@ -444,6 +509,12 @@ function refreshDemoDay(saved: AppState): AppState {
 function hydrate(scenarioFromUrl: string | null): { state: AppState; didReset: boolean; recoveryRaw: string | null; savedRaw: string | null; applyInitialScenario: boolean } {
   let raw: string | null = null
   try {
+    const deleted = readDeletedMarker(localStorage.getItem(ACCOUNT_DELETED_KEY))
+    if (deleted) {
+      const serialized = JSON.stringify(deleted)
+      try { localStorage.setItem(KEY, serialized); raw = serialized } catch { raw = localStorage.getItem(KEY) }
+      return { state: normalize(deleted), didReset: false, recoveryRaw: null, savedRaw: raw, applyInitialScenario: false }
+    }
     raw = localStorage.getItem(KEY)
     if (raw) {
       const saved = migrate(JSON.parse(raw))
@@ -484,6 +555,11 @@ export interface StoreValue {
   writeStatus: WriteStatus
   /** Rehydrate the latest durable state after a conflict/error and resume if leadership is still held. */
   retryPersistence: () => boolean
+  /** Reserve the lifetime writer before the irreversible server-side account deletion starts. */
+  prepareAccountDeletion: () => boolean
+  /** Commit the empty local tombstone after the server confirms deletion. */
+  commitAccountDeletion: () => 'cleared' | 'local-retained'
+  cancelAccountDeletion: () => void
 }
 const Ctx = createContext<StoreValue | null>(null)
 
@@ -495,6 +571,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const initialScenarioPending = useRef(initial.applyInitialScenario)
   const blocked = useRef(initial.didReset)
   const leader = useRef(false)
+  const accountDeletionPending = useRef(false)
   const writeStatusRef = useRef<WriteStatus>('acquiring')
   const releaseLeadership = useRef<(() => void) | null>(null)
   const [didReset, setDidReset] = useState(initial.didReset)
@@ -509,6 +586,21 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const rehydrateLatest = useCallback((): boolean => {
     try {
+      const deleted = readDeletedMarker(localStorage.getItem(ACCOUNT_DELETED_KEY))
+      if (deleted) {
+        const normalized = normalize(deleted)
+        const serialized = JSON.stringify(normalized)
+        localStorage.setItem(KEY, serialized)
+        savedRaw.current = serialized
+        current.current = normalized
+        blocked.current = false
+        setState(normalized)
+        setDidReset(false)
+        setRecoveryRaw(null)
+        setPersistenceError(null)
+        setWriteStatus('writable')
+        return true
+      }
       const raw = localStorage.getItem(KEY)
       if (raw === null) {
         savedRaw.current = null
@@ -539,6 +631,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }, [setWriteStatus])
 
   const dispatch = useCallback((action: Action): boolean => {
+    if (accountDeletionPending.current) {
+      setPersistenceError('กำลังลบบัญชี ระบบหยุดการแก้ข้อมูลชั่วคราว')
+      return false
+    }
     if (!leader.current || writeStatusRef.current !== 'writable') {
       setPersistenceError(writeStatusRef.current === 'conflict'
         ? 'พบข้อมูลจากแท็บหรือโปรแกรมรุ่นอื่น กรุณาโหลดข้อมูลล่าสุดแล้วลองใหม่'
@@ -563,6 +659,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       const committed = { ...next, schemaVersion: SCHEMA as 5, revision: current.current.revision + 1 }
       const serialized = JSON.stringify(committed)
       localStorage.setItem(KEY, serialized)
+      try { localStorage.removeItem(ACCOUNT_DELETED_KEY) } catch { /* live state is already durable */ }
       savedRaw.current = serialized
       current.current = committed
       blocked.current = false
@@ -576,6 +673,64 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       return false
     }
   }, [setWriteStatus])
+
+  const prepareAccountDeletion = useCallback((): boolean => {
+    if (accountDeletionPending.current || blocked.current || !leader.current || writeStatusRef.current !== 'writable') {
+      setPersistenceError(writeStatusRef.current === 'conflict'
+        ? 'พบข้อมูลจากแท็บอื่น กรุณาโหลดข้อมูลล่าสุดก่อนลบบัญชี'
+        : 'ลบบัญชีจากแท็บนี้ไม่ได้ กรุณาปิดแท็บที่กำลังแก้ข้อมูลแล้วลองใหม่')
+      return false
+    }
+    try {
+      if (localStorage.getItem(KEY) !== savedRaw.current) {
+        setPersistenceError('ข้อมูลในเครื่องเปลี่ยนจากอีกแท็บ กรุณาโหลดข้อมูลล่าสุดก่อนลบบัญชี')
+        setWriteStatus('conflict')
+        return false
+      }
+    } catch {
+      setPersistenceError('ตรวจสอบข้อมูลในเครื่องก่อนลบบัญชีไม่สำเร็จ')
+      setWriteStatus('error')
+      return false
+    }
+    accountDeletionPending.current = true
+    setPersistenceError(null)
+    return true
+  }, [setWriteStatus])
+
+  const cancelAccountDeletion = useCallback(() => { accountDeletionPending.current = false }, [])
+
+  const applyAccountDeletion = useCallback((clean: AppState, durableRaw: string | null, writable: boolean) => {
+    accountDeletionPending.current = false
+    savedRaw.current = durableRaw
+    current.current = clean
+    blocked.current = !writable
+    setState(clean)
+    setDidReset(false)
+    setRecoveryRaw(null)
+  }, [])
+
+  const commitAccountDeletion = useCallback((): 'cleared' | 'local-retained' => {
+    if (!accountDeletionPending.current || !leader.current || writeStatusRef.current !== 'writable') {
+      accountDeletionPending.current = false
+      return 'local-retained'
+    }
+    const clean = { ...buildReal(), schemaVersion: SCHEMA as 5, revision: current.current.revision + 1 }
+    const serialized = JSON.stringify(clean)
+    const marker = JSON.stringify({ version: 1, state: clean } satisfies AccountDeletedMarker)
+    let markerSaved = false
+    let ledgerSaved = false
+    try { localStorage.setItem(ACCOUNT_DELETED_KEY, marker); markerSaved = true } catch { /* reported below */ }
+    try { localStorage.setItem(KEY, serialized); ledgerSaved = true } catch { /* memory is still purged below */ }
+    applyAccountDeletion(clean, ledgerSaved ? serialized : savedRaw.current, markerSaved && ledgerSaved)
+    window.dispatchEvent(new CustomEvent(ACCOUNT_DELETED_EVENT, { detail: marker }))
+    if (markerSaved && ledgerSaved) {
+      setPersistenceError(null)
+      return 'cleared'
+    }
+    setPersistenceError('บัญชีบนเซิร์ฟเวอร์ถูกลบแล้ว แต่ล้างข้อมูลที่เก็บในเบราว์เซอร์ไม่สำเร็จ')
+    setWriteStatus('error')
+    return 'local-retained'
+  }, [applyAccountDeletion, setWriteStatus])
 
   const retryPersistence = useCallback((): boolean => {
     if (leader.current) return rehydrateLatest()
@@ -674,6 +829,37 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }, [setWriteStatus])
 
   useEffect(() => {
+    const acceptDeletion = (markerRaw: string | null) => {
+      const clean = readDeletedMarker(markerRaw)
+      if (!clean) return
+      let durableRaw: string | null = null
+      try { durableRaw = localStorage.getItem(KEY) } catch { /* remain blocked below */ }
+      let durableIsClean = false
+      try {
+        const durable = durableRaw ? migrate(JSON.parse(durableRaw)) : null
+        durableIsClean = !!durable && durable.mode === 'real' && !hasAccountLedgerData(durable)
+      } catch { /* remain blocked below */ }
+      applyAccountDeletion(normalize(clean), durableRaw, durableIsClean)
+      setPersistenceError(null)
+      if (leader.current) {
+        setWriteStatus('readonly')
+        releaseLeadership.current?.()
+        releaseLeadership.current = null
+      }
+    }
+    const storage = (event: StorageEvent) => {
+      if (event.key === ACCOUNT_DELETED_KEY) acceptDeletion(event.newValue)
+    }
+    const local = (event: Event) => acceptDeletion((event as CustomEvent<string>).detail)
+    window.addEventListener('storage', storage)
+    window.addEventListener(ACCOUNT_DELETED_EVENT, local)
+    return () => {
+      window.removeEventListener('storage', storage)
+      window.removeEventListener(ACCOUNT_DELETED_EVENT, local)
+    }
+  }, [applyAccountDeletion, setWriteStatus])
+
+  useEffect(() => {
     if (!blocked.current && writeStatus === 'writable') dispatch({ type: 'track', name: 'storage_ready' })
   }, [dispatch, writeStatus])
 
@@ -697,8 +883,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const resetDemo = useCallback((scenarioId?: string) =>
     dispatch({ type: 'replace', state: normalize(buildScenario(scenarioId ?? current.current.scenarioId)) }), [dispatch])
   const value = useMemo<StoreValue>(() => ({ state, dispatch, track, resetDemo, didReset,
-    hydrated: true, persistenceError, recoveryRaw, writeStatus, retryPersistence }),
-  [state, dispatch, track, resetDemo, didReset, persistenceError, recoveryRaw, writeStatus, retryPersistence])
+    hydrated: true, persistenceError, recoveryRaw, writeStatus, retryPersistence,
+    prepareAccountDeletion, commitAccountDeletion, cancelAccountDeletion }),
+  [state, dispatch, track, resetDemo, didReset, persistenceError, recoveryRaw, writeStatus, retryPersistence,
+    prepareAccountDeletion, commitAccountDeletion, cancelAccountDeletion])
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
 }
 
@@ -708,4 +896,4 @@ export function useStore(): StoreValue {
   return v
 }
 
-export { KEY as STORAGE_KEY, SCHEMA }
+export { KEY as STORAGE_KEY, ACCOUNT_DELETED_KEY, ACCOUNT_DELETED_EVENT, SCHEMA }

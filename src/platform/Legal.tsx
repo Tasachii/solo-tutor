@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import { copy } from '../copy'
 import { DemoBadge, PenguinMark } from '../app/components'
 import { AppearanceButton, ThemeToggle } from './ThemeToggle'
+import { PROVIDER_LEGAL_NAME, SUPPORT_CONTACT } from './config'
 
 /** นโยบายข้อมูลและข้อกำหนด — เขียนตามที่แอปทำจริง ไม่ใช่แบบฟอร์มกฎหมายลอกมา */
 export default function Legal({ kind }: { kind: 'privacy' | 'terms' }) {
@@ -24,7 +25,11 @@ export default function Legal({ kind }: { kind: 'privacy' | 'terms' }) {
             <p>{s.p}</p>
           </article>
         ))}
-        {l.contact && <p className="hint">{l.contactLabel}: {l.contact}</p>}
+        {PROVIDER_LEGAL_NAME && <p className="hint">{l.ownerLabel}: {PROVIDER_LEGAL_NAME}</p>}
+        {SUPPORT_CONTACT
+          ? <p className="hint">{l.contactLabel}: {SUPPORT_CONTACT}</p>
+          : <p className="warnbar" role="alert">{l.contactMissing}</p>}
+        <p className="hint">{l.reviewPending}</p>
         <p className="legal__x">
           <Link to={kind === 'privacy' ? '/terms' : '/privacy'}>{kind === 'privacy' ? l.termsTitle : l.privacyTitle}</Link>
           {' · '}<Link to="/pricing">{copy.pricing.title}</Link>

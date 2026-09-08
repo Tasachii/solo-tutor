@@ -1,5 +1,5 @@
-/** รับตัวนับการใช้งานจากเครื่องครู — ไม่มีอะไรระบุตัวตน นอกจาก uuid สุ่มที่แอปสร้างเอง */
-import { admin, jsonBody, jsonError, ok, serveErrors, withCors } from '../_shared/db.ts'
+/** รับตัวนับการใช้งาน — anonymous ใช้ UUID เครื่อง; bearer ที่ส่งมาต้อง verify ก่อนผูกบัญชี */
+import { admin, enforcePublicRateLimit, jsonBody, jsonError, ok, optionalUserId, serveErrors, withCors } from '../_shared/db.ts'
 
 const EVENTS = new Set(['app_open', 'students_changed', 'invoice_issued', 'payment_recorded'])
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
@@ -16,11 +16,17 @@ export function normalizeUsage(body: Record<string, unknown>): Record<string, un
 
 export const handler = serveErrors(withCors(async (req) => {
   if (req.method !== 'POST') return jsonError(405, 'method-not-allowed')
-  const row = normalizeUsage(await jsonBody(req))
+  const db = admin()
+  const limited = await enforcePublicRateLimit(req, 'usage', {
+    client: 60, global: 5_000, windowSeconds: 600,
+  }, db)
+  if (limited) return limited
+  const providerId = await optionalUserId(req)
+  const row = normalizeUsage(await jsonBody(req, 2_048))
   if (!row) return jsonError(400, 'invalid-event')
-  const { error } = await admin().from('usage_events').insert(row)
+  const { error } = await db.from('usage_events').insert({ ...row, provider_id: providerId })
   if (error) throw error
   return ok()
-}))
+}, undefined, true))
 
 if (import.meta.main) Deno.serve(handler)

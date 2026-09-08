@@ -1,0 +1,63 @@
+
+> solo-tutor@1.0.0 test:edge
+> bash scripts/test-edge.sh
+
+Download https://registry.npmjs.org/@supabase%2fsupabase-js
+Download https://registry.npmjs.org/@opentelemetry%2fapi
+Download https://registry.npmjs.org/@supabase%2fauth-js
+Download https://registry.npmjs.org/@supabase%2ffunctions-js
+Download https://registry.npmjs.org/@supabase%2fpostgrest-js
+Download https://registry.npmjs.org/@supabase%2frealtime-js
+Download https://registry.npmjs.org/@supabase%2fstorage-js
+Download https://registry.npmjs.org/tslib
+Download https://registry.npmjs.org/@supabase%2fphoenix
+Download https://registry.npmjs.org/iceberg-js
+Download https://registry.npmjs.org/@supabase/supabase-js/-/supabase-js-2.116.0.tgz
+Download https://registry.npmjs.org/@supabase/auth-js/-/auth-js-2.116.0.tgz
+Download https://registry.npmjs.org/@supabase/functions-js/-/functions-js-2.116.0.tgz
+Download https://registry.npmjs.org/@supabase/storage-js/-/storage-js-2.116.0.tgz
+Download https://registry.npmjs.org/@supabase/realtime-js/-/realtime-js-2.116.0.tgz
+Download https://registry.npmjs.org/@supabase/postgrest-js/-/postgrest-js-2.116.0.tgz
+Download https://registry.npmjs.org/tslib/-/tslib-2.8.1.tgz
+Download https://registry.npmjs.org/iceberg-js/-/iceberg-js-0.8.1.tgz
+Download https://registry.npmjs.org/@supabase/phoenix/-/phoenix-0.4.5.tgz
+Check file:///work/tests/edge/account-deletion.test.ts
+Check file:///work/tests/edge/intake.test.ts
+Check file:///work/tests/edge/line-handlers.test.ts
+Check file:///work/tests/edge/public-safety.test.ts
+running 3 tests from ./tests/edge/account-deletion.test.ts
+account deletion removes only the reauthenticated bearer owner ... ok (2ms)
+account deletion rejects missing origin, bearer, confirmation and wrong password ... ok (0ms)
+account deletion delegates paid/free erasure atomically and propagates rate limits and server failures ...
+------- output -------
+Edge function failed Error
+----- output end -----
+account deletion delegates paid/free erasure atomically and propagates rate limits and server failures ... ok (0ms)
+running 4 tests from ./tests/edge/intake.test.ts
+waitlist keeps only known sizes and modes, trims text, drops junk ... ok (0ms)
+waitlist refuses rows without the three required fields or over length ... ok (0ms)
+error report clips every field and never accepts unknown ones ... ok (0ms)
+usage accepts only the four agreed events with a uuid and a bounded count ... ok (0ms)
+running 14 tests from ./tests/edge/line-handlers.test.ts
+line-connect ignores a forged body provider and uses verified identity ... ok (0ms)
+interactive send ignores body provider and cannot request auto mode ... ok (0ms)
+interactive send accepts only an explicit UUID outbox target ... ok (0ms)
+LINE send rejects oversized UTF-16 bodies instead of slicing persisted content ... ok (0ms)
+cron header uses only the separate secret path ... ok (0ms)
+atomic claim remains sendable after monthly rollover resets stale quota ... ok (0ms)
+handlers reject wrong methods before configuration or network access ... ok (0ms)
+browser preflight allows only the configured frontend origin ... ok (0ms)
+connect persists pending before webhook mutation and activates last ... ok (0ms)
+failed webhook setup leaves a retryable failed state ... ok (0ms)
+LINE webhook verification must report success even with HTTP 200 ... ok (0ms)
+malformed and unknown webhook payloads are acknowledged without external calls ... ok (0ms)
+crypto helpers fail closed on empty or malformed secrets ... ok (0ms)
+Supabase gateway delegates auth to handlers for modern JWT, LINE signature, and cron ... ok (0ms)
+running 5 tests from ./tests/edge/public-safety.test.ts
+required CORS rejects missing and foreign origins before the handler ... ok (1ms)
+optional CORS still permits origin-less cron and webhook-style requests ... ok (0ms)
+jsonBody enforces declared and streamed byte limits ... ok (1ms)
+rate limiter sends only a pseudonymous hash and returns Retry-After ... ok (0ms)
+optional usage identity verifies every supplied bearer and ignores anonymous requests ... ok (0ms)
+
+ok | 26 passed | 0 failed (193ms)

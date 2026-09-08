@@ -1,0 +1,13 @@
+Deploying Function: waitlist
+Uploading asset (waitlist): supabase/functions/waitlist/index.ts
+Uploading asset (waitlist): supabase/functions/_shared/db.ts
+Deploying Function: report-error
+Uploading asset (report-error): supabase/functions/report-error/index.ts
+Uploading asset (report-error): supabase/functions/_shared/db.ts
+Deploying Function: usage
+Uploading asset (usage): supabase/functions/usage/index.ts
+Uploading asset (usage): supabase/functions/_shared/db.ts
+Deploying Function: delete-account
+Uploading asset (delete-account): supabase/functions/delete-account/index.ts
+Uploading asset (delete-account): supabase/functions/_shared/db.ts
+{"project_ref":"qbuafdbmpkffzbkqoysb","functions":["waitlist","report-error","usage","delete-account"],"dashboard_url":"https://supabase.com/dashboard/project/qbuafdbmpkffzbkqoysb/functions","message":"Deployed Functions."}

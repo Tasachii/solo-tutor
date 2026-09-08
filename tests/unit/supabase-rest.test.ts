@@ -139,6 +139,26 @@ describe('Supabase password session', () => {
     expect(getSession()).toBeNull()
   })
 
+  it('an old account request cannot settle after another account signs in', async () => {
+    configure()
+    let authCount = 0
+    let releaseRequest!: (response: Response) => void
+    vi.spyOn(globalThis, 'fetch').mockImplementation((input) => {
+      if (String(input).includes('grant_type=password')) {
+        authCount += 1
+        return Promise.resolve(jsonResponse(authBody({ user: { id: `user-${authCount}`, email: `t${authCount}@example.com` } })))
+      }
+      return new Promise(resolve => { releaseRequest = resolve })
+    })
+    await signIn('t1@example.com', 'password')
+    const stale = request('/rest/v1/clients')
+    await vi.waitFor(() => expect(releaseRequest).toBeTypeOf('function'))
+    await signIn('t2@example.com', 'password')
+    releaseRequest(jsonResponse([{ id: 'old-account-row' }]))
+    await expect(stale).rejects.toMatchObject({ code: 'auth-cancelled' })
+    expect(getSession()?.user.id).toBe('user-2')
+  })
+
   it('fails closed on storage errors before sending credentials or authenticated requests', async () => {
     configure()
     const fetchMock = vi.spyOn(globalThis, 'fetch')
@@ -185,6 +205,28 @@ describe('authenticated REST helpers', () => {
     const error = await request('/rest/v1/clients').catch((caught: unknown) => caught)
     expect(error).toBeInstanceOf(SupabaseRestError)
     expect(String((error as Error).message)).not.toContain('raw-secret-from-server')
+  })
+
+  it('exposes only the allowlisted retention code from account deletion failures', async () => {
+    configure()
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(jsonResponse(authBody()))
+    await signIn('teacher@example.com', 'password')
+    fetchMock.mockResolvedValueOnce(jsonResponse({ error: 'retention-required', private: 'must-not-leak' }, 409))
+    const error = await invoke('delete-account', { password: 'password' }).catch((caught: unknown) => caught)
+    expect(error).toMatchObject({ code: 'retention-required', status: 409 })
+    expect(String((error as Error).message)).not.toContain('must-not-leak')
+  })
+
+  it('emits a content-free operational signal for handled server failures', async () => {
+    configure()
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(jsonResponse(authBody()))
+    await signIn('teacher@example.com', 'password')
+    const seen = vi.fn()
+    window.addEventListener('solo:request-error', seen, { once: true })
+    fetchMock.mockResolvedValueOnce(jsonResponse({ private: 'not-forwarded' }, 503))
+    await expect(request('/rest/v1/clients')).rejects.toMatchObject({ status: 503 })
+    expect(seen).toHaveBeenCalledOnce()
+    expect(seen.mock.calls[0][0]).toBeInstanceOf(Event)
   })
 })
 

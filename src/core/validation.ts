@@ -23,6 +23,7 @@ export function isBillingMode(value: unknown): value is BillingMode {
   const billing = value as Record<string, unknown>
   if (billing.mode === 'per_unit') return isMoney(billing.rate)
   if (billing.mode === 'flat_monthly') return isMoney(billing.amount)
+    && (billing.effectiveFrom === undefined || isISODate(billing.effectiveFrom))
   if (billing.mode !== 'package') return false
   if (!Number.isSafeInteger(billing.total) || Number(billing.total) <= 0) return false
   if (!isMoney(billing.price) || Math.round(billing.price / Number(billing.total)) <= 0 || !isISODate(billing.purchasedAt)) return false
@@ -118,6 +119,10 @@ export function validateState(value: unknown): StateValidation {
     if (!isString(row.name) || !row.name.trim()) errors.push(`subjects[${index}].name: ต้องมีค่า`)
     if (!clientIds.has(row.clientId)) errors.push(`subjects[${index}].clientId: ไม่พบผู้จ่าย`)
     if (!isBillingMode(row.billing)) errors.push(`subjects[${index}].billing: ไม่ถูกต้อง`)
+    if (isBillingMode(row.billing) && row.billing.mode === 'flat_monthly'
+      && row.billing.effectiveFrom !== undefined && row.billing.effectiveFrom < row.createdAt) {
+      errors.push(`subjects[${index}].billing.effectiveFrom: เกิดก่อนเริ่มรายการ`)
+    }
     if (isBillingMode(row.billing) && row.billing.mode === 'package' && row.billing.carriedUnitIds) {
       const carried = row.billing.carriedUnitIds
       if (new Set(carried).size !== carried.length || carried.some((unitId) =>
@@ -125,7 +130,32 @@ export function validateState(value: unknown): StateValidation {
         errors.push(`subjects[${index}].billing.carriedUnitIds: ต้องเป็นงานที่ทำแล้วของรายการนี้และไม่ซ้ำ`)
       }
     }
-    if (typeof row.active !== 'boolean' || !isISODate(row.createdAt)) errors.push(`subjects[${index}]: สถานะหรือวันที่ไม่ถูกต้อง`)
+    if (typeof row.active !== 'boolean' || !isISODate(row.createdAt)
+      || (row.inactiveAt !== undefined && (!isISODate(row.inactiveAt) || row.inactiveAt < row.createdAt || row.active))) {
+      errors.push(`subjects[${index}]: สถานะหรือวันที่ไม่ถูกต้อง`)
+    }
+    if (row.billingIntervals !== undefined) {
+      if (!Array.isArray(row.billingIntervals) || row.billingIntervals.length === 0) {
+        errors.push(`subjects[${index}].billingIntervals: ช่วงเวลาไม่ถูกต้อง`)
+      } else {
+        const intervals = row.billingIntervals
+        let previousTo: string | undefined
+        let openCount = 0
+        intervals.forEach((span, spanIndex) => {
+          if (!isRecord(span) || !isISODate(span.from)
+            || (span.to !== undefined && (!isISODate(span.to) || span.to < span.from))
+            || span.from < row.createdAt || (previousTo !== undefined && span.from <= previousTo)
+            || (span.to === undefined && spanIndex !== intervals.length - 1)) {
+            errors.push(`subjects[${index}].billingIntervals[${spanIndex}]: ช่วงเวลาไม่ถูกต้อง`)
+          }
+          if (isRecord(span) && span.to === undefined) openCount += 1
+          if (isRecord(span) && typeof span.to === 'string') previousTo = span.to
+        })
+        if ((row.active && openCount !== 1) || (!row.active && openCount !== 0)) {
+          errors.push(`subjects[${index}].billingIntervals: สถานะไม่ตรงกับช่วงเวลา`)
+        }
+      }
+    }
     if (row.label !== undefined && !isString(row.label)) errors.push(`subjects[${index}].label: ไม่ถูกต้อง`)
   })
   state.units.forEach((row, index) => {
