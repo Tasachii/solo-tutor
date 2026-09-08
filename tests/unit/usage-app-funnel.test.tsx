@@ -257,5 +257,7 @@ describe('funnel ของคนสมัคร', () => {
 
     expect(form().checkValidity()).toBe(true)
     expect(names()).not.toContain('signup_started')
+    // ฟอร์มนี้ผ่าน validation จึงยิงคำขอจริง ต้องรอให้จบก่อนเทสจบ ไม่งั้นงานค้างไปแตะ window ที่ถูกรื้อแล้ว
+    await waitFor(() => expect(screen.getByRole('button', { name: 'เข้าสู่ระบบ' })).toBeTruthy())
   })
 })
