@@ -222,6 +222,7 @@ describe('funnel ของคนสมัคร', () => {
     fireEvent.click(screen.getByRole('button', { name: 'ยังไม่มีบัญชี สมัครใช้งาน' }))
     fireEvent.change(screen.getByLabelText('อีเมล'), { target: { value: 'kru@example.com' } })
     fireEvent.change(screen.getByLabelText('รหัสผ่าน'), { target: { value: 'a-long-password' } })
+    fireEvent.change(screen.getByLabelText('ยืนยันรหัสผ่าน'), { target: { value: 'a-long-password' } })
 
     fireEvent.submit(form())
     // รอจนคำขอสมัครจบจริง ไม่ใช่แค่ microtask เดียว — ไม่งั้นฟอร์มยังตั้งสถานะค้างอยู่หลังเทสจบ

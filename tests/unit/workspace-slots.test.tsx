@@ -380,7 +380,8 @@ describe('ทางออกของครูเมื่อแท็บยั�
     // และมีอีกจุดในเชลล์ ไม่งั้นสถานะ acquiring/conflict จะไม่มีที่แสดงเลย
     const shellBody = shellSource.slice(shellSource.indexOf('if (didReset)') + 1)
     expect(shellBody).toContain('<StorageStatus />')
-    expect(shellBody.indexOf('<StorageStatus />')).toBeLessThan(shellBody.indexOf('<Outlet />'))
+    // Outlet มี props (outlet context) ได้ — ยึดแค่ว่าสถานะการเขียนอยู่ก่อนจุดที่หน้าลูก render
+    expect(shellBody.indexOf('<StorageStatus />')).toBeLessThan(shellBody.indexOf('<Outlet'))
   })
 })
 

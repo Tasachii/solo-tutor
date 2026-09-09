@@ -11,12 +11,19 @@ export type AuthMode = 'signin' | 'signup'
 export function AuthForm({ onSession, hint, initialMode = 'signin' }: { onSession: (session: SupabaseSession) => void; hint?: string; initialMode?: AuthMode }) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  // ตอนสมัครต้องพิมพ์รหัสผ่านสองครั้งให้ตรงกัน — รหัสนี้เป็นกุญแจถอดสมุดบัญชีบนคลาวด์ด้วย พิมพ์ผิดครั้งเดียว = ล็อกตัวเองออกจากข้อมูล
+  const [confirm, setConfirm] = useState('')
   const [busy, setBusy] = useState(false)
   const [notice, setNotice] = useState('')
   const [mode, setMode] = useState<AuthMode>(initialMode)
 
   const submit = (e: FormEvent) => {
     e.preventDefault()
+    if (mode === 'signup' && password !== confirm) {
+      setNotice('รหัสผ่านสองช่องไม่ตรงกัน กรุณาพิมพ์ใหม่ให้เหมือนกัน')
+      setConfirm('')
+      return
+    }
     setBusy(true); setNotice('')
     void (async () => {
       try {
@@ -28,7 +35,7 @@ export function AuthForm({ onSession, hint, initialMode = 'signin' }: { onSessio
           ? error.message
           : 'ทำรายการไม่สำเร็จ กรุณาตรวจการเชื่อมต่ออินเทอร์เน็ตแล้วลองใหม่')
       } finally {
-        setPassword(''); setBusy(false)
+        setPassword(''); setConfirm(''); setBusy(false)
       }
     })()
   }
@@ -41,11 +48,12 @@ export function AuthForm({ onSession, hint, initialMode = 'signin' }: { onSessio
       : 'ยังไม่มีบัญชี? กดสมัครใช้งานด้านล่างได้เลย'}</p>
     <label className="fld"><span className="fld__l">อีเมล</span><input className="inp" type="email" autoComplete="username" required value={email} onChange={e => setEmail(e.target.value)} /></label>
     <label className="fld"><span className="fld__l">รหัสผ่าน</span><input className="inp" type="password" autoComplete={mode === 'signup' ? 'new-password' : 'current-password'} minLength={6} required value={password} onChange={e => setPassword(e.target.value)} /></label>
+    {mode === 'signup' && <label className="fld"><span className="fld__l">ยืนยันรหัสผ่าน</span><input className="inp" type="password" autoComplete="new-password" minLength={6} required value={confirm} onChange={e => setConfirm(e.target.value)} aria-invalid={confirm !== '' && confirm !== password ? true : undefined} /></label>}
     <button className="btn btn--primary" disabled={busy}>
       {busy ? (mode === 'signup' ? 'กำลังสมัคร…' : 'กำลังเข้าสู่ระบบ…') : (mode === 'signup' ? 'สมัครใช้งาน' : 'เข้าสู่ระบบ')}
     </button>
     <button type="button" className="btn btn--ghost btn--sm" disabled={busy}
-      onClick={() => { setMode(m => (m === 'signup' ? 'signin' : 'signup')); setNotice(''); setPassword('') }}>
+      onClick={() => { setMode(m => (m === 'signup' ? 'signin' : 'signup')); setNotice(''); setPassword(''); setConfirm('') }}>
       {mode === 'signup' ? 'มีบัญชีอยู่แล้ว เข้าสู่ระบบ' : 'ยังไม่มีบัญชี สมัครใช้งาน'}
     </button>
   </form>

@@ -108,7 +108,8 @@ test.describe('เข้าสู่ระบบจากหน้าแรก�
     await page.goto('?scenario=default#/login?mode=signup')
     await expect(page.getByRole('heading', { name: 'สมัครบัญชีครู' })).toBeVisible()
     await page.getByLabel('อีเมล').fill('new-teacher@example.com')
-    await page.getByLabel('รหัสผ่าน').fill('qa-password')
+    await page.getByLabel('รหัสผ่าน', { exact: true }).fill('qa-password')
+    await page.getByLabel('ยืนยันรหัสผ่าน').fill('qa-password')
     await page.getByRole('button', { name: 'สมัครใช้งาน' }).click()
 
     await expect(page).toHaveURL(/#\/app\/onboarding/, { timeout: 15_000 })
