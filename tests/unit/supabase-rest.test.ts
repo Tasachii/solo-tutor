@@ -259,6 +259,20 @@ describe('ครูสมัครบัญชีเอง', () => {
     expect(getSession()).toBeNull()
   })
 
+  // Supabase Auth ตอบรหัสผ่านผิดด้วย 400 — เจ้าของเคยเห็น "ทำรายการไม่สำเร็จ (HTTP 400)" ตอนลืมรหัส แล้วไม่รู้ว่าผิดตรงไหน
+  it('รหัสผ่านผิด (400 invalid_grant) บอกตรง ๆ ว่าอีเมลหรือรหัสผ่านไม่ถูกต้อง', async () => {
+    configure()
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(jsonResponse({ error: 'invalid_grant', error_description: 'Invalid login credentials' }, 400))
+    await expect(signIn('teacher@example.com', 'wrong')).rejects.toMatchObject({ code: 'invalid-credentials', message: 'อีเมลหรือรหัสผ่านไม่ถูกต้อง' })
+    expect(getSession()).toBeNull()
+  })
+
+  it('อีเมลยังไม่ยืนยัน (400 email_not_confirmed) บอกให้ไปกดลิงก์ในอีเมล ไม่ใช่บอกว่ารหัสผิด', async () => {
+    configure()
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(jsonResponse({ error_code: 'email_not_confirmed', msg: 'Email not confirmed' }, 400))
+    await expect(signIn('teacher@example.com', 'right')).rejects.toMatchObject({ code: 'confirm-required' })
+  })
+
   it('อีเมลซ้ำบอกให้ไปเข้าสู่ระบบแทน', async () => {
     configure()
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(jsonResponse({ error_code: 'user_already_exists' }, 422))

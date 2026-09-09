@@ -226,6 +226,16 @@ const responseError = (status: number, auth = false, body?: unknown): SupabaseRe
   if (status === 401 || status === 403) {
     return new SupabaseRestError(auth ? 'invalid-credentials' : 'unauthorized', auth ? 'อีเมลหรือรหัสผ่านไม่ถูกต้อง' : 'เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่', status)
   }
+  // Supabase Auth ตอบรหัสผ่านผิดด้วย 400 ไม่ใช่ 401 — เจ้าของเจอ "ทำรายการไม่สำเร็จ (HTTP 400)" ตอนลืมรหัส
+  // แล้วอ่านไม่ออกว่าเป็นรหัสผิดหรือระบบพัง · อีเมลที่ยังไม่ยืนยันก็มาเป็น 400 เหมือนกัน ต้องแยกให้ครูรู้ว่าไปทำอะไร
+  if (auth && status === 400) {
+    const detail = body && typeof body === 'object' ? body as { error_code?: unknown; error_description?: unknown; msg?: unknown } : {}
+    const text = [detail.error_code, detail.error_description, detail.msg].filter((v) => typeof v === 'string').join(' ').toLowerCase()
+    if (text.includes('not_confirmed') || text.includes('not confirmed')) {
+      return new SupabaseRestError('confirm-required', 'อีเมลนี้ยังไม่ได้ยืนยัน กรุณากดลิงก์ยืนยันในอีเมลก่อนเข้าสู่ระบบ', status)
+    }
+    return new SupabaseRestError('invalid-credentials', 'อีเมลหรือรหัสผ่านไม่ถูกต้อง', status)
+  }
   if (status === 429) return new SupabaseRestError('rate-limited', 'ส่งคำขอถี่เกินไป กรุณารอสักครู่', status)
   return new SupabaseRestError('remote-error', `Supabase ทำรายการไม่สำเร็จ (HTTP ${status})`, status)
 }
@@ -238,7 +248,7 @@ const authRequest = async (config: SupabaseConfig, grant: 'password' | 'refresh_
   })
   const data = await safeJson(response)
   if (response.status >= 500) reportRequestFailure()
-  if (!response.ok) throw responseError(response.status, grant === 'password')
+  if (!response.ok) throw responseError(response.status, grant === 'password', data)
   return sessionFromAuth((data ?? {}) as AuthResponse)
 }
 
