@@ -81,40 +81,35 @@
 
 ---
 
-## ข้อ 2 — LINE OA (10 นาที · สั้นกว่าเดิมมาก)
+## ข้อ 2 — LINE OA: เชื่อมใต้บัญชี KU (5 นาที)
 
-> **อ่านให้จบก่อนเปิด LINE Developers Console**
-> ตรวจฐานข้อมูลจริงเมื่อ 9 ก.ย. (`Actions` → `Ops and usage report`) ได้ว่า:
-> **มีช่อง LINE ตั้งค่าไว้แล้ว 1 ช่อง `status = active` และ `last_verified_at` มีค่า**
->
-> ค่าสองอย่างนี้ถูกตั้งโดยฟังก์ชัน `line-connect` ซึ่ง **ตั้ง webhook URL ให้เองผ่าน LINE API**
-> (`PUT /v2/bot/channel/webhook/endpoint`) แล้ว **สั่งให้ LINE ทดสอบยิง webhook** (`POST .../webhook/test`)
-> จะขึ้น `active` ได้ก็ต่อเมื่อ **ทั้งสองอย่างสำเร็จ** (`supabase/functions/line-connect/index.ts:53–76`)
->
-> แปลว่า **2.1–2.5 ของคู่มือฉบับก่อน ทำไปแล้วและผ่านแล้ว** การออก secret/token ใหม่ตอนนี้
-> จะทำให้ค่าที่ใช้งานได้อยู่กลายเป็นค่าเก่า และต้องไล่ตั้งใหม่ทั้งหมดโดยไม่ได้อะไรเพิ่ม — **อย่าทำ**
+> **สถานะ ณ 9 ก.ย. 10:30** — OA เคยผูกกับบัญชี Gmail ส่วนตัวที่ลืมรหัสผ่าน จึงกด workflow
+> `Release LINE channel from its teacher account` ปลดออกแล้ว (run 34311329226 · `line_channels` = 0)
+> ตอนนี้ **OA ยังไม่ผูกกับใคร** ต้องเชื่อมใหม่ใต้บัญชีที่จะใช้จริง = `phasathat.j@ku.th`
+> ค่าใน LINE Developers **ไม่ต้องออกใหม่** ใช้ตัวเดิมได้ทั้งคู่
 
-### 2.1 ทำไมยังส่งไม่ได้ — และสิ่งที่แก้ไปแล้ววันนี้
-`issue_line_link_code` (ฟังก์ชันออกรหัส 6 หลัก) เรียก `gen_random_bytes` ซึ่งอยู่ในสคีมา `extensions` ของ Supabase
-แต่ฟังก์ชันปักหมุด `search_path = public, pg_temp` ไว้ **มันจึงล้มทุกครั้งบนฐานจริงมาตั้งแต่ไมเกรชันแรก**
-ครูจึงกดออกรหัสไม่ได้เลย และไม่มีใครเคยไปถึงขั้นให้ผู้ปกครองพิมพ์รหัส
-**แก้แล้วด้วย `0019_pgcrypto_search_path.sql` และ apply ขึ้นฐานจริงแล้ว** — ลองใหม่ได้เลย
+### 2.1 คัดลอกค่าเดิมจาก LINE Developers (อย่ากด Issue)
+https://developers.line.biz/console/channel/2011503954
+- **Basic settings** → เลื่อนลง **Channel secret** → กดไอคอนคัดลอก
+- **Messaging API** → ล่างสุด **Channel access token (long-lived)** → กดไอคอนคัดลอก (ถ้าช่องว่างเปล่าไม่มีค่า ค่อยกด Issue — กรณีนี้เท่านั้น)
 
-### 2.2 ปิดข้อความอัตโนมัติ (จำเป็น · ต้องใช้บัญชีคุณ)
-https://manager.line.biz → OA Solo Tutor → **Settings** → **Response settings**
-- **Greeting message: ปิด** ไม่งั้นข้อความทักทายจะทับตอนผู้ปกครองเพิ่มเพื่อน
-- **Auto-response: ปิด** ไม่งั้นบอทตอบทับรหัส 6 หลักที่ผู้ปกครองพิมพ์
-- **Webhook: เปิด** · Chat เปิดถ้าจะตอบซัพพอร์ตเอง
+### 2.2 กรอกในแอปใต้บัญชี KU
+เว็บจริง → โหมดใช้จริง → เมนู → **เชื่อม LINE OA** → ต้องเห็น `phasathat.j@ku.th` บนสุด (ถ้าไม่ใช่ ออกจากระบบแล้วเข้าใหม่)
+→ การ์ด **"ตั้งค่าบัญชี OA"** → วาง Channel secret + Channel access token → **"เชื่อมบัญชี OA"**
+ระบบจะตรวจ token กับ LINE, ตั้ง webhook URL ให้, และสั่ง LINE ทดสอบยิง webhook เอง → การ์ดแรกต้องขึ้น **"เชื่อมต่อแล้ว — ตรวจ token และ Webhook URL ผ่าน"**
+ค่าถูกเข้ารหัสเก็บบนเซิร์ฟเวอร์และล้างจากฟอร์มทันที
 
-### 2.3 ยืนยันสวิตช์ Use webhook (30 วินาที)
-https://developers.line.biz/console/channel/2011503954 → **Messaging API** → **Webhook settings**
-- ช่อง URL ต้องเป็น `https://qbuafdbmpkffzbkqoysb.supabase.co/functions/v1/line-webhook` (ระบบตั้งให้แล้ว แค่ดูว่าตรง)
-- **Use webhook ต้องเปิด** — อันนี้เป็นสวิตช์ในคอนโซล API ตั้งให้ไม่ได้ ต้องคนกด
-- **ไม่ต้องกด Verify** ถ้าจะกดก็ได้ ต้องขึ้น Success (คำขอ Verify เป็น payload ว่าง จึงไม่สร้างแถวใน `line_webhook_events` การที่ตารางนั้นเป็น 0 จึงไม่ได้แปลว่า webhook เสีย)
+### 2.3 โทรศัพท์ต้องบล็อกแล้วแอด OA ใหม่
+แถว "เพิ่มเพื่อน" เดิมอยู่กับบัญชี Gmail เก่า ระบบต้องได้ event เพิ่มเพื่อนใหม่ใต้บัญชี KU
+→ ในแชท Solo Tutor OA: บล็อก → เลิกบล็อก/แอดใหม่ที่ https://line.me/R/ti/p/@458gfbxa → บอทต้องทักกลับ
 
-### 2.4 ถ้าจำเป็นต้องออก credential ใหม่จริง ๆ เท่านั้น
-เช่นสงสัยว่าหลุด — ลำดับที่ถูกคือ **ออกค่าใหม่ → กรอกในแอปให้สำเร็จก่อน → ค่อยกด Verify**
-เพราะ `line-webhook` ตรวจลายเซ็นด้วย secret ที่เก็บใน**ฐานข้อมูล** ถ้าฐานยังถือ secret เก่า Verify จะได้ 401
+### 2.4 OA Manager (ทำแล้ว 9 ก.ย. 09:00 — แค่ยืนยัน)
+Greeting ปิด · Auto-response ปิด (Response hours ปิด, Manual chat) · Webhooks เปิด
+
+### 2.5 ถ้าเชื่อมไม่ผ่าน
+- "token" → access token ผิด/หมดอายุ → คัดลอกใหม่ ถ้ายังไม่ได้ค่อย Issue ใหม่ในคอนโซล
+- "webhook" → LINE ทดสอบยิง webhook ไม่ผ่าน → รอ 1 นาทีลองใหม่ ถ้ายังไม่ได้ถ่ายจอส่ง Claude Code ให้ดู log
+- ลืมรหัสบัญชี KU ด้วย → **หยุด** อย่าสมัครอีเมลใหม่ ถามก่อน
 
 ---
 
