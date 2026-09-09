@@ -1,14 +1,15 @@
 // ข้อความถึงลูกค้าทุกประโยค — เสียงของครู ไม่มีคำว่า "ระบบ/อัตโนมัติ/Solo" (หลักการข้อ 8)
 export const tutorTemplates = {
-  /* {payLine} = "\nโอนได้ที่พร้อมเพย์ …" หรือช่องว่างเมื่อไม่มีเบอร์ให้โชว์ · {qtyNote} = " (เรียนครบ N ครั้ง)" หรือช่องว่างเมื่อยังไม่มีคาบ */
+  /* {payLine} = "\nโอนได้ที่พร้อมเพย์ …" หรือช่องว่างเมื่อไม่มีเบอร์ให้โชว์ · {qtyNote} = " (เรียนครบ N ครั้ง)" หรือช่องว่างเมื่อยังไม่มีคาบ
+     {payOrLink} (ข้อความเตือน) = บรรทัดพร้อมเพย์ หรือถ้าครูผูกด้วยเลขบัตร = บรรทัดลิงก์ QR — เจ้าของขอ 9 ก.ย. ไม่ให้มี "รายละเอียดที่ <ลิงก์>" ในข้อความเตือน */
   invoice:
     'เรียน{clientHonorific}{clientName} 🙏 ขอแจ้งค่าเรียน{subjectName} เดือน {periodThai} รวม {qty} ครั้ง เป็นเงิน {total} บาท{p}{payLine}\nสแกน QR หรือดูรายละเอียดได้ที่ {invoiceUrl}\nเมื่อโอนแล้วรบกวนส่งสลิปในแชทนี้ได้เลย{p} ขอบคุณ{p}',
   invoiceFlat:
     'เรียน{clientHonorific}{clientName} 🙏 ขอแจ้งค่าเรียน{subjectName} เดือน {periodThai} {total} บาท{p}{qtyNote}{payLine}\nสแกน QR หรือดูรายละเอียดได้ที่ {invoiceUrl}\nเมื่อโอนแล้วรบกวนส่งสลิปในแชทนี้ได้เลย{p} ขอบคุณ{p}',
   reminder: {
-    soft: 'เรียน{clientHonorific}{clientName} ขออนุญาตเรียนแจ้งค่าเรียน{subjectName} เดือน {periodThai} {total} บาท ที่ยังไม่ได้รับยอด{p} หากโอนแล้วรบกวนส่งสลิปให้ด้วยนะ{pq} รายละเอียดที่ {invoiceUrl} ขอบคุณ{p} 🙏',
-    clear: 'เรียน{clientHonorific}{clientName} ขออนุญาตติดตามค่าเรียน{subjectName} เดือน {periodThai} {total} บาท ซึ่งเลยกำหนดมา {daysOverdue} วัน{p} หากสะดวก รบกวนชำระภายในวันนี้หรือพรุ่งนี้ได้ไหม{pq} รายละเอียดที่ {invoiceUrl} ขอบคุณ{p} 🙏',
-    final: 'เรียน{clientHonorific}{clientName} ขออนุญาตเรียนแจ้งเรื่องค่าเรียน{subjectName} เดือน {periodThai} {total} บาท อีกครั้ง{p} หากมีเรื่องการชำระที่อยากปรึกษา ทักครูมาคุยได้เลยนะ{pq} ยินดีเสมอ{p} รายละเอียดที่ {invoiceUrl} 🙏',
+    soft: 'เรียน{clientHonorific}{clientName} ขออนุญาตเรียนแจ้งค่าเรียน{subjectName} เดือน {periodThai} {total} บาท ที่ยังไม่ได้รับยอด{p} หากโอนแล้วรบกวนส่งสลิปให้ด้วยนะ{pq} ขอบคุณ{p} 🙏{payOrLink}',
+    clear: 'เรียน{clientHonorific}{clientName} ขออนุญาตติดตามค่าเรียน{subjectName} เดือน {periodThai} {total} บาท ซึ่งเลยกำหนดมา {daysOverdue} วัน{p} หากสะดวก รบกวนชำระภายในวันนี้หรือพรุ่งนี้ได้ไหม{pq} ขอบคุณ{p} 🙏{payOrLink}',
+    final: 'เรียน{clientHonorific}{clientName} ขออนุญาตเรียนแจ้งเรื่องค่าเรียน{subjectName} เดือน {periodThai} {total} บาท อีกครั้ง{p} หากมีเรื่องการชำระที่อยากปรึกษา ทักครูมาคุยได้เลยนะ{pq} ยินดีเสมอ{p} 🙏{payOrLink}',
   },
   nudge:
     'สวัสดี{p} {clientHonorific}{clientName} เดือน {periodThai} {subjectName}เรียนไป {qty} ครั้ง ยอดคงเหลือ {total} บาท{p} สแกนโอนได้ตามสะดวกเลยนะ{pq} ขอบคุณ{p}',

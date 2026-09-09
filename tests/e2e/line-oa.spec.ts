@@ -221,7 +221,8 @@ test('เชื่อม OA ล้าง credentials สร้างรหัส
   await expect(page.getByText('เชื่อมต่อแล้ว')).toBeVisible()
 
   const parent = page.locator('.line-parent').filter({ hasText: 'คุณแม่แพรว' })
-  await parent.getByRole('button', { name: 'สร้างรหัสเชื่อม' }).click()
+  // ปุ่มเดียวกับบนการ์ดในแอดมิน: ออกรหัส + คัดลอกข้อความเชิญ (ปุ่ม "สร้างรหัสเชื่อม" แยกต่างหากถูกตัดออก 9 ก.ย. — ซ้ำ)
+  await parent.getByRole('button', { name: 'เชิญผู้ปกครองเข้า LINE', exact: true }).click()
   await expect(parent).toContainText('123456')
   backend.linked = true
   await page.getByRole('button', { name: 'ตรวจสถานะอีกครั้ง' }).click()
@@ -320,4 +321,17 @@ test('แท็บค้างจ่าย: ส่งทวงทั้งชุ
     const state = JSON.parse(localStorage.getItem(real)!)
     return state.messages.filter((m: { kind: string; status: string }) => m.kind === 'reminder' && m.status === 'sent').length
   }, REAL_SLOT)).toBe(1)
+})
+
+test('แท็บค้างจ่าย: การ์ดของผู้ปกครองที่ยังไม่จับคู่มีปุ่มเชิญ ของที่จับคู่แล้วไม่มี', async ({ page }) => {
+  // ปุ่มเชิญอยู่บนการ์ดเลย ครูไม่ต้องเข้าหน้าตั้งค่า (เจ้าของ 9 ก.ย.: "ไม่มีปุ่มให้ ผปค แอด LINE OA")
+  const backend = await installMockBackend(page, { connected: true, linked: true, linkedClients: ['c2'] })
+  await seedRealWorkspace(page)
+  await login(page)
+  await page.goto('#/app/admin?tab=collect')
+  const rows = page.getByTestId('collect-row')
+  const invite = { name: 'เชิญผู้ปกครองเข้า LINE', exact: true }
+  await expect(rows.filter({ hasText: 'คุณแม่ต้น' }).getByRole('button', invite)).toBeVisible()
+  await expect(rows.filter({ hasText: 'คุณพ่อภูมิ' }).getByRole('button', invite)).toHaveCount(0)
+  expect(backend.escaped).toEqual([])
 })

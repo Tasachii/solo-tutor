@@ -92,7 +92,9 @@ import Admin from '../../src/app/Admin'
 import { ToastProvider } from '../../src/app/components/Toast'
 
 const realState = (): AppState => reducer({
-  ...buildScenario('default'), mode: 'real', provider: { name: 'ครู QA', promptpayId: '0812345678' },
+  // เลขบัตรประชาชน (ไม่ใช่เบอร์) จงใจ — ตั้งแต่ 9 ก.ย. ใบเตือนค้างจ่ายที่ครูผูกด้วยเบอร์ไม่มีลิงก์เอกสารแล้ว
+  // (มีแต่บรรทัดพร้อมเพย์) เทสนี้ต้องการร่างที่ยังมีลิงก์ จึงใช้เลขบัตรให้ payOrLink คงลิงก์ QR ไว้
+  ...buildScenario('default'), mode: 'real', provider: { name: 'ครู QA', promptpayId: '1234567890121' },
   lineWorkspaceId: workspaceId, lineProviderId: providerId, sending: undefined,
 }, { type: 'track', name: 'init' })
 

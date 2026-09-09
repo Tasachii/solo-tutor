@@ -26,7 +26,9 @@ async function realInvoice(page: Page, destination = '0812345678') {
 const openPayment = (page: Page) => page.locator('.srow').filter({ hasText: 'ผู้เรียนทดสอบ' }).getByRole('button', { name: 'รับยอดจากสลิป' }).click()
 
 test('installments agree across balances, reminder, client, receipt and fresh recipient context', async ({ page, browser }) => {
-  await realInvoice(page)
+  // เลขบัตร (ไม่ใช่เบอร์) จงใจ — ตั้งแต่ 9 ก.ย. ใบเตือนของครูที่ผูกด้วยเบอร์ลงท้ายด้วยบรรทัดพร้อมเพย์ ไม่มีลิงก์เอกสาร
+  // เทสนี้ต้องเปิดเอกสารจากลิงก์ในใบเตือนใน context ใหม่ จึงใช้เลขบัตรให้ payOrLink คงลิงก์ QR ไว้
+  await realInvoice(page, '1234567890121')
   await openPayment(page)
   await page.getByRole('button', { name: 'ยอดไม่ตรง ใส่ยอดเอง' }).click()
   await page.locator('.sheet input').fill('1000')

@@ -25,9 +25,14 @@ test('picking a style shapes the demo, the filters and the add-sheet default; th
   await expect(sheet.getByText('หักจากแพ็ก', { exact: false })).toBeVisible()
   await sheet.getByRole('button', { name: 'ปิด' }).click()
 
-  // เมนู → รูปแบบการเก็บเงิน → ผสม
+  // ในเดโม เมนู ทั่วไป ไม่มี "รูปแบบการเก็บเงิน" แล้ว (ซ้ำกับ สลับชุดข้อมูล ในแท็บ เดโม — เจ้าของ 9 ก.ย.)
   await page.getByRole('button', { name: 'เมนู' }).click()
-  await page.getByRole('dialog', { name: 'เมนู' }).getByRole('button', { name: 'รูปแบบการเก็บเงิน' }).click()
+  const menu = page.getByRole('dialog', { name: 'เมนู' })
+  await expect(menu.getByRole('button', { name: 'รูปแบบการเก็บเงิน' })).toHaveCount(0)
+  await expect(menu.getByRole('button', { name: 'เชื่อม LINE OA' })).toBeVisible()
+  await page.keyboard.press('Escape')
+  // เปลี่ยนเฉพาะ hash = same-document nav ชุดข้อมูลเดิมยังอยู่ จึงยังเห็น "ใช้อยู่" ที่แบบเดิม
+  await page.goto(page.url().replace(/#.*$/, '#/start'))
   await expect(page).toHaveURL(/#\/start$/)
   await expect(page.getByText('ใช้อยู่')).toBeVisible()
   await page.getByRole('button', { name: /ผสม/ }).click()

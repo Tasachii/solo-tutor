@@ -15,6 +15,7 @@ import { getSession } from '../integrations/supabaseRest'
 import { lineShareUrl } from '../core/share'
 import { findDelivery } from '../integrations/lineApi'
 import LineMessageAction from './LineMessageAction'
+import { LineInviteAction } from './useLineLink'
 import { isPaymentDestination } from '../core/paymentDestination'
 import AdminCollect from './AdminCollect'
 import AdminHomework from './AdminHomework'
@@ -106,6 +107,8 @@ function MessageCard({ m, awaiting, queueActive, left, linkOnly, onSend, onSent,
           {!m.oaDelivery && <button className="btn btn--ghost btn--sm" onClick={onSkip}>{copy.common.skip}</button>}
         </div>
       )}
+      {/* ต่อท้ายการ์ดเสมอ ไม่ครอบและไม่ขยับ LineMessageAction (กับดัก J-44) — ปุ่มนี้ไม่ส่งอะไรทั้งสิ้น */}
+      <LineInviteAction clientId={m.clientId} disabled={queueActive} />
     </li>
   )
 }

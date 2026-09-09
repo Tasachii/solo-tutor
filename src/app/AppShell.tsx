@@ -189,15 +189,23 @@ export default function AppShell() {
                 ) : (
                   <button className="row row--go" onClick={() => { setMenu(false); setAsk('toReal') }}>{copy.menu.startReal}</button>
                 )}
-                <button className="row" onClick={() => { setMenu(false); nav('/start') }}>{copy.menu.style}</button>
+                {/* ในเดโม "รูปแบบการเก็บเงิน" คือการสลับชุดข้อมูล ซึ่งอยู่แท็บ เดโม อยู่แล้ว — โชว์สองที่ครูงง (เจ้าของ 9 ก.ย.) */}
+                {real && <button className="row" onClick={() => { setMenu(false); nav('/start') }}>{copy.menu.style}</button>}
                 {state.clients[0] && (
                   <button className="row" onClick={() => { setMenu(false); nav(`/client/${state.clients[0].id}`) }}>
                     {copy.menu.clientView}
                   </button>
                 )}
               </div>
-              <div className="fld__l menu__h">{copy.menu.secData}</div>
+              <div className="fld__l menu__h">{copy.menu.secParents}</div>
               <div className="rows rows--menu">
+                <button className="row" onClick={() => { setMenu(false); nav('/app/settings/line') }}>เชื่อม LINE OA</button>
+                <button className="row" onClick={() => { setMenu(false); setImportOpen(true) }}>{copy.importer.menu}</button>
+                <button className="row" onClick={() => { setMenu(false); download(rosterCsv(state), `รายชื่อ-${state.today}.csv`, 'text/csv;charset=utf-8') }}>{copy.importer.exportMenu}</button>
+              </div>
+              <div className="fld__l menu__h">{copy.menu.secBackup}</div>
+              <div className="rows rows--menu">
+                <button className="row" onClick={() => { setMenu(false); nav('/app/settings/account') }}>{copy.account.menu}{real && cloud.session ? ` · ${copy.account.status[cloud.status]}` : ''}</button>
                 <button className="row" onClick={async () => {
                   setMenu(false)
                   const ok = await saveBackup(state)
@@ -213,13 +221,10 @@ export default function AppShell() {
                   // ไฟล์คนละโหมดกับที่ใช้อยู่ = กำลังจะทับข้อมูลจริงด้วยเดโม หรือกลับกัน
                   setAsk({ restore: res.state, cross: res.state.mode !== state.mode })
                 }}>{copy.menu.restore}</button>
-                <button className="row" onClick={() => { setMenu(false); setImportOpen(true) }}>{copy.importer.menu}</button>
-                <button className="row" onClick={() => { setMenu(false); download(rosterCsv(state), `รายชื่อ-${state.today}.csv`, 'text/csv;charset=utf-8') }}>{copy.importer.exportMenu}</button>
-                <button className="row" onClick={() => { setMenu(false); nav('/app/settings/account') }}>{copy.account.menu}{real && cloud.session ? ` · ${copy.account.status[cloud.status]}` : ''}</button>
-                <button className="row" onClick={() => { setMenu(false); nav('/app/settings/line') }}>เชื่อม LINE OA</button>
                 <button className="row" onClick={() => { setMenu(false); setSheetsOpen(true) }}>{copy.sheets.menu}</button>
+              </div>
+              <div className="rows rows--menu">
                 <button className="row" onClick={() => { setMenu(false); nav('/app/help') }}>{copy.help.menu}</button>
-                {!real && <button className="row" onClick={() => { setMenu(false); setAsk('resetDemo') }}>{copy.menu.reset}</button>}
               </div>
             </>
           )}
@@ -294,6 +299,10 @@ export default function AppShell() {
                     {SCENARIO_LABEL[sc]}
                   </button>
                 ))}
+              </div>
+              {/* รีเซ็ตเป็นเรื่องของเดโมล้วน — เคยอยู่แท็บ ทั่วไป ปนกับสำรองข้อมูลจริง */}
+              <div className="rows rows--menu">
+                <button className="row" onClick={() => { setMenu(false); setAsk('resetDemo') }}>{copy.menu.reset}</button>
               </div>
             </div>
           )}

@@ -20,9 +20,9 @@ const genericTemplates = (profession: ProfessionTemplate): ProfessionMessages =>
     invoice: `เรียน{clientHonorific}{clientName} 🙏 ขอแจ้งค่าบริการ{subjectName} เดือน {periodThai} รวม {qty} ${v.units} เป็นเงิน {total} บาท{p}{payLine}\nสแกน QR หรือดูรายละเอียดได้ที่ {invoiceUrl}\nเมื่อโอนแล้วรบกวนส่งสลิปในแชทนี้ได้เลย{p} ขอบคุณ{p}`,
     invoiceFlat: `เรียน{clientHonorific}{clientName} 🙏 ขอแจ้งค่าบริการ{subjectName} เดือน {periodThai} {total} บาท{p}{qtyNote}{payLine}\nสแกน QR หรือดูรายละเอียดได้ที่ {invoiceUrl}\nเมื่อโอนแล้วรบกวนส่งสลิปในแชทนี้ได้เลย{p} ขอบคุณ{p}`,
     reminder: {
-      soft: 'เรียน{clientHonorific}{clientName} ขออนุญาตเรียนแจ้งยอดค่าบริการ{subjectName} เดือน {periodThai} {total} บาท ที่ยังไม่ได้รับยอด{p} หากโอนแล้วรบกวนส่งสลิปให้ด้วยนะ{pq} รายละเอียดที่ {invoiceUrl} ขอบคุณ{p} 🙏',
-      clear: 'เรียน{clientHonorific}{clientName} ขออนุญาตติดตามยอดค่าบริการ{subjectName} เดือน {periodThai} {total} บาท ซึ่งเลยกำหนดมา {daysOverdue} วัน{p} หากสะดวก รบกวนชำระภายในวันนี้หรือพรุ่งนี้ได้ไหม{pq} รายละเอียดที่ {invoiceUrl} ขอบคุณ{p} 🙏',
-      final: 'เรียน{clientHonorific}{clientName} ขออนุญาตเรียนแจ้งเรื่องยอดค่าบริการ{subjectName} เดือน {periodThai} {total} บาท อีกครั้ง{p} หากมีเรื่องการชำระที่อยากปรึกษา ทักมาคุยได้เลยนะ{pq} ยินดีเสมอ{p} รายละเอียดที่ {invoiceUrl} 🙏',
+      soft: 'เรียน{clientHonorific}{clientName} ขออนุญาตเรียนแจ้งยอดค่าบริการ{subjectName} เดือน {periodThai} {total} บาท ที่ยังไม่ได้รับยอด{p} หากโอนแล้วรบกวนส่งสลิปให้ด้วยนะ{pq} ขอบคุณ{p} 🙏{payOrLink}',
+      clear: 'เรียน{clientHonorific}{clientName} ขออนุญาตติดตามยอดค่าบริการ{subjectName} เดือน {periodThai} {total} บาท ซึ่งเลยกำหนดมา {daysOverdue} วัน{p} หากสะดวก รบกวนชำระภายในวันนี้หรือพรุ่งนี้ได้ไหม{pq} ขอบคุณ{p} 🙏{payOrLink}',
+      final: 'เรียน{clientHonorific}{clientName} ขออนุญาตเรียนแจ้งเรื่องยอดค่าบริการ{subjectName} เดือน {periodThai} {total} บาท อีกครั้ง{p} หากมีเรื่องการชำระที่อยากปรึกษา ทักมาคุยได้เลยนะ{pq} ยินดีเสมอ{p} 🙏{payOrLink}',
     },
     nudge: `สวัสดี{p} {clientHonorific}{clientName} เดือน {periodThai} {subjectName}ทำไป {qty} ${v.units} ยอดคงเหลือ {total} บาท{p} สแกนโอนได้ตามสะดวกเลยนะ{pq} ขอบคุณ{p}`,
     homework: 'สวัสดี{p} {clientHonorific}{clientName} วัน{dayThai}ที่ {dateThai} ของ{subjectName} มีสิ่งที่ฝากไว้{p}: {text} ขอบคุณ{p} 🙏',

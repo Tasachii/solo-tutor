@@ -15,6 +15,9 @@ import { useToast } from './components/Toast'
 import SubjectSheet, { parseMoneyInput } from './SubjectSheet'
 import { keptForRecords } from '../core/tombstones'
 import type { AppState } from '../core/types'
+import { LineInviteAction, useLineLink } from './useLineLink'
+import { lineLinkCopy } from './lineLinkCopy'
+import { oaAvailable } from './oaSend'
 
 export const mustArchiveSubject = (state: AppState, subjectId: string): boolean =>
   state.mode === 'real' && (
@@ -42,6 +45,8 @@ export default function SubjectDetail() {
   const [limit, setLimit] = useState(20)
 
   const s = subjectById(state, id)
+  // hook ต้องถูกเรียกก่อนทางออกก่อนกำหนดข้างล่างเสมอ ไม่งั้นลำดับ hook เปลี่ยนระหว่าง render
+  const link = useLineLink(s ? [s.clientId] : [])
   if (!s) return <div className="pane"><EmptyState icon="🔍" title="ไม่พบรายการนี้" action={<button className="btn btn--primary" onClick={() => nav('/app/subjects')}>{copy.common.back}</button>} /></div>
 
   const period = periodOf(state.today)
@@ -68,6 +73,10 @@ export default function SubjectDetail() {
         <button className="btn btn--ghost btn--sm" onClick={() => setEditing(true)}>{copy.detail.edit}</button>
       </div>
       <p className="dim">{client?.name} · {modeThai(s.billing.mode)}</p>
+      {/* ผู้จ่ายคนนี้รับบิลทาง OA ได้หรือยัง — ตอบตรงนี้เลย ครูจะได้ไม่ต้องเดาตอนกดส่ง */}
+      {oaAvailable(state) && link.session && link.channel?.status === 'active' && link.status(s.clientId) !== 'unknown'
+        && <p className="dim">{link.status(s.clientId) === 'linked' ? lineLinkCopy.linked : lineLinkCopy.unlinked}</p>}
+      <LineInviteAction clientId={s.clientId} />
 
       <section className="card">
         <h2 className="h2">{copy.detail.thisMonth}</h2>

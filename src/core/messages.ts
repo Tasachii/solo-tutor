@@ -106,12 +106,25 @@ export function invoiceText(state: AppState, inv: Invoice): string {
   return render(flat ? templates.invoiceFlat : templates.invoice, vars)
 }
 
+/**
+ * ท้ายข้อความเตือนค้างจ่าย — เจ้าของขอ 9 ก.ย.: ตัด "รายละเอียดที่ <ลิงก์>" ออก ใส่พร้อมเพย์ที่ต้องโอนแทน
+ * ผูกด้วยเบอร์ → บรรทัดพร้อมเพย์ ไม่มีลิงก์ · ผูกด้วยเลขบัตร (ไม่โชว์เลข) → คงลิงก์ QR ไว้ ไม่งั้นข้อความไม่มีทางจ่าย
+ */
+function payOrLink(state: AppState, invoiceUrl: string): string {
+  const line = payLine(state)
+  if (line.trim()) return line
+  // invoiceUrlOf คืนประโยค "ติดต่อผู้ให้บริการ…" แทนลิงก์เมื่อไม่มีเอกสาร — ห้ามเอาไปต่อท้าย "สแกน QR โอนได้ที่"
+  return /^https?:\/\//.test(invoiceUrl) ? `\nสแกน QR โอนได้ที่ ${invoiceUrl}` : `\n${invoiceUrl}`
+}
+
 export function reminderText(state: AppState, inv: Invoice, key: 'soft' | 'clear' | 'final'): string {
   const templates = templatesFor(state.professionId)
   const subject = subjectById(state, inv.subjectId)!
+  const invoiceUrl = invoiceUrlOf(subject.clientId, state, inv.id)
   return render(templates.reminder[key], {
     ...baseVars(state, subject),
-    invoiceUrl: invoiceUrlOf(subject.clientId, state, inv.id),
+    invoiceUrl,
+    payOrLink: payOrLink(state, invoiceUrl),
     periodThai: periodThai(inv.period),
     total: money(balanceDue(state, inv.id)),
     daysOverdue: daysOverdue(state, inv),

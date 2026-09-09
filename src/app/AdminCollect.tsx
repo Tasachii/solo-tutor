@@ -8,6 +8,7 @@ import { EmptyState, StatCard } from './components'
 import { useToast } from './components/Toast'
 import { copyText } from './share'
 import LineMessageAction from './LineMessageAction'
+import { LineInviteAction } from './useLineLink'
 import { linkStates, oaAvailable, sendMessageViaOa, type LinkState } from './oaSend'
 import { getSession } from '../integrations/supabaseRest'
 
@@ -139,6 +140,8 @@ export default function AdminCollect() {
                 <span className="dim">{c.noDraft}</span>
                 <button className="btn btn--secondary btn--sm" onClick={() => nudge(row)}>{c.nudge}</button>
               </div>}
+            {/* ต่อท้ายแถวเสมอ ไม่ครอบและไม่ขยับ LineMessageAction (กับดัก J-44) */}
+            <LineInviteAction clientId={row.invoice.clientId} disabled={!!progress || queueActive} />
           </li>
         })}
       </ul>

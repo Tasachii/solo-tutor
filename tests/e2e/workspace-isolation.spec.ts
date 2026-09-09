@@ -71,6 +71,9 @@ test('เมนูบอกช่องที่ใช้อยู่ และ�
   await openDemo(page)
   const sheet = await menu(page)
   await expect(sheet).toContainText(copy.menu.workspaceDemo)
+  // รีเซ็ตเป็นเรื่องของเดโมล้วน จึงย้ายไปแท็บ เดโม (9 ก.ย. — เมนูซ้ำ) ไม่อยู่ในแท็บ ทั่วไป อีกแล้ว
+  await expect(sheet.getByRole('button', { name: copy.menu.reset })).toHaveCount(0)
+  await sheet.getByRole('tab', { name: copy.menu.tabs.demo }).click()
   await sheet.getByRole('button', { name: copy.menu.reset }).click()
 
   const confirm = page.getByRole('dialog', { name: copy.menu.reset })
