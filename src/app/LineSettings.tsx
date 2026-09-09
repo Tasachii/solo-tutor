@@ -8,6 +8,7 @@ import { AuthForm } from './components/AuthForm'
 import { useCloudSync } from './CloudSync'
 import { deliveryTarget, eraseClients, readChannel, syncClients, type LineChannel } from '../integrations/lineApi'
 import { erasableClientKeys } from '../core/tombstones'
+import { lineAddFriendUrl, lineInviteMessage } from '../core/lineInvite'
 import { ConfirmSheet } from './components'
 import { copyText } from './share'
 
@@ -151,7 +152,14 @@ export default function LineSettings() {
           {!state.clients.length && <p>ยังไม่มีรายชื่อให้ผูก — <Link to="/app/subjects">เพิ่มผู้เรียนและชื่อผู้ปกครองก่อน</Link> แล้วกลับมาหน้านี้</p>}
           <ul className="rows">{state.clients.map(c => <li key={c.id} className="line-parent"><b>{c.name}</b><span>{linked[c.id] ? 'เชื่อมแล้ว' : 'ยังไม่เชื่อม'}</span>
             <button className="btn btn--secondary btn--sm" disabled={busy || channel?.status !== 'active'} onClick={() => issueCode(c.id)}>{codes[c.id] ? 'สร้างรหัสใหม่' : 'สร้างรหัสเชื่อม'}</button>
-            {codes[c.id] && <div><p>รหัสสำหรับ {c.name}: <strong>{codes[c.id].code}</strong></p><p className="hint">หมดอายุ {new Date(codes[c.id].expires_at).toLocaleString('th-TH')}</p><button className="btn btn--ghost btn--sm" onClick={() => void copyText(codes[c.id].code).then(ok => setNotice(ok ? 'คัดลอกรหัสแล้ว' : 'คัดลอกไม่สำเร็จ'))}>คัดลอกรหัส</button></div>}
+            {codes[c.id] && <div><p>รหัสสำหรับ {c.name}: <strong>{codes[c.id].code}</strong></p><p className="hint">หมดอายุ {new Date(codes[c.id].expires_at).toLocaleString('th-TH')}</p>
+              <div className="btnrow">
+                {/* ผู้ปกครองต้องรู้ลิงก์แอดกับรหัสพร้อมกัน — ข้อความเดียววางในแชทเดิมได้เลย */}
+                <button className="btn btn--primary btn--sm" onClick={() => void copyText(lineInviteMessage({
+                  clientName: c.name, code: codes[c.id].code, addFriendUrl: lineAddFriendUrl(channel?.basic_id), particle: state.provider.particle,
+                })).then(ok => setNotice(ok ? 'คัดลอกข้อความเชิญแล้ว — วางในแชท LINE ที่คุยกับผู้ปกครองได้เลย' : 'คัดลอกไม่สำเร็จ'))}>คัดลอกข้อความเชิญผู้ปกครอง</button>
+                <button className="btn btn--ghost btn--sm" onClick={() => void copyText(codes[c.id].code).then(ok => setNotice(ok ? 'คัดลอกรหัสแล้ว' : 'คัดลอกไม่สำเร็จ'))}>คัดลอกเฉพาะรหัส</button>
+              </div></div>}
           </li>)}</ul>
         </section>
         </>}
