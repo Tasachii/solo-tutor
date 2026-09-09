@@ -71,7 +71,7 @@ function MessageCard({ m, awaiting, queueActive, left, linkOnly, onSend, onSent,
       {m.edited && issue && !m.oaDelivery && <button className="btn btn--secondary btn--sm" onClick={() => {
         if (dispatch({ type: 'refreshMessage', id: m.id })) setEditing(false)
       }}>ใช้ร่างยอดล่าสุดแทนข้อความที่แก้</button>}
-      {m.oaDelivery ? null : awaiting ? (
+      {!m.oaDelivery && awaiting ? (
         // เปิด LINE ไปแล้ว — ยังไม่นับว่าส่งจนกว่าครูจะยืนยัน
         // การ์ดถามค้างไว้ ไม่ใช้ toast เพราะครูสลับไป LINE แล้ว toast หายไปก่อนกลับมา
         <div className="confirm">
@@ -88,7 +88,9 @@ function MessageCard({ m, awaiting, queueActive, left, linkOnly, onSend, onSent,
         </div>
       ) : (
         <div className="btnrow">
-          {/* ปุ่มเดียว "ส่งใน LINE": ผูก OA แล้วส่งผ่าน OA เอง ยังไม่ผูกเปิดแอป LINE ให้ส่งเอง · ส่งอยู่หน้าสุด แก้/ข้ามตามหลัง */}
+          {/* ปุ่มเดียว "ส่งใน LINE": ผูก OA แล้วส่งผ่าน OA เอง ยังไม่ผูกเปิดแอป LINE ให้ส่งเอง · ส่งอยู่หน้าสุด แก้/ข้ามตามหลัง
+              LineMessageAction ต้องอยู่ที่เดิมทั้งก่อนและหลัง oaDelivery เกิด — ถ้าย้ายตำแหน่ง React จะ mount ใหม่
+              แล้วข้อความแจ้งผล (เช่น "ติดต่อระบบ OA ไม่สำเร็จ") ที่เพิ่งตั้งไว้หายไป */}
           {editing ? (
             <button className="btn btn--secondary btn--sm" disabled={!text.trim()} onClick={() => {
               if (!text.trim()) { setEditError('ข้อความต้องไม่ว่าง'); return }
@@ -98,7 +100,7 @@ function MessageCard({ m, awaiting, queueActive, left, linkOnly, onSend, onSent,
           ) : (
             <>
               <LineMessageAction message={m} disabled={queueActive} onFallback={onSend} />
-              <button className="btn btn--ghost btn--sm" onClick={() => { setText(m.draft); setEditing(true) }}>{copy.common.edit}</button>
+              {!m.oaDelivery && <button className="btn btn--ghost btn--sm" onClick={() => { setText(m.draft); setEditing(true) }}>{copy.common.edit}</button>}
             </>
           )}
           {!m.oaDelivery && <button className="btn btn--ghost btn--sm" onClick={onSkip}>{copy.common.skip}</button>}
@@ -203,7 +205,7 @@ export default function Admin() {
         const prior = await findDelivery(`${state.lineWorkspaceId}:${m.dedupeKey}`)
         if (prior && !(prior.status === 'skipped' && prior.last_error === 'user-cancelled')) {
           popup.close()
-          toast.push({ text: 'มีรายการนี้ใน LINE OA แล้ว กดตรวจสอบผ่านปุ่มส่งด้วย LINE OA เพื่อป้องกันการส่งซ้ำ', tone: 'warn' }); return
+          toast.push({ text: 'มีรายการนี้ใน LINE OA แล้ว กดปุ่มตรวจสอบผลส่งเพื่อป้องกันการส่งซ้ำ', tone: 'warn' }); return
         }
       } catch { popup.close(); toast.push({ text: 'ตรวจผลส่ง LINE OA ไม่สำเร็จ กรุณาลองใหม่ก่อนแชร์ซ้ำ', tone: 'warn' }); return }
     } else if (willAwait) {

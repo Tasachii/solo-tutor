@@ -195,7 +195,7 @@ npm test            # 752 unit tests in 96 files (vitest, jsdom, clock frozen at
 npm run test:db     # 18 SQL contract files against every migration on postgres:16 and postgres:17 (Docker)
 npm run test:edge   # 48 Edge Function tests (Deno)
 npm run e2e         # 161 browser tests on the real build, Pixel 7 and desktop (Playwright)
-npm run e2e:mock    # 28 LINE OA flows against a mocked backend
+npm run e2e:mock    # 30 LINE OA flows against a mocked backend
 ```
 
 The browser suites share `./dist` and port 4173, so run them one at a time. A live-site pass at phone size — manifest, offline, long Thai names, backup file, check-in — is `node scripts/mobile-check.mjs`; it is deliberately not part of CI because it reaches the deployed site.

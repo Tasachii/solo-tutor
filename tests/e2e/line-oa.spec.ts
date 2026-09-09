@@ -253,7 +253,7 @@ test('timeout หลังเข้าคิวเก็บ marker ข้าม 
 
   let card = page.locator('.msg').filter({ hasText: messageText })
   await card.getByRole('button', { name: 'ส่งใน LINE' }).click()
-  await expect(card).toContainText('รอตรวจสอบ')
+  await expect(card).toContainText('รอยืนยันผล')
   await expect(card).toContainText('ติดต่อระบบ OA ไม่สำเร็จ', { timeout: 15_000 })
   await expect(card.getByRole('button', { name: 'ส่งใน LINE' })).toHaveCount(0)
   await expect.poll(() => page.evaluate((real) => {
@@ -264,9 +264,9 @@ test('timeout หลังเข้าคิวเก็บ marker ข้าม 
   await page.reload()
   await expect(page.locator('.skel')).toHaveCount(0)
   card = page.locator('.msg').filter({ hasText: messageText })
-  await expect(card).toContainText('รอตรวจสอบ')
+  await expect(card).toContainText('รอยืนยันผล')
   await expect(card.getByRole('button', { name: 'ส่งใน LINE' })).toHaveCount(0)
-  await card.getByRole('button', { name: 'ตรวจสอบผลส่ง LINE OA' }).click()
+  await card.getByRole('button', { name: 'ตรวจสอบผลส่ง' }).click()
   await expect(card).toHaveCount(0)
 
   expect(backend.enqueueCount).toBe(1)
