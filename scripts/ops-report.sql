@@ -12,6 +12,14 @@ select
   (select count(*) from public.line_link_codes where expires_at > now()) as รหัสที่ยังไม่หมดอายุ,
   (select count(*) from public.line_webhook_events)                as เหตุการณ์จาก_webhook;
 
+\echo '=== 1b. บัญชีครูที่ผูกช่อง LINE ไว้ (อีเมลปิดบางส่วน — ไว้รู้ว่าต้องล็อกอินบัญชีไหน) ==='
+select
+  left(u.email, 2) || '***@' || split_part(u.email, '@', 2) as อีเมลที่เชื่อม_OA,
+  c.status as สถานะช่อง,
+  c.display_name as ชื่อ_OA,
+  (c.last_verified_at at time zone 'Asia/Bangkok')::timestamp(0) as ตรวจผ่านเมื่อ_เวลาไทย
+from public.line_channels c join auth.users u on u.id = c.provider_id;
+
 \echo '=== 2. คิวข้อความ (ยังไม่เคยส่งจริง = ทุกช่องเป็น 0) ==='
 select status as สถานะ, count(*) as จำนวน from public.message_outbox group by status order by status;
 

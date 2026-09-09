@@ -1,5 +1,8 @@
 import { useEffect, useState } from 'react'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
+
+/** สิ่งที่หน้าลูกใน AppShell เรียกกลับขึ้นมาได้ — อ่านด้วย useOutletContext */
+export interface ShellOutletContext { startReal: () => void }
 import { useStore } from '../core/store'
 import type { AppState } from '../core/types'
 import { pickBackup, saveBackup } from './backup'
@@ -143,7 +146,9 @@ export default function AppShell() {
           ปุ่มที่กดแล้วเงียบแย่กว่าบั๊กเดิม — บอกสถานะและทางออกไว้เหนือเนื้อหาเสมอ */}
       <StorageStatus />
 
-      <main className="shell__main"><Outlet /></main>
+      {/* หน้าลูกบางหน้า (เช่น เชื่อม LINE OA ในโหมดเดโม) ต้องพาครูไปเริ่มใช้จริงได้จากตรงนั้นเลย
+          ไม่ใช่ให้ไปหาเองในเมนู — ชีทยืนยันอยู่ที่นี่ จึงส่งตัวเปิดลงไปทาง outlet context */}
+      <main className="shell__main"><Outlet context={{ startReal: () => setAsk('toReal') } satisfies ShellOutletContext} /></main>
 
       <nav className="tabbar">
         {tabs.map((t) => (

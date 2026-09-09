@@ -1,3 +1,4 @@
+import { copy } from '../../src/copy'
 import { expect, test, type Page } from './fixtures'
 
 const runtimeErrors = new WeakMap<Page, string[]>()
@@ -38,7 +39,7 @@ test('primary navigation and list rows stay inside the app', async ({ page }) =>
   await page.getByRole('link', { name: /นักเรียน/ }).click()
   await page.locator('.srow').filter({ hasText: 'น้องแพรว' }).click()
   await expect(page).toHaveURL(/#\/app\/subjects\/s1$/)
-  await page.getByRole('button', { name: 'ดูมุมมองผู้จ่าย' }).click()
+  await page.getByRole('button', { name: copy.detail.clientView }).click()
   await expect(page).toHaveURL(/#\/client\/c1$/)
   expect(popups).toEqual([])
 })
