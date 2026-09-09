@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
-import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
+import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 
 /** สิ่งที่หน้าลูกใน AppShell เรียกกลับขึ้นมาได้ — อ่านด้วย useOutletContext */
 export interface ShellOutletContext { startReal: () => void }
-import { useStore } from '../core/store'
+import { demoFrozenByPendingOa, useStore } from '../core/store'
 import type { AppState } from '../core/types'
 import { pickBackup, saveBackup } from './backup'
 import { SCHEMA } from '../core/store'
@@ -151,6 +151,12 @@ export default function AppShell() {
       {/* สลับ workspace ต้องขอสิทธิ์เขียนของช่องใหม่ก่อน ระหว่างนั้นแท็บบันทึกไม่ได้
           ปุ่มที่กดแล้วเงียบแย่กว่าบั๊กเดิม — บอกสถานะและทางออกไว้เหนือเนื้อหาเสมอ */}
       <StorageStatus />
+
+      {/* เดโมที่หยุดข้ามเดือนเพราะมีข้อความรอผลส่ง — การปฏิเสธถูกแล้ว แต่เงียบไม่ได้
+          ครูจะเห็นข้อมูลเดือนก่อนค้างอยู่แล้วคิดว่าแอปพัง · วางไว้ระดับ shell จึงขึ้นทุกหน้า */}
+      {demoFrozenByPendingOa(state) && <p className="warnbar" role="status" data-testid="demo-paused-oa">
+        {copy.demoPaused.notice} <Link to="/app/admin">{copy.demoPaused.cta}</Link>
+      </p>}
 
       {/* หน้าลูกบางหน้า (เช่น เชื่อม LINE OA ในโหมดเดโม) ต้องพาครูไปเริ่มใช้จริงได้จากตรงนั้นเลย
           ไม่ใช่ให้ไปหาเองในเมนู — ชีทยืนยันอยู่ที่นี่ จึงส่งตัวเปิดลงไปทาง outlet context */}

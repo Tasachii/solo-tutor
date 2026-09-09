@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, render, waitFor } from '@testing-library/react'
 import {
-  ACTIVE_MODE_KEY, DEMO_SLOT_KEY, REAL_SLOT_KEY, StoreProvider, useStore,
+  ACTIVE_MODE_KEY, DEMO_SLOT_KEY, REAL_SLOT_KEY, StoreProvider, demoFrozenByPendingOa, useStore,
 } from '../../src/core/store'
 import { buildScenario } from '../../src/core/scenarios'
 import { reducer } from '../../src/core/store'
@@ -116,7 +116,7 @@ describe('สมุด LINE ของช่องเดโมรอดทุก�
     expect(ids(store.state)).toEqual(PAIRED)
   })
 
-  it('มีรายการ OA ค้างตรวจ: ข้ามเดือนก็ไม่สร้างชุดใหม่ทับ แค่เดินวันให้ทัน', async () => {
+  it('มีรายการ OA ค้างตรวจ: ข้ามเดือนก็ไม่สร้างชุดใหม่ทับ และวันของสมุดต้องค้างไว้', async () => {
     // reducer กัน replace/restore ไว้แล้ว แต่ทางข้ามเดือนไม่ผ่าน reducer เลย
     // ถ้าสร้างใหม่ทับ การ์ดที่ค้างจะกลับมาเป็นปุ่ม "ส่งใน LINE" แล้วครูแชร์เองซ้ำได้
     on('2027-03-15')
@@ -125,10 +125,35 @@ describe('สมุด LINE ของช่องเดโมรอดทุก�
     on('2027-04-02')
     mount()
     await waitFor(() => expect(store.writeStatus).toBe('writable'))
-    expect(store.state.today).toBe('2027-04-02')
+    // เดิมเดินวันไปเป็น 2027-04-02 ซึ่งลบสัญญาณ "ชุดนี้ยังไม่ถูกสร้างใหม่" ทิ้งถาวร:
+    // รอบหน้า periodOf เท่ากันแล้ว ชุดเก่าจะอยู่ยาวถึงการข้ามเดือนครั้งถัดไป แม้ครูตรวจผลเสร็จแล้ว
+    // และหน้าจอก็อธิบายไม่ได้ว่าทำไมข้อมูลไม่ขยับ — วันที่ค้างไว้คือสิ่งที่ทั้งสองอย่างอ่าน
+    expect(store.state.today).toBe('2027-03-15')
+    expect(demoFrozenByPendingOa(store.state)).toBe(true)
     expect(store.state.messages.find(m => m.id === pending.id)!.oaDelivery).toBeTruthy()
     // ชุดเดิมยังอยู่ ไม่ได้ถูกสร้างใหม่ (บิลยังเป็นของเดือนเก่า)
     expect(store.state.invoices.some(i => i.period === '2027-02')).toBe(true)
+    expect(ids(store.state)).toEqual(PAIRED)
+  })
+
+  it('ตรวจผลส่งจนจบแล้วเปิดใหม่: ชุดถูกสร้างใหม่ทันที ไม่ต้องรอข้ามเดือนอีกรอบ', async () => {
+    on('2027-03-15')
+    const pending = withPendingSend()
+    seedPairedDemo({ today: '2027-03-15', messages: pending.messages })
+    on('2027-04-02')
+    mount()
+    await waitFor(() => expect(store.writeStatus).toBe('writable'))
+    expect(demoFrozenByPendingOa(store.state)).toBe(true)
+    cleanup()
+
+    // ครูกด "ตรวจสอบผลส่ง" จนรายการค้างหมดจากช่องเดโม แล้วเปิดแอปใหม่
+    seedPairedDemo({ today: '2027-03-15', messages: pending.messages.map(m => ({ ...m, oaDelivery: undefined })) })
+    mount()
+    await waitFor(() => expect(store.writeStatus).toBe('writable'))
+
+    expect(store.state.today).toBe('2027-04-02')
+    expect(demoFrozenByPendingOa(store.state)).toBe(false)
+    for (const invoice of store.state.invoices) expect(['2027-03', '2027-02', '2027-01']).toContain(invoice.period)
     expect(ids(store.state)).toEqual(PAIRED)
   })
 
@@ -167,5 +192,37 @@ describe('สมุด LINE ของช่องเดโมรอดทุก�
     // ข้อมูลตัวอย่างที่เหลือไม่ใช่ของบัญชีใคร จึงต้องไม่ถูกล้างไปด้วย
     expect(read(DEMO_SLOT_KEY).subjects.length).toBeGreaterThan(0)
     expect(read(REAL_SLOT_KEY).subjects).toEqual([])
+  })
+})
+
+/**
+ * คำเตือนบนหน้าจอต้องขึ้นเฉพาะสถานะเดียว — เดโมที่ค้างเดือนก่อน *และ* ยังมีข้อความรอผลส่ง
+ * ขึ้นผิดที่ = ครูโหมดจริงเห็นคำเตือนเรื่องข้อมูลตัวอย่าง · ไม่ขึ้น = ครูคิดว่าแอปพัง
+ */
+describe('demoFrozenByPendingOa — เงื่อนไขเดียวกับที่การสร้างชุดใหม่ถูกปฏิเสธ', () => {
+  const stale = (over: Partial<AppState> = {}): AppState => ({
+    ...buildScenario('default'), today: '2027-03-15', messages: withPendingSend().messages, ...over,
+  })
+
+  it('เดโม + สมุดค้างเดือนก่อน + มีข้อความรอผลส่ง = เตือน', () => {
+    on('2027-04-02')
+    expect(demoFrozenByPendingOa(stale())).toBe(true)
+  })
+
+  it('โหมดจริงไม่เตือนเลย แม้เข้าเงื่อนไขอื่นครบ — สมุดจริงไม่เคยถูกสร้างใหม่ตามเดือน', () => {
+    on('2027-04-02')
+    expect(demoFrozenByPendingOa(stale({ mode: 'real' }))).toBe(false)
+  })
+
+  it('เดโมที่ยังอยู่เดือนเดียวกับวันนี้ไม่เตือน แม้มีข้อความรอผลส่ง — ไม่มีอะไรถูกหยุด', () => {
+    on('2027-03-20')
+    expect(demoFrozenByPendingOa(stale())).toBe(false)
+  })
+
+  it('เดโมค้างเดือนก่อนแต่ไม่มีข้อความรอผลส่งไม่เตือน — ชุดถูกสร้างใหม่ไปแล้วตอนเปิด', () => {
+    on('2027-04-02')
+    expect(demoFrozenByPendingOa(stale({
+      messages: withPendingSend().messages.map(m => ({ ...m, oaDelivery: undefined })),
+    }))).toBe(false)
   })
 })

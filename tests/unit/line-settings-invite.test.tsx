@@ -183,6 +183,43 @@ describe('หน้า LINE OA หลังเข้าสู่ระบบ', (
     expect(screen.getByRole('button', { name: 'คัดลอกเฉพาะรหัส' })).toBeTruthy()
   })
 
+  /** เปิดหน้าเสร็จ = คำขอชุดเปิดหน้าจบแล้ว ปุ่มตรวจสถานะกลับมากดได้ */
+  const settled = async () => {
+    await waitFor(() => expect(api.deliveryTarget).toHaveBeenCalled())
+    await waitFor(() => expect((screen.getByRole('button', { name: 'ตรวจสถานะอีกครั้ง' }) as HTMLButtonElement).disabled).toBe(false))
+  }
+
+  /**
+   * เปิดหน้านี้เคยยิง `line_delivery_target` เป็นสองเท่าของจำนวนผู้จ่าย: effect ของ hook ยิงชุดแรก
+   * แล้ว `refresh()` ของหน้านี้ยกเลิกทั้งชุดทิ้งแล้วยิงใหม่ทันที คำตอบชุดแรกถูกโยนทิ้งทุกใบ
+   * ครูที่มีผู้ปกครองยี่สิบคนจ่ายค่านั้นบนเน็ตงานประชุม
+   */
+  it('เปิดหน้านี้: ถามสถานะผู้จ่ายคนละครั้งเดียว และคำตอบชุดนั้นขึ้นจอจริง', async () => {
+    api.deliveryTarget.mockResolvedValue({ recipient_id: recipientId, unfollowed_at: null, eligible: true })
+    show()
+    await settled()
+
+    // ขึ้นจอครบทุกแถว = คำตอบที่ "เกาะไปด้วย" ถูกใช้จริง ไม่ใช่แค่ยิงน้อยลงแล้วค้างที่ยังไม่รู้
+    expect(screen.getAllByText('เชื่อมแล้ว').length).toBe(state.clients.length)
+    expect(api.deliveryTarget).toHaveBeenCalledTimes(state.clients.length)
+    expect(new Set(api.deliveryTarget.mock.calls.map(call => call[1])).size).toBe(state.clients.length)
+  })
+
+  /** สิ่งที่ห้ามเสียไปพร้อมกับการตัดคำขอซ้ำ: ผู้ปกครองเพิ่งพิมพ์รหัส ครูกดตรวจแล้วต้องได้ค่าใหม่ */
+  it('กด "ตรวจสถานะอีกครั้ง": ถามใหม่จริงทุกคน ไม่ใช่ตอบจากค่าที่แคชไว้', async () => {
+    show()
+    await settled()
+    const afterOpen = api.deliveryTarget.mock.calls.length
+    expect(screen.getAllByText('ยังไม่เชื่อม').length).toBe(state.clients.length)
+
+    // ผู้ปกครองพิมพ์รหัสระหว่างที่ครูเปิดหน้านี้ค้างไว้ — ค่าที่แคชไว้ตอบผิดแล้ว
+    api.deliveryTarget.mockResolvedValue({ recipient_id: recipientId, unfollowed_at: null, eligible: true })
+    fireEvent.click(screen.getByRole('button', { name: 'ตรวจสถานะอีกครั้ง' }))
+
+    await waitFor(() => expect(screen.getAllByText('เชื่อมแล้ว').length).toBe(state.clients.length))
+    expect(api.deliveryTarget.mock.calls.length).toBe(afterOpen + state.clients.length)
+  })
+
   it('ผู้จ่ายที่ครูลบไปแล้วถูกล้างออกจากเซิร์ฟเวอร์ตอนเปิดหน้านี้', async () => {
     const gone = state.clients[0].id
     state = {

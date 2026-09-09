@@ -688,12 +688,26 @@ function refreshDemoDay(saved: AppState): AppState {
   const now = todayISO()
   if (saved.today === now) return saved
   // ข้ามเดือน = สร้างชุดใหม่ทั้งชุด แต่สมุด LINE ของช่องนี้ต้องอยู่ต่อ
-  // ยกเว้นยังมีรายการ OA ค้างตรวจ — เดินวันให้ทันไปก่อน ชุดจะถูกสร้างใหม่รอบหน้าหลังครูตรวจผลเสร็จ
-  if (periodOf(saved.today) !== periodOf(now) && !hasPendingOa(saved)) {
+  if (periodOf(saved.today) !== periodOf(now)) {
+    // ยังมีรายการ OA ค้างตรวจ = สร้างใหม่ไม่ได้ และ**ห้ามเดินวันข้ามเดือนไปด้วย**
+    // วันของสมุดคือสัญญาณเดียวที่บอกว่าชุดนี้ยังไม่ถูกสร้างใหม่ ดันไปเดือนนี้เมื่อไหร่สัญญาณหายถาวร:
+    // รอบหน้า periodOf เท่ากันแล้ว ชุดเก่าจะอยู่ยาวจนถึงการข้ามเดือนครั้งถัดไป แม้ครูตรวจผลเสร็จแล้ว
+    // และหน้าจอก็อธิบายไม่ได้ว่าทำไมข้อมูลไม่ขยับ · ค้างวันไว้ = `demoFrozenByPendingOa` เห็น และกู้คืนเองรอบหน้า
+    if (hasPendingOa(saved)) return saved
     return carryLineIds(saved, buildScenario(saved.scenarioId))
   }
   return { ...saved, today: now }
 }
+
+/**
+ * สมุดตัวอย่างค้างอยู่เดือนก่อนเพราะยังมีข้อความรอผลส่งผ่าน OA — เงื่อนไขเดียวกับที่ `refreshDemoDay` ปฏิเสธ
+ *
+ * ต้องมีเพื่อบอกครู: การปฏิเสธถูกแล้ว (สมุดต้องไม่ถูกสร้างใหม่ใต้ข้อความที่ยังไม่รู้ผล)
+ * แต่ถ้าไม่บอก ครูเห็นแค่ข้อมูลเดือนก่อนค้างอยู่โดยไม่มีเหตุผล แล้วคิดว่าแอปพัง
+ * โหมดจริงไม่มีทางเข้าเงื่อนไขนี้ — สมุดจริงไม่เคยถูกสร้างใหม่ตามเดือนอยู่แล้ว
+ */
+export const demoFrozenByPendingOa = (state: AppState): boolean =>
+  state.mode === 'demo' && periodOf(state.today) !== periodOf(todayISO()) && hasPendingOa(state)
 
 interface Hydrated {
   mode: WorkspaceMode

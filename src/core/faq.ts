@@ -97,13 +97,15 @@ export function answer(state: AppState, clientId: string, question: string): Faq
         }),
       }
     }
-    const due = invs.filter((invoice) => invoice.status === 'sent' || invoice.status === 'overdue')
-      .reduce((sum, invoice) => sum + balanceDue(state, invoice.id), 0)
-    if (state.mode === 'real') {
-      const open = invs.filter(i => i.status === 'sent' || i.status === 'overdue')
-      if (open.length) return { source, text: open.map(inv =>
-        render(state, templates.faq.paymentUnpaid, { total: money(balanceDue(state, inv.id)), invoiceUrl: invoiceUrlOf(clientId, state, inv.id) })).join('\n\n') }
-    }
+    const open = invs.filter((invoice) => invoice.status === 'sent' || invoice.status === 'overdue')
+    // ยอดรวมมาจากใบเดียวกับที่ตอบทีละใบเสมอ — กรองสองรอบแล้วสองทางจะเพี้ยนจากกันเงียบ ๆ
+    const due = open.reduce((sum, invoice) => sum + balanceDue(state, invoice.id), 0)
+    // ค้างหลายใบ = ตอบทีละใบพร้อมยอดและลิงก์ของใบนั้น ผู้ปกครองจะได้จ่ายถูกใบ
+    // เดโมตอบแบบเดียวกับโหมดจริงตั้งแต่ 9 ก.ย.: `invoiceUrlOf` ออก `#/document/<token>` ให้ทั้งสองโหมด
+    // (เงื่อนไข mode เดิมทำให้เดโมได้ย่อหน้าเดียวจากยอดรวม ทั้งที่ลิงก์ต่อใบใช้ได้แล้ว)
+    if (open.length) return { source, text: open.map(inv =>
+      render(state, templates.faq.paymentUnpaid, { total: money(balanceDue(state, inv.id)), invoiceUrl: invoiceUrlOf(clientId, state, inv.id) })).join('\n\n') }
+    // ไม่มีใบไหนค้าง (เช่น ใบล่าสุดยังเป็นร่าง) — ตอบยอดรวมเป็นทางสำรองเหมือนเดิม
     return { source, text: render(state, templates.faq.paymentUnpaid, { invoiceUrl: invoiceUrlOf(clientId, state), total: money(due) }) }
   }
 

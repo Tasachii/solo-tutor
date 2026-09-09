@@ -42,6 +42,12 @@ let generation = 0
 let ticket = 0
 const targets = new Map<string, Entry>()
 const pending = new Map<string, number>()
+/**
+ * คำขอที่กำลังวิ่งของแต่ละคีย์ — เก็บไว้ให้ `refresh` ที่มาทีหลัง "เกาะไปด้วย" แทนที่จะยิงซ้ำ
+ * ไม่งั้นหน้าตั้งค่าที่เปิดมาแล้วสั่งตรวจใหม่ทันที จะยิง `line_delivery_target` สองเท่าของจำนวนผู้จ่าย
+ * แล้วทิ้งคำตอบชุดแรกทั้งชุด — ครูที่มีผู้ปกครองยี่สิบคนจ่ายค่านั้นบนเน็ตงานประชุม
+ */
+const inflight = new Map<string, Promise<void>>()
 let channelRow: LineChannel | null = null
 let channelLoaded = false
 let channelTicket = 0
@@ -54,12 +60,12 @@ const targetKey = (workspace: string, clientId: string): string => `${workspace}
  * ไม่ลบผลเดิมทิ้ง: ระหว่างถามใหม่ ครูต้องเห็นคำตอบเก่าไปก่อน ไม่ใช่เห็นปุ่มหายไปแล้วโผล่กลับมา
  */
 const supersede = (keys: string[]): void => {
-  for (const key of keys) pending.delete(key)
+  for (const key of keys) { pending.delete(key); inflight.delete(key) }
 }
 
 const dropCache = (): void => {
   generation += 1
-  targets.clear(); pending.clear()
+  targets.clear(); pending.clear(); inflight.clear()
   channelRow = null; channelLoaded = false; channelInFlight = false
   channelTicket += 1
 }
@@ -103,7 +109,7 @@ const loadTargets = async (workspace: string, clientIds: string[], force = false
   if (!wanted.length) return
   for (const id of wanted) pending.set(targetKey(workspace, id), ++ticket)
   // ถามพร้อมกันทีเดียว ไม่ใช่ทีละใบตามลำดับ — ครูเปิดหน้าแล้วปุ่มต้องขึ้นพร้อมกัน
-  await Promise.all(wanted.map(async id => {
+  const runs = wanted.map(async id => {
     const key = targetKey(workspace, id)
     const mine = pending.get(key)
     try {
@@ -113,9 +119,12 @@ const loadTargets = async (workspace: string, clientIds: string[], force = false
     } catch {
       // ไม่รู้ผล = ไม่ตัดสิน ครูกด "ตรวจสถานะ" ใหม่ได้
     } finally {
-      if (pending.get(key) === mine) pending.delete(key)
+      if (pending.get(key) === mine) { pending.delete(key); inflight.delete(key) }
     }
-  }))
+  })
+  // ลงทะเบียนหลังตัวคำขอเริ่มวิ่งแล้ว แต่ยังอยู่ในบล็อกซิงโครนัสเดียวกัน — `finally` เป็น microtask จึงมาทีหลังเสมอ
+  wanted.forEach((id, index) => inflight.set(targetKey(workspace, id), runs[index]))
+  await Promise.all(runs)
   notify()
 }
 
@@ -131,6 +140,15 @@ export function useLineLink(clientIds: string[] = []) {
   const working = useRef(false)
 
   const cacheGeneration = generation
+  /**
+   * "เจตนา" ของผู้เรียก = สถานะตั๋วตอน render นี้เกิด — ปุ่มที่ครูกดถือ closure ของ render นั้น
+   * คำขอที่ตั๋วใหม่กว่านี้แปลว่าเริ่มวิ่ง*หลัง*ผู้เรียกตั้งใจจะถาม คำตอบจึงสดพอสำหรับการถามครั้งนี้
+   * (หน้าตั้งค่าเปิดมา: effect ของ hook ยิงก่อน แล้ว effect ของหน้ายิง `refresh` ด้วย closure ของ render แรก)
+   *
+   * ขอบที่ยอมรับไว้: คำขอที่เริ่ม*หลัง* render ล่าสุดแต่*ก่อน*ครูกดปุ่ม จะถูกเกาะแทนการถามใหม่
+   * ช่วงนั้นกว้างแค่หนึ่ง render · ปุ่มบนหน้าตั้งค่าถูกปิดระหว่าง busy และปุ่มบนการ์ดมีต่อเมื่อเชิญแล้ว
+   */
+  const intentTicket = ticket
   const workspace = state.lineWorkspaceId
   const mismatch = !!session && !!state.lineProviderId && state.lineProviderId !== session.user.id
   /** OA มีความหมายเฉพาะโหมดจริงที่ผูกโปรเจกต์แล้ว + เข้าสู่ระบบด้วยบัญชีที่เป็นเจ้าของสมุดนี้ */
@@ -188,11 +206,26 @@ export function useLineLink(clientIds: string[] = []) {
     try {
       // ถามใหม่โดยยังโชว์คำตอบเก่าไว้ก่อน — ถ้าล้างค่าทิ้งระหว่างรอ ปุ่มที่ครูเพิ่งกดจะหายไปใต้นิ้ว
       // ยกเลิกเฉพาะความเป็นเจ้าของคำขอของคีย์ที่จะถามใหม่ ของการ์ดใบอื่นที่กำลังโหลดอยู่ไม่ถูกแตะ
+      //
+      // แยกคีย์ให้เสร็จ**ก่อน await ตัวแรก**: หลัง await คำขอของ effect อาจจบไปแล้ว
+      // แล้วจะแยกไม่ออกว่า "ไม่มีคำขอค้าง" เพราะยังไม่เคยถาม หรือเพราะเพิ่งถามไปเมื่อกี้
+      const asked = only ?? ids
+      const joining: Promise<void>[] = []
+      const refetch: string[] = []
+      if (workspace) for (const id of asked) {
+        const key = targetKey(workspace, id)
+        const run = inflight.get(key)
+        const held = pending.get(key)
+        // เกาะคำขอที่เริ่มหลังเจตนาของผู้เรียก · เก่ากว่านั้นถือว่าตอบคำถามคนละคำถาม ต้องถามใหม่
+        if (run && held !== undefined && held > intentTicket) { joining.push(run); continue }
+        supersede([key])
+        refetch.push(id)
+      }
       channelInFlight = false; channelTicket += 1
-      if (workspace) supersede((only ?? ids).map(id => targetKey(workspace, id)))
       await loadChannel()
       await flushErasures()
-      if (workspace) await loadTargets(workspace, only ?? ids, true)
+      if (workspace && refetch.length) await loadTargets(workspace, refetch, true)
+      if (joining.length) await Promise.all(joining)
       if (one) {
         // ผลใหม่เป็นวัตถุคนละใบเสมอ — เท่าเดิมแปลว่าถามไม่สำเร็จ ไม่ใช่ "ยังไม่ผูก"
         const now = targets.get(one)
