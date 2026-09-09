@@ -700,14 +700,20 @@ function refreshDemoDay(saved: AppState): AppState {
 }
 
 /**
- * สมุดตัวอย่างค้างอยู่เดือนก่อนเพราะยังมีข้อความรอผลส่งผ่าน OA — เงื่อนไขเดียวกับที่ `refreshDemoDay` ปฏิเสธ
+ * ทำไมสมุดตัวอย่างยังเป็นชุดของเดือนก่อน — `null` = ไม่ได้ค้าง ไม่ต้องพูดถึง
  *
- * ต้องมีเพื่อบอกครู: การปฏิเสธถูกแล้ว (สมุดต้องไม่ถูกสร้างใหม่ใต้ข้อความที่ยังไม่รู้ผล)
- * แต่ถ้าไม่บอก ครูเห็นแค่ข้อมูลเดือนก่อนค้างอยู่โดยไม่มีเหตุผล แล้วคิดว่าแอปพัง
+ * เงื่อนไขที่ทำให้*เห็น*คือ "เดโม + สมุดคนละเดือนกับวันนี้" เท่านั้น ไม่ผูกกับข้อความที่รอผลส่ง:
+ * `refreshDemoDay` ทำงานตอนเปิดแอปเท่านั้น ครูที่เพิ่งตรวจผลส่งเสร็จจึงยังเห็นข้อมูลเดือนก่อนอยู่
+ * ถ้าคำเตือนหายไปพร้อมการ์ดใบสุดท้าย ครูก็กลับไปเจอปัญหาเดิม (ข้อมูลไม่ขยับโดยไม่มีคำอธิบาย) ช้าไปหนึ่งก้าว
+ *
+ * `pendingOa` = ยังกดตรวจไม่เสร็จ (เหตุผลที่ `refreshDemoDay` ปฏิเสธ — การปฏิเสธถูกแล้ว)
+ * `reopen` = ไม่เหลือรายการค้างแล้ว ขาดแค่เปิดแอปใหม่ · ทางเดียวกันนี้ครอบคลุมสมุดที่กู้คืนมาจากไฟล์เก่าด้วย
  * โหมดจริงไม่มีทางเข้าเงื่อนไขนี้ — สมุดจริงไม่เคยถูกสร้างใหม่ตามเดือนอยู่แล้ว
  */
-export const demoFrozenByPendingOa = (state: AppState): boolean =>
-  state.mode === 'demo' && periodOf(state.today) !== periodOf(todayISO()) && hasPendingOa(state)
+export type DemoPause = 'pendingOa' | 'reopen'
+export const demoPauseReason = (state: AppState): DemoPause | null =>
+  state.mode !== 'demo' || periodOf(state.today) === periodOf(todayISO()) ? null
+    : hasPendingOa(state) ? 'pendingOa' : 'reopen'
 
 interface Hydrated {
   mode: WorkspaceMode

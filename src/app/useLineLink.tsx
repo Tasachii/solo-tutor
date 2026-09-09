@@ -140,15 +140,6 @@ export function useLineLink(clientIds: string[] = []) {
   const working = useRef(false)
 
   const cacheGeneration = generation
-  /**
-   * "เจตนา" ของผู้เรียก = สถานะตั๋วตอน render นี้เกิด — ปุ่มที่ครูกดถือ closure ของ render นั้น
-   * คำขอที่ตั๋วใหม่กว่านี้แปลว่าเริ่มวิ่ง*หลัง*ผู้เรียกตั้งใจจะถาม คำตอบจึงสดพอสำหรับการถามครั้งนี้
-   * (หน้าตั้งค่าเปิดมา: effect ของ hook ยิงก่อน แล้ว effect ของหน้ายิง `refresh` ด้วย closure ของ render แรก)
-   *
-   * ขอบที่ยอมรับไว้: คำขอที่เริ่ม*หลัง* render ล่าสุดแต่*ก่อน*ครูกดปุ่ม จะถูกเกาะแทนการถามใหม่
-   * ช่วงนั้นกว้างแค่หนึ่ง render · ปุ่มบนหน้าตั้งค่าถูกปิดระหว่าง busy และปุ่มบนการ์ดมีต่อเมื่อเชิญแล้ว
-   */
-  const intentTicket = ticket
   const workspace = state.lineWorkspaceId
   const mismatch = !!session && !!state.lineProviderId && state.lineProviderId !== session.user.id
   /** OA มีความหมายเฉพาะโหมดจริงที่ผูกโปรเจกต์แล้ว + เข้าสู่ระบบด้วยบัญชีที่เป็นเจ้าของสมุดนี้ */
@@ -197,7 +188,15 @@ export function useLineLink(clientIds: string[] = []) {
     if (keys.length) await eraseClients(id, keys)
   }
 
-  const refresh = async (only?: string[]): Promise<void> => {
+  /**
+   * `joinInFlight` = "ฉันแค่เปิดหน้ามา ยังไม่มีคำถามใหม่" — เกาะคำขอที่กำลังวิ่งอยู่แทนการยิงซ้ำทั้งชุด
+   * ใช้ที่เดียวคือ effect ตอนเปิดหน้าตั้งค่า ซึ่งคำขอที่ค้างอยู่เก่าที่สุดก็แค่เท่าอายุการเปิดหน้า
+   *
+   * ทุกครั้งที่ **ครูกดปุ่มเอง** ต้องยิงใหม่เสมอ (ค่าเริ่มต้น) — การกดคือคำถามใหม่ที่มีเวลาของตัวเอง
+   * เดาจากตั๋วของ render ไม่ได้: เชิญผู้ปกครองสำเร็จ → `workspace` เปลี่ยน → effect ยิงคำขอชุดใหม่
+   * ครูกด "ตรวจสถานะ" ตอนนั้นพอดี จะได้คำตอบที่ยิงไปตั้งแต่ก่อนผู้ปกครองพิมพ์รหัส แล้วขึ้นว่ายังไม่เชื่อม
+   */
+  const refresh = async (only?: string[], { joinInFlight = false }: { joinInFlight?: boolean } = {}): Promise<void> => {
     if (!live) return
     setBusy(true); setNotice('')
     // ตรวจให้ผู้จ่ายคนเดียว (ปุ่มบนการ์ด) ต้องตอบให้ได้ว่าผลเปลี่ยนไหม ไม่ใช่เงียบเหมือนปุ่มเสีย
@@ -215,9 +214,8 @@ export function useLineLink(clientIds: string[] = []) {
       if (workspace) for (const id of asked) {
         const key = targetKey(workspace, id)
         const run = inflight.get(key)
-        const held = pending.get(key)
-        // เกาะคำขอที่เริ่มหลังเจตนาของผู้เรียก · เก่ากว่านั้นถือว่าตอบคำถามคนละคำถาม ต้องถามใหม่
-        if (run && held !== undefined && held > intentTicket) { joining.push(run); continue }
+        // `pending` คือความเป็นเจ้าของ — มีทั้งคู่เท่านั้นจึงแปลว่ามีคำขอที่ยังวิ่งและยังไม่ถูกยกเลิก
+        if (joinInFlight && run && pending.has(key)) { joining.push(run); continue }
         supersede([key])
         refetch.push(id)
       }

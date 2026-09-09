@@ -34,7 +34,10 @@ export default function LineSettings() {
   useEffect(() => {
     // เปิดหน้านี้ = ตรวจใหม่ทุกแถว ไม่ใช่ใช้ค่าที่แคชไว้ตอนอยู่หน้าแอดมิน
     // ครูมาหน้านี้เพราะอยากรู้ว่าผู้ปกครองพิมพ์รหัสหรือยัง ค่าค้างจะตอบผิด · refresh ล้างผู้จ่ายที่ลบแล้วให้ด้วย
-    if (session) void link.refresh()
+    //
+    // ที่เดียวในแอปที่ขอ `joinInFlight`: effect ของ hook เพิ่งยิงคำขอชุดเดียวกันไปเมื่อกี้
+    // ยิงซ้ำทั้งชุดคือจ่ายค่าเน็ตสองเท่าเพื่อคำตอบเดิม · ปุ่มที่ครูกดเองบนหน้านี้ยังยิงใหม่เสมอ
+    if (session) void link.refresh(undefined, { joinInFlight: true })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session?.user.id])
 

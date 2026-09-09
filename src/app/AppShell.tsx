@@ -3,7 +3,7 @@ import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-do
 
 /** สิ่งที่หน้าลูกใน AppShell เรียกกลับขึ้นมาได้ — อ่านด้วย useOutletContext */
 export interface ShellOutletContext { startReal: () => void }
-import { demoFrozenByPendingOa, useStore } from '../core/store'
+import { demoPauseReason, useStore } from '../core/store'
 import type { AppState } from '../core/types'
 import { pickBackup, saveBackup } from './backup'
 import { SCHEMA } from '../core/store'
@@ -56,6 +56,7 @@ export default function AppShell() {
   // ask = สิ่งที่กำลังถามยืนยันอยู่ (แทน window.confirm ที่ใช้ไม่ได้บน PWA)
   const [ask, setAsk] = useState<null | 'toDemo' | 'toReal' | 'resetDemo' | { restore: AppState; cross: boolean }>(null)
   const real = state.mode === 'real'
+  const demoPause = demoPauseReason(state)
   const toast = useToast()
   const drafts = draftCount(state)
   const cloud = useCloudSync()
@@ -152,10 +153,12 @@ export default function AppShell() {
           ปุ่มที่กดแล้วเงียบแย่กว่าบั๊กเดิม — บอกสถานะและทางออกไว้เหนือเนื้อหาเสมอ */}
       <StorageStatus />
 
-      {/* เดโมที่หยุดข้ามเดือนเพราะมีข้อความรอผลส่ง — การปฏิเสธถูกแล้ว แต่เงียบไม่ได้
-          ครูจะเห็นข้อมูลเดือนก่อนค้างอยู่แล้วคิดว่าแอปพัง · วางไว้ระดับ shell จึงขึ้นทุกหน้า */}
-      {demoFrozenByPendingOa(state) && <p className="warnbar" role="status" data-testid="demo-paused-oa">
-        {copy.demoPaused.notice} <Link to="/app/admin">{copy.demoPaused.cta}</Link>
+      {/* สมุดตัวอย่างที่ยังเป็นชุดของเดือนก่อน — เงียบไม่ได้ ครูจะคิดว่าแอปพัง · วางระดับ shell จึงขึ้นทุกหน้า
+          ค้างเพราะการ์ดรอผลส่ง = พาไปตรวจผลก่อน · เคลียร์แล้ว = คำเตือนต้องอยู่ต่อจนกว่าจะเปิดแอปใหม่จริง */}
+      {demoPause && <p className="warnbar" role="status" data-testid="demo-paused-oa">
+        {demoPause === 'pendingOa'
+          ? <>{copy.demoPaused.pendingOa} <Link to="/app/admin">{copy.demoPaused.cta}</Link></>
+          : copy.demoPaused.reopen}
       </p>}
 
       {/* หน้าลูกบางหน้า (เช่น เชื่อม LINE OA ในโหมดเดโม) ต้องพาครูไปเริ่มใช้จริงได้จากตรงนั้นเลย

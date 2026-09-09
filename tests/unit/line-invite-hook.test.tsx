@@ -126,6 +126,39 @@ describe('useLineLink — สถานะที่ทุกการ์ดใช
     expect(api.deliveryTarget).toHaveBeenCalledTimes(2)
   })
 
+  /**
+   * ลำดับที่เกิดจริงหลังกดเชิญ: สมุด LINE ถูกสร้าง → `workspace` เปลี่ยน → effect ยิงคำขอชุดใหม่ทันที
+   * ครูส่งรหัสให้ผู้ปกครอง รอสักครู่ แล้วกด "ตรวจสถานะ" ระหว่างคำขอนั้นยังค้าง
+   *
+   * คำขอนั้นถูกยิงตั้งแต่ก่อนผู้ปกครองพิมพ์รหัส คำตอบของมันจึงตอบคนละคำถามกับที่ครูเพิ่งถาม
+   * ปุ่มที่ครูกดเองต้องยิงใหม่เสมอ — ห้ามเกาะคำขอเดิมไม่ว่ามันจะใหม่แค่ไหน
+   */
+  it('กดตรวจสถานะระหว่างคำขอของ effect ยังค้าง: ยิงใหม่เสมอ ไม่ตอบด้วยคำขอที่ยิงก่อนผู้ปกครองพิมพ์รหัส', async () => {
+    state = realState({ lineWorkspaceId: undefined, lineProviderId: undefined })
+    const { result, rerender } = renderHook(() => useLineLink(['c1']))
+    await waitFor(() => expect(api.readChannel).toHaveBeenCalled())
+    expect(api.deliveryTarget).not.toHaveBeenCalled()
+
+    // เชิญสำเร็จ = สมุดถูกสร้าง แล้ว effect ยิงคำขอชุดแรกซึ่งยังไม่ตอบกลับ
+    let release: (value: Target) => void = () => undefined
+    api.deliveryTarget.mockImplementationOnce(() => new Promise<Target>(resolve => { release = resolve }))
+    state = realState()
+    rerender()
+    await waitFor(() => expect(api.deliveryTarget).toHaveBeenCalledTimes(1))
+
+    // ผู้ปกครองพิมพ์รหัสหลังจากนั้น แล้วครูกดตรวจ — ถ้าเกาะคำขอเดิม บรรทัดนี้จะค้างจนหมดเวลา
+    api.deliveryTarget.mockResolvedValue(target())
+    await act(async () => { await result.current.refresh(['c1']) })
+
+    expect(api.deliveryTarget).toHaveBeenCalledTimes(2)
+    expect(result.current.status('c1')).toBe('linked')
+    expect(result.current.notice).toBe(lineLinkCopy.linkedNow)
+
+    // คำตอบเก่าที่กลับมาทีหลังต้องไม่ลบผลใหม่ทิ้ง
+    await act(async () => { release(target({ recipient_id: null, eligible: false })); await Promise.resolve() })
+    expect(result.current.status('c1')).toBe('linked')
+  })
+
   it('อ่านช่อง OA ไม่สำเร็จหนึ่งครั้ง ต้องไม่แปลว่า "ยังไม่เชื่อม" ไปทั้งเซสชัน — ถามใหม่ได้', async () => {
     api.readChannel.mockRejectedValueOnce(new Error('offline'))
     const first = renderHook(() => useLineLink(['c1']))

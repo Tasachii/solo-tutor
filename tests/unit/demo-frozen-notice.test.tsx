@@ -57,13 +57,26 @@ const show = () => render(<ToastProvider><MemoryRouter initialEntries={['/app/to
 beforeEach(() => { mocks.state = book() })
 afterEach(cleanup)
 
-describe('คำเตือน "ข้อมูลตัวอย่างหยุดอยู่ที่เดือนก่อน"', () => {
-  it('เดโมที่ค้างเดือนก่อนพร้อมข้อความรอผลส่ง: ขึ้นคำเตือนพร้อมทางไปตรวจผล', () => {
+describe('คำเตือน "ข้อมูลตัวอย่างยังเป็นชุดของเดือนก่อน"', () => {
+  it('ยังมีข้อความรอผลส่ง: บอกเหตุผล พร้อมทางไปตรวจผล', () => {
     show()
     const bar = screen.getByTestId('demo-paused-oa')
-    expect(bar.textContent).toContain(copy.demoPaused.notice)
-    const cta = screen.getByRole('link', { name: copy.demoPaused.cta })
-    expect(cta.getAttribute('href')).toBe('/app/admin')
+    expect(bar.textContent).toContain(copy.demoPaused.pendingOa)
+    expect(screen.getByRole('link', { name: copy.demoPaused.cta }).getAttribute('href')).toBe('/app/admin')
+  })
+
+  /**
+   * `refreshDemoDay` ทำงานตอนเปิดแอปเท่านั้น — ตรวจผลการ์ดใบสุดท้ายเสร็จแล้วข้อมูลยังไม่ขยับ
+   * ถ้าคำเตือนหายไปพร้อมการ์ด ครูก็กลับไปเจอปัญหาเดิมที่คำเตือนนี้มีไว้กัน ช้าไปแค่หนึ่งก้าว
+   */
+  it('ตรวจผลเสร็จแล้วแต่ยังไม่เปิดแอปใหม่: คำเตือนอยู่ต่อ เปลี่ยนเป็นบอกว่าเหลือแค่เปิดใหม่', () => {
+    mocks.state = book({ messages: buildScenario('default').messages })
+    show()
+    const bar = screen.getByTestId('demo-paused-oa')
+    expect(bar.textContent).toContain(copy.demoPaused.reopen)
+    expect(bar.textContent).not.toContain(copy.demoPaused.pendingOa)
+    // ไม่มีอะไรให้ไปกดที่แอดมินแล้ว ลิงก์จึงต้องไม่มี
+    expect(screen.queryByRole('link', { name: copy.demoPaused.cta })).toBeNull()
   })
 
   it('โหมดจริงไม่ขึ้นเลย — สมุดจริงไม่เคยถูกสร้างใหม่ตามเดือน', () => {
@@ -78,8 +91,8 @@ describe('คำเตือน "ข้อมูลตัวอย่างห�
     expect(screen.queryByTestId('demo-paused-oa')).toBeNull()
   })
 
-  it('เดโมค้างเดือนก่อนแต่ไม่มีข้อความรอผลส่งไม่ขึ้น — ชุดถูกสร้างใหม่ไปแล้วตอนเปิด', () => {
-    mocks.state = book({ messages: buildScenario('default').messages })
+  it('โหมดจริงที่สมุดคนละเดือนก็ยังไม่ขึ้น แม้ไม่มีข้อความรอผลส่ง', () => {
+    mocks.state = book({ mode: 'real', messages: buildScenario('default').messages })
     show()
     expect(screen.queryByTestId('demo-paused-oa')).toBeNull()
   })
