@@ -24,3 +24,10 @@ export function paymentDestinationKind(value: string): PaymentDestinationKind | 
 }
 
 export const isPaymentDestination = (value: string): boolean => paymentDestinationKind(value) !== null
+
+/** เบอร์พร้อมเพย์แบบอ่านง่ายในข้อความ 0812345678 → 081-234-5678 · ไม่ใช่เบอร์ (เลขบัตร) คืน null เพราะห้ามโชว์ */
+export function promptPayPhoneDisplay(value: string): string | null {
+  const normalized = normalizePaymentDestination(value)
+  if (!normalized || paymentDestinationKind(normalized) !== 'phone') return null
+  return `${normalized.slice(0, 3)}-${normalized.slice(3, 6)}-${normalized.slice(6)}`
+}

@@ -17,8 +17,8 @@ export function professionById(id: string): ProfessionTemplate {
 const genericTemplates = (profession: ProfessionTemplate): ProfessionMessages => {
   const v = profession.vocab
   return {
-    invoice: `เรียน{clientHonorific}{clientName} 🙏 ขอแจ้งค่าบริการ{subjectName} เดือน {periodThai} รวม {qty} ${v.units} เป็นเงิน {total} บาท{p}\nดูรายละเอียดและช่องทางชำระได้ที่ {invoiceUrl} เมื่อโอนแล้วรบกวนส่งสลิปในแชทนี้ได้เลย{p} ขอบคุณ{p}`,
-    invoiceFlat: `เรียน{clientHonorific}{clientName} 🙏 ขอแจ้งค่าบริการ{subjectName} เดือน {periodThai} {total} บาท{p} ({qty} ${v.units})\nดูรายละเอียดและช่องทางชำระได้ที่ {invoiceUrl} เมื่อโอนแล้วรบกวนส่งสลิปในแชทนี้ได้เลย{p} ขอบคุณ{p}`,
+    invoice: `เรียน{clientHonorific}{clientName} 🙏 ขอแจ้งค่าบริการ{subjectName} เดือน {periodThai} รวม {qty} ${v.units} เป็นเงิน {total} บาท{p}{payLine}\nสแกน QR หรือดูรายละเอียดได้ที่ {invoiceUrl}\nเมื่อโอนแล้วรบกวนส่งสลิปในแชทนี้ได้เลย{p} ขอบคุณ{p}`,
+    invoiceFlat: `เรียน{clientHonorific}{clientName} 🙏 ขอแจ้งค่าบริการ{subjectName} เดือน {periodThai} {total} บาท{p}{qtyNote}{payLine}\nสแกน QR หรือดูรายละเอียดได้ที่ {invoiceUrl}\nเมื่อโอนแล้วรบกวนส่งสลิปในแชทนี้ได้เลย{p} ขอบคุณ{p}`,
     reminder: {
       soft: 'เรียน{clientHonorific}{clientName} ขออนุญาตเรียนแจ้งยอดค่าบริการ{subjectName} เดือน {periodThai} {total} บาท ที่ยังไม่ได้รับยอด{p} หากโอนแล้วรบกวนส่งสลิปให้ด้วยนะ{pq} รายละเอียดที่ {invoiceUrl} ขอบคุณ{p} 🙏',
       clear: 'เรียน{clientHonorific}{clientName} ขออนุญาตติดตามยอดค่าบริการ{subjectName} เดือน {periodThai} {total} บาท ซึ่งเลยกำหนดมา {daysOverdue} วัน{p} หากสะดวก รบกวนชำระภายในวันนี้หรือพรุ่งนี้ได้ไหม{pq} รายละเอียดที่ {invoiceUrl} ขอบคุณ{p} 🙏',

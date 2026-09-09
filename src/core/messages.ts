@@ -10,6 +10,7 @@ import { documentUrl, invoiceDocument, receiptDocument } from './documents'
 import { financialRevision } from './messageDelivery'
 import { answer } from './faq'
 import { particleVars } from './particle'
+import { promptPayPhoneDisplay } from './paymentDestination'
 
 type Vars = Record<string, string | number>
 
@@ -71,17 +72,37 @@ function baseVars(state: AppState, subject: Subject): Vars {
   }
 }
 
+/**
+ * บรรทัดพร้อมเพย์ในข้อความบิล — เจ้าของขอหลังส่งบิลจริงใบแรก (9 ก.ย.): ผู้ปกครองส่วนใหญ่โอนจากเลขในแชท
+ * ไม่กดลิงก์ จึงต้องมีเลขให้ก่อน ส่วนลิงก์คงไว้เป็นบรรทัดท้ายสำหรับ QR ยอดเป๊ะและรายละเอียด
+ *
+ * **โชว์เฉพาะเบอร์โทร** — ครูที่ผูกพร้อมเพย์ด้วยเลขบัตรประชาชนต้องไม่ถูกส่งเลขบัตรไปทุกข้อความ
+ * กรณีนั้นคืนช่องว่างเดียว (render ไม่รับค่าว่าง) ผู้ปกครองสแกน QR ที่ลิงก์แทน
+ * โหมดเดโมใช้เลขตัวอย่างที่ไม่ใช่เบอร์จริง จึงพิมพ์ตามที่ตั้งไว้เพื่อให้เห็นรูปแบบข้อความครบ
+ */
+function payLine(state: AppState): string {
+  const phone = promptPayPhoneDisplay(state.provider.promptpayId)
+  const shown = phone ?? (state.mode === 'demo' && state.provider.promptpayId.trim() ? state.provider.promptpayId.trim() : null)
+  if (!shown) return ' '
+  const name = state.provider.name.trim()
+  return `\nโอนได้ที่พร้อมเพย์ ${shown}${name ? ` (${name})` : ''}`
+}
+
 export function invoiceText(state: AppState, inv: Invoice): string {
   const templates = templatesFor(state.professionId)
   const subject = subjectById(state, inv.subjectId)!
+  const qty = inv.kind === 'monthly' ? completionsIn(state, inv.subjectId, inv.period).length : inv.lines.reduce((n, l) => n + l.qty, 0)
+  const flat = subject.billing.mode === 'flat_monthly'
   const vars = {
     ...baseVars(state, subject),
     invoiceUrl: invoiceUrlOf(subject.clientId, state, inv.id),
     periodThai: periodThai(inv.period),
-    qty: inv.kind === 'monthly' ? completionsIn(state, inv.subjectId, inv.period).length : inv.lines.reduce((n, l) => n + l.qty, 0),
+    qty,
     total: money(balanceDue(state, inv.id)),
+    // เหมาเดือนที่ปิดก่อนมีคาบ — "(เรียนครบ 0 ครั้ง)" อ่านแล้วเหมือนเก็บเงินฟรี ตัดวงเล็บทิ้งจนกว่าจะมีคาบ
+    qtyNote: flat && qty > 0 ? ` (เรียนครบ ${qty} ${professionById(state.professionId).vocab.units})` : ' ',
+    payLine: payLine(state),
   }
-  const flat = subject.billing.mode === 'flat_monthly'
   return render(flat ? templates.invoiceFlat : templates.invoice, vars)
 }
 
