@@ -14,18 +14,24 @@ const statusText: Record<LineChannel['status'], string> = {
 }
 const readSessionSafely = () => { try { return getSession() } catch { return null } }
 
-/** Pitch-only walkthrough. It has no API calls and never writes into the real ledger. */
+/**
+ * Pitch-only walkthrough. It has no API calls and never writes into the real ledger.
+ *
+ * รหัสตัวอย่างต้อง **ไม่หน้าตาเหมือนรหัสจริง** เจ้าของโปรเจกต์เองยังหลงคัดลอกเลขตัวอย่างเดิม (482731)
+ * ไปพิมพ์ในแชท OA จริงมาแล้ว แล้วได้ "รหัสไม่ถูกต้อง" กลับมาโดยไม่รู้ว่าพลาดตรงไหน
+ * ครูที่เพิ่งลองใช้ครั้งแรกก็พลาดแบบเดียวกันได้ จึงใช้เลขที่อ่านแล้วรู้ทันทีว่าเป็นช่องว่างให้เติม
+ */
 export function DemoLineWalkthrough({ clientName = 'ผู้ปกครองตัวอย่าง' }: { clientName?: string }) {
   const [paired, setPaired] = useState(false)
-  const code = '482731'
   return <section className="card" aria-label="ตัวอย่างการเชื่อม LINE OA">
     <h2 className="h2">ตัวอย่างการเชื่อม LINE OA</h2>
     <p className="warnbar" role="status">การจับคู่นี้เป็นข้อมูลจำลอง ไม่ผูกบัญชีและไม่ส่งข้อความไป LINE จริง</p>
     <ol>
       <li>ครูเปิด OA ของตัวเองและส่งลิงก์เพิ่มเพื่อนให้ {clientName}</li>
-      <li>ระบบสร้างรหัสใช้ครั้งเดียว <strong className="num">{code}</strong> ให้ผู้ปกครองพิมพ์ในแชท OA</li>
+      <li>ระบบสร้างรหัสใช้ครั้งเดียว <strong className="num">••••••</strong> ให้ผู้ปกครองพิมพ์ในแชท OA</li>
       <li>เมื่อจับคู่แล้ว ครูตรวจข้อความและกดส่งบิลจากหน้าแอดมิน</li>
     </ol>
+    <p className="hint">โหมดนี้ไม่มีรหัสจริงให้ใช้ · รหัสจริงต้องกด <b>เริ่มใช้จริง</b> จากเมนู เข้าสู่ระบบบัญชีครู แล้วกดปุ่มสร้างรหัสข้างชื่อผู้ปกครอง</p>
     <div className="kv"><span>{clientName}</span><b>{paired ? 'เชื่อมแล้ว (จำลอง)' : 'ยังไม่เชื่อม (จำลอง)'}</b></div>
     <div className="btnrow">
       <button className="btn btn--secondary btn--sm" onClick={() => setPaired(value => !value)}>
