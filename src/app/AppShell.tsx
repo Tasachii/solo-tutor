@@ -8,6 +8,7 @@ import type { AppState } from '../core/types'
 import { pickBackup, saveBackup } from './backup'
 import { SCHEMA } from '../core/store'
 import { useToast } from './components/Toast'
+import { subscribeUpdateReady } from './swUpdate'
 import { professionById } from '../professions'
 import { copy } from '../copy'
 import { draftCount } from '../core/selectors'
@@ -63,6 +64,11 @@ export default function AppShell() {
     if (cloud.status !== 'conflict' || loc.pathname.endsWith('/settings/account')) return
     toast.push({ text: copy.account.conflictToast, tone: 'warn', action: { label: copy.account.conflictCta, run: () => nav('/app/settings/account') } })
   }, [cloud.status]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // มีเวอร์ชันใหม่รออยู่ — บอกทุกหน้า ให้ครูกดโหลดใหม่เอง (sw.js ไม่สลับเองจนกว่าจะปิดทุกแท็บ)
+  useEffect(() => subscribeUpdateReady((handle) => {
+    toast.push({ text: copy.update.ready, tone: 'ok', action: { label: copy.update.reload, run: handle.apply } })
+  }), []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ยังไม่มีข้อมูลเลย = พาไป onboarding ก่อน
   useEffect(() => {

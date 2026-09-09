@@ -1,4 +1,5 @@
 import React from 'react'
+import { watchServiceWorkerUpdates } from './app/swUpdate'
 import { createRoot } from 'react-dom/client'
 import { HashRouter, Route, Routes } from 'react-router-dom'
 import { applyTheme, readTheme } from './core/theme'
@@ -27,9 +28,11 @@ applyFrame(readFrame())
 // ลงทะเบียนเฉพาะ build จริง: ตอน dev ตัว SW จะแคช module ของ Vite จนแก้โค้ดแล้วไม่เห็นผล
 if (import.meta.env.PROD && 'serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`).catch(() => {
-      /* บางเบราว์เซอร์/โหมดส่วนตัวไม่ให้ — แอปยังใช้ได้ แค่ไม่มีออฟไลน์ */
-    })
+    navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`)
+      .then((registration) => watchServiceWorkerUpdates(registration))
+      .catch(() => {
+        /* บางเบราว์เซอร์/โหมดส่วนตัวไม่ให้ — แอปยังใช้ได้ แค่ไม่มีออฟไลน์ */
+      })
   })
 }
 

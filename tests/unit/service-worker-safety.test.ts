@@ -52,7 +52,7 @@ function harness() {
     handlers.fetch({ request, respondWith: (value: Promise<Response>) => { result = value } })
     return result!
   }
-  return { cache, caches, cached, self, fetcher, lifecycle, navigate, requestAsset }
+  return { cache, caches, cached, self, fetcher, lifecycle, navigate, requestAsset, handlers }
 }
 
 describe('service worker production safety', () => {
@@ -99,5 +99,19 @@ describe('service worker production safety', () => {
     expect(response.status).toBe(200)
     expect(await response.text()).toBe('app()')
     expect(h.cache.match).toHaveBeenLastCalledWith(expect.any(Request), { ignoreVary: true })
+  })
+
+  // ครูกด "โหลดใหม่" เท่านั้นที่ข้ามการรอได้ — install/activate เองยังห้ามเรียก skipWaiting/claim เหมือนเดิม
+  it('ข้ามการรอเฉพาะเมื่อหน้าเว็บสั่ง SKIP_WAITING ไม่ใช่ข้อความอื่น', async () => {
+    const h = harness()
+    await h.lifecycle('install')
+    await h.lifecycle('activate')
+    expect(h.self.skipWaiting).not.toHaveBeenCalled()
+    h.handlers.message({ data: { type: 'SOMETHING_ELSE' } })
+    h.handlers.message({ data: null })
+    expect(h.self.skipWaiting).not.toHaveBeenCalled()
+    h.handlers.message({ data: { type: 'SKIP_WAITING' } })
+    expect(h.self.skipWaiting).toHaveBeenCalledTimes(1)
+    expect(h.self.clients.claim).not.toHaveBeenCalled()
   })
 })

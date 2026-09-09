@@ -35,6 +35,13 @@ self.addEventListener('activate', (event) => {
   })())
 })
 
+// The waiting lifecycle stays the default. A teacher may end it on purpose from the
+// "โหลดใหม่" toast; the page then reloads every controlled tab together, so no tab is
+// left on the old shell after this worker takes over.
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') self.skipWaiting()
+})
+
 self.addEventListener('fetch', (event) => {
   const req = event.request
   const url = new URL(req.url)
