@@ -610,6 +610,7 @@ body:has(.land){background:radial-gradient(45% 45% at 8% 0%,var(--glow-a),transp
 .gauge__t{font-weight:700;font-size:var(--fs-small)}.gauge__s{font-size:var(--fs-micro);color:var(--muted)}
 /* ภาพเงาสีเดียว — ตกแต่งหน้า Landing และหน้าว่าง */
 .mascot{display:block;width:100%;max-width:520px;margin:var(--space-6) auto 0;color:var(--brand)}
+.mascot--art{height:auto;border-radius:var(--radius-lg);box-shadow:var(--shadow);border:1px solid var(--line)}
 .land__sec--cta{text-align:center;display:grid;justify-items:center;gap:var(--space-3)}
 .empty .mascot{max-width:240px;margin:0 auto var(--space-3);opacity:.85}
 .land__foot{border-top:1px solid var(--line)}
