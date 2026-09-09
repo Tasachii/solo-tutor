@@ -1,5 +1,6 @@
 {
   "name": "solo-tutor",
+  "description": "Solo Tutor — back-office for solo tutors in Thailand: one-tap attendance, month-end billing, LINE-ready invoices and receipts, PromptPay QR, encrypted cloud backup",
   "private": true,
   "version": "1.0.0",
   "type": "module",
