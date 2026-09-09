@@ -1,0 +1,43 @@
+# ปลด LINE OA ออกจากบัญชีครูที่ถืออยู่ — **กดเองเท่านั้น** ใช้เมื่อเจ้าของบัญชีเดิมเข้าสู่ระบบไม่ได้แล้ว
+#
+# เหตุที่ต้องมี: ช่อง LINE ผูกได้บัญชีครูเดียว (bot_user_id unique) ปุ่ม "ยกเลิกการเชื่อม OA" ในแอป
+# ต้องล็อกอินเป็นบัญชีนั้น ถ้าลืมรหัสผ่าน ก็ไม่มีทางย้าย OA ไปบัญชีอื่นได้เลย
+#
+# ทำอะไร: ลบแถว line_channels ที่มีอยู่ (ต้องมีแถวเดียวเท่านั้น ไม่งั้นหยุด) + รหัสเชื่อมที่ค้างของบัญชีนั้น
+# ไม่ทำอะไร: ไม่แตะ providers, ไม่แตะ line_recipients (ประวัติการเพิ่มเพื่อน), ไม่แตะ outbox, ไม่พิมพ์ secret/token/อีเมล
+# ย้อนกลับ: เจ้าของกรอก Channel secret + access token ตัวเดิมจาก LINE Developers ในแอปใต้บัญชีใหม่ (~1 นาที)
+name: Release LINE channel from its teacher account
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'พิมพ์ RELEASE เพื่อยืนยัน — OA จะหลุดจากบัญชีครูที่ถืออยู่ตอนนี้'
+        required: true
+        default: ''
+permissions:
+  contents: read
+concurrency:
+  group: database-migrate
+  cancel-in-progress: false
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      PROJECT_REF: qbuafdbmpkffzbkqoysb
+      POOLER_HOST: aws-0-ap-southeast-1.pooler.supabase.com
+    steps:
+      - name: ยืนยันเจตนา
+        run: test "${{ inputs.confirm }}" = "RELEASE" || { echo "::error::ต้องพิมพ์ RELEASE"; exit 1; }
+      - uses: actions/checkout@v7
+      - name: release
+        env:
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        run: |
+          test -n "$SUPABASE_DB_PASSWORD" || { echo "::error::ยังไม่ได้ตั้ง secret SUPABASE_DB_PASSWORD"; exit 1; }
+          ENC=$(python3 -c 'import os,urllib.parse; print(urllib.parse.quote(os.environ["SUPABASE_DB_PASSWORD"], safe=""))')
+          echo "::add-mask::$ENC"
+          DB_URL="postgresql://postgres.${PROJECT_REF}:${ENC}@${POOLER_HOST}:5432/postgres?sslmode=require"
+          echo "::add-mask::$DB_URL"
+          sudo apt-get update -qq && sudo apt-get install --yes -qq postgresql-client
+          psql "$DB_URL" -X -v ON_ERROR_STOP=1 -f scripts/release-line-channel.sql
