@@ -188,6 +188,11 @@ const showAdmin = () => render(
 )
 
 describe('ส่งและคัดลอกจากแท็บร่าง', () => {
+  // กลุ่มนี้ทดสอบทาง "เปิดแอป LINE ให้ครูส่งเอง" — ผู้ปกครองคนนี้ยังไม่ผูก OA
+  // ปุ่มเดียว "ส่งใน LINE" จะลอง OA ก่อน เจอว่ายังไม่ผูก แล้วตกมาเปิดแอป LINE ให้เอง
+  beforeEach(() => {
+    api.deliveryTarget.mockImplementation(async () => ({ recipient_id: null as unknown as string, eligible: false, reason: 'not-linked', client_id: 'x', channel_status: 'active', unfollowed_at: null, quota_used: 0, quota_limit: 300 }))
+  })
   beforeEach(() => { store.current = { ...realState(), lineWorkspaceId: undefined, lineProviderId: undefined } })
 
   it('กดส่งแล้วลิงก์ใหม่ถูกบันทึกลงร่าง เปิด LINE ด้วยข้อความเดียวกัน และไม่ติดป้ายว่าครูแก้เอง', async () => {

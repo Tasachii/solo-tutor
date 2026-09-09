@@ -88,6 +88,7 @@ function MessageCard({ m, awaiting, queueActive, left, linkOnly, onSend, onSent,
         </div>
       ) : (
         <div className="btnrow">
+          {/* ปุ่มเดียว "ส่งใน LINE": ผูก OA แล้วส่งผ่าน OA เอง ยังไม่ผูกเปิดแอป LINE ให้ส่งเอง · ส่งอยู่หน้าสุด แก้/ข้ามตามหลัง */}
           {editing ? (
             <button className="btn btn--secondary btn--sm" disabled={!text.trim()} onClick={() => {
               if (!text.trim()) { setEditError('ข้อความต้องไม่ว่าง'); return }
@@ -95,13 +96,14 @@ function MessageCard({ m, awaiting, queueActive, left, linkOnly, onSend, onSent,
               else setEditError('บันทึกไม่สำเร็จ ข้อความที่แก้ยังอยู่ กรุณาลองอีกครั้ง')
             }}>{copy.common.save}</button>
           ) : (
-            <button className="btn btn--ghost btn--sm" onClick={() => { setText(m.draft); setEditing(true) }}>{copy.common.edit}</button>
+            <>
+              <LineMessageAction message={m} disabled={queueActive} onFallback={onSend} />
+              <button className="btn btn--ghost btn--sm" onClick={() => { setText(m.draft); setEditing(true) }}>{copy.common.edit}</button>
+            </>
           )}
-          <button className="btn btn--primary btn--sm" onClick={onSend}>{copy.admin.sendLine}</button>
-          <button className="btn btn--ghost btn--sm" onClick={onSkip}>{copy.common.skip}</button>
+          {!m.oaDelivery && <button className="btn btn--ghost btn--sm" onClick={onSkip}>{copy.common.skip}</button>}
         </div>
       )}
-      <LineMessageAction message={m} disabled={queueActive} />
     </li>
   )
 }
@@ -395,11 +397,11 @@ export default function Admin() {
                 </div>
               ) : (
                 <div className="btnrow">
-                          <button className="btn btn--primary btn--sm" onClick={() => { void openFor(m) }}>{copy.admin.sendLine}</button>
+                  <LineMessageAction message={m} disabled={!!awaiting} onFallback={() => { void openFor(m) }} />
                   <button className="btn btn--ghost btn--sm" onClick={() => commit({ type: 'skipMessage', id: m.id })}>{copy.common.close}</button>
                 </div>
               )}
-              <LineMessageAction message={m} disabled={!!awaiting} />
+              {m.oaDelivery && <div className="btnrow"><LineMessageAction message={m} disabled={!!awaiting} /></div>}
             </div>
           ))}
 

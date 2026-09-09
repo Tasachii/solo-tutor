@@ -4,6 +4,7 @@ import { useStore } from '../core/store'
 import { shouldEnterApp } from '../core/entry'
 import { professions } from '../professions'
 import { copy } from '../copy'
+import { SUPPORT_CONTACT } from './config'
 import { DemoBadge, Icon, Mascot, PenguinMark } from '../app/components'
 import { AppearanceButton, ThemeToggle } from './ThemeToggle'
 import WaitlistSheet from './WaitlistSheet'
@@ -129,6 +130,8 @@ export default function Landing() {
       <footer className="land__foot">
         <span>{copy.brand.name} · {copy.brand.tagline}</span>
         <span>{copy.landing.footerTeam}</span>
+        {/* ที่เดียวบนหน้าขายที่ครูและผู้ปกครองเพิ่มเพื่อน OA ได้ — ค่าเดียวกับช่องทางซัพพอร์ต */}
+        {SUPPORT_CONTACT.startsWith('https://line.me/') && <a href={SUPPORT_CONTACT} target="_blank" rel="noreferrer">{copy.landing.footerLine}</a>}
         <Link to="/pricing">{copy.pricing.title}</Link>
         <Link to="/privacy">{copy.legal.footerPrivacy}</Link>
         <Link to="/terms">{copy.legal.footerTerms}</Link>

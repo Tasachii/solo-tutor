@@ -231,7 +231,7 @@ test('เชื่อม OA ล้าง credentials สร้างรหัส
 
   await page.goto('#/app/admin')
   const card = page.locator('.msg').filter({ hasText: messageText })
-  await card.getByRole('button', { name: 'ส่งด้วย LINE OA' }).click()
+  await card.getByRole('button', { name: 'ส่งใน LINE' }).click()
   await expect(card).toHaveCount(0)
   await expect.poll(() => page.evaluate((real) => {
     const state = JSON.parse(localStorage.getItem(real)!)
@@ -252,7 +252,7 @@ test('timeout หลังเข้าคิวเก็บ marker ข้าม 
   await page.goto('#/app/admin')
 
   let card = page.locator('.msg').filter({ hasText: messageText })
-  await card.getByRole('button', { name: 'ส่งด้วย LINE OA' }).click()
+  await card.getByRole('button', { name: 'ส่งใน LINE' }).click()
   await expect(card).toContainText('รอตรวจสอบ')
   await expect(card).toContainText('ติดต่อระบบ OA ไม่สำเร็จ', { timeout: 15_000 })
   await expect(card.getByRole('button', { name: 'ส่งใน LINE' })).toHaveCount(0)
@@ -282,7 +282,7 @@ test('ตรวจรายการ processing หลัง worker หยุด
   backend.outboxStatus = 'processing'
   await page.goto('#/app/admin')
   const card = page.locator('.msg').filter({ hasText: messageText })
-  await card.getByRole('button', { name: 'ส่งด้วย LINE OA' }).click()
+  await card.getByRole('button', { name: 'ส่งใน LINE' }).click()
   await expect(card).toHaveCount(0)
   expect(backend.lineSendCount).toBe(1)
   expect(backend.enqueueCount).toBe(1)
