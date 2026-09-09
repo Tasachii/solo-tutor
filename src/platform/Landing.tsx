@@ -4,7 +4,7 @@ import { useStore } from '../core/store'
 import { shouldEnterApp } from '../core/entry'
 import { professions } from '../professions'
 import { copy } from '../copy'
-import { DemoBadge, Icon, PenguinMark } from '../app/components'
+import { DemoBadge, Icon, Mascot, PenguinMark } from '../app/components'
 import { AppearanceButton, ThemeToggle } from './ThemeToggle'
 import WaitlistSheet from './WaitlistSheet'
 import { dateThai, dayThai, periodThai, todayISO } from '../core/format'
@@ -109,7 +109,7 @@ export default function Landing() {
       </section>
 
       <section className="land__sec land__sec--cta">
-        <img className="mascot mascot--art" src={`${import.meta.env.BASE_URL}hero-tutor.jpg`} alt="" width="1100" height="614" loading="lazy" decoding="async" />
+        <Mascot />
         <Link className="btn btn--primary" to="/start">{copy.landing.tryNow}</Link>
       </section>
 

@@ -294,18 +294,10 @@ export function Icon({ name, size = 22 }: { name: IconName; size?: number }) {
  * โลโก้เพนกวินขนาดเล็ก — ใช้คู่กับชื่อแบรนด์บนหัวแอปและหน้าแรก
  * โครงเดียวกับ Mascot แต่ตัดเหลือหัวกับตัว เพื่อให้ยังอ่านออกที่ 28px
  */
+/** โลโก้เพนกวินติวเตอร์ของเจ้าของ (ตัดจากภาพประกอบ) — วงกลมเล็กข้างชื่อแอปทุกหน้า */
 export function PenguinMark({ size = 30 }: { size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 100 100" fill="currentColor" aria-hidden="true" className="pmark">
-      <ellipse cx="50" cy="72" rx="27" ry="26" />
-      <ellipse cx="22" cy="68" rx="8" ry="17" transform="rotate(16 22 68)" />
-      <ellipse cx="78" cy="68" rx="8" ry="17" transform="rotate(-16 78 68)" />
-      <ellipse cx="50" cy="78" rx="17" ry="19" fill="var(--bg)" />
-      <circle cx="50" cy="34" r="26" />
-      <ellipse cx="50" cy="38" rx="18" ry="17" fill="var(--bg)" />
-      <circle cx="43" cy="34" r="4.6" /><circle cx="57" cy="34" r="4.6" />
-      <path d="M50 45l6.5 5.5L50 56l-6.5-5.5z" fill="var(--beak)" />
-    </svg>
+    <img src={`${import.meta.env.BASE_URL}logo-mark.png`} width={size} height={size} alt="" aria-hidden="true" className="pmark" decoding="async" />
   )
 }
 

@@ -105,7 +105,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 .shell__hd{flex:none;display:flex;align-items:center;justify-content:space-between;gap:var(--space-3);
   padding:calc(var(--space-3) + env(safe-area-inset-top)) var(--space-4) var(--space-2)}
 .shell__brand{display:inline-flex;align-items:center;gap:8px}
-.pmark{flex:none;color:var(--brand)}
+.pmark{flex:none;color:var(--brand);border-radius:50%;object-fit:cover;background:var(--surface)}
 .shell__brand{font-size:var(--fs-h2);font-weight:700}
 .shell__hdr{display:flex;align-items:center;gap:var(--space-2)}
 .shell__menu{width:var(--tap);height:var(--tap);border-radius:var(--radius-sm);font-size:20px;color:var(--muted)}
@@ -610,7 +610,6 @@ body:has(.land){background:radial-gradient(45% 45% at 8% 0%,var(--glow-a),transp
 .gauge__t{font-weight:700;font-size:var(--fs-small)}.gauge__s{font-size:var(--fs-micro);color:var(--muted)}
 /* ภาพเงาสีเดียว — ตกแต่งหน้า Landing และหน้าว่าง */
 .mascot{display:block;width:100%;max-width:520px;margin:var(--space-6) auto 0;color:var(--brand)}
-.mascot--art{height:auto;border-radius:var(--radius-lg);box-shadow:var(--shadow);border:1px solid var(--line)}
 .land__sec--cta{text-align:center;display:grid;justify-items:center;gap:var(--space-3)}
 .empty .mascot{max-width:240px;margin:0 auto var(--space-3);opacity:.85}
 .land__foot{border-top:1px solid var(--line)}
