@@ -1,3 +1,4 @@
+import { periodBack } from '../../src/mock/seed'
 import { describe, expect, it } from 'vitest'
 import { buildScenario } from '../../src/core/scenarios'
 import { billingChangeIssue, buildInvoice, closablePeriods, daysOverdue, flatBillablePeriods, ladderFor } from '../../src/core/billing'
@@ -23,13 +24,13 @@ describe('billing', () => {
     expect(buildInvoice(subjectById(s, 's6')!, P, s)).toBeNull()
   })
   it('overdue after dueDays', () => {
-    const inv = s.invoices.find((i) => i.subjectId === 's2')!
+    const inv = s.invoices.find((i) => i.subjectId === 's2' && i.period === periodBack(1))!
     expect(inv.status).toBe('overdue')
     expect(daysOverdue(s, inv)).toBe(5)
   })
   it('ladder picks highest', () => {
-    expect(ladderFor(s, s.invoices.find((i) => i.subjectId === 's2')!)).toBe('clear')
-    expect(ladderFor(s, s.invoices.find((i) => i.subjectId === 's5')!)).toBe('final')
+    expect(ladderFor(s, s.invoices.find((i) => i.subjectId === 's2' && i.period === periodBack(1))!)).toBe('clear')
+    expect(ladderFor(s, s.invoices.find((i) => i.subjectId === 's5' && i.period === periodBack(1))!)).toBe('final')
   })
 })
 

@@ -21,9 +21,11 @@ describe('เดโมเดินตามปฏิทินจริง', () =
     on('2027-03-15')
     const s = buildScenario('default')
     expect(s.invoices.length).toBeGreaterThan(0)
-    for (const invoice of s.invoices) expect(invoice.period).toBe('2027-02')
+    // เดโมมีสามเดือนย้อนหลัง — ทุกใบต้องอยู่ในสามเดือนนั้น และเดือนล่าสุดต้องมีจริง
+    for (const invoice of s.invoices) expect(['2027-02', '2027-01', '2026-12']).toContain(invoice.period)
+    expect(s.invoices.some((invoice) => invoice.period === '2027-02')).toBe(true)
     // ป้ายเดือนในคำอธิบายบิลต้องเดินตาม period เดียวกัน
-    expect(s.invoices[0].lines[0].description).toContain('ก.พ. 2570')
+    expect(s.invoices.find((invoice) => invoice.period === '2027-02')!.lines[0].description).toContain('ก.พ. 2570')
   })
 
   it('คาบเรียนอยู่ในช่วงเดือนก่อนถึงสิ้นเดือนนี้', () => {
@@ -40,7 +42,7 @@ describe('เดโมเดินตามปฏิทินจริง', () =
     expect(thisPeriod()).toBe('2027-01')
     expect(periodBack(1)).toBe('2026-12')
     expect(periodBack(2)).toBe('2026-11')
-    for (const invoice of buildScenario('default').invoices) expect(invoice.period).toBe('2026-12')
+    for (const invoice of buildScenario('default').invoices) expect(['2026-12', '2026-11', '2026-10']).toContain(invoice.period)
   })
 
   it('วันที่ 31 ในเดือนที่มี 28 วัน ต้องยึดสิ้นเดือน ไม่หล่นไปเดือนถัดไป', () => {
@@ -83,7 +85,8 @@ describe('เดโมที่ค้างในเครื่อง', () => {
     on('2027-04-02')
     const { state } = await mount()
     expect(state.today).toBe('2027-04-02')
-    for (const invoice of state.invoices) expect(invoice.period).toBe('2027-03')
+    for (const invoice of state.invoices) expect(['2027-03', '2027-02', '2027-01']).toContain(invoice.period)
+    expect(state.invoices.some((invoice) => invoice.period === '2027-03')).toBe(true)
   })
 
   it('ยังอยู่เดือนเดิม เดินวันให้ทันแต่ไม่ล้างงานที่กดไว้', async () => {

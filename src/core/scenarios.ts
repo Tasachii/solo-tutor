@@ -94,7 +94,19 @@ function applySeedInvoices(state: AppState, seeds: SeedInvoice[]): AppState {
 
 function scenarioDefault(): AppState {
   let s = buildFromPlans(defaultPlans(), 'default')
+  // สามเดือนย้อนหลัง ไม่ใช่รอบเดียว — ครูพลอยใช้มาแล้ว ไม่ใช่เพิ่งเปิดแอปเมื่อวาน
+  // สองเดือนเก่าจ่ายครบทุกใบ (ประวัติ ใบเสร็จ ยอดรวมในหน้าสถิติ) ส่วนร่างและยอดค้างของเดือนล่าสุดคงเดิมเป๊ะ
+  // เรียงเก่า→ใหม่ เพื่อให้เลขใบเสร็จไล่ตามเวลาจริง · น้องมิว (s3) เพิ่งเริ่มเรียนเดือนก่อน จึงไม่มีบิลสองเดือนแรก
   s = applySeedInvoices(s, [
+    { subjectId: 's1', period: periodBack(3), total: 2800, qty: 7, unitPrice: 400, desc: `คณิต ${periodThai(periodBack(3))} — 7 × 400`, status: 'paid', sentAt: dayIn(periodBack(3), 30), paidAt: dayIn(periodBack(3), 30) },
+    { subjectId: 's2', period: periodBack(3), total: 2500, qty: 5, unitPrice: 500, desc: `ฟิสิกส์ ${periodThai(periodBack(3))} — 5 × 500`, status: 'paid', sentAt: dayIn(periodBack(3), 28), paidAt: dayIn(periodBack(3), 30) },
+    { subjectId: 's4', period: periodBack(3), total: 3200, qty: 8, unitPrice: 3200, desc: `อังกฤษ ${periodThai(periodBack(3))} (เหมา)`, status: 'paid', sentAt: dayIn(periodBack(3), 30), paidAt: dayIn(periodBack(3), 30) },
+    { subjectId: 's5', period: periodBack(3), total: 2800, qty: 7, unitPrice: 2800, desc: `อังกฤษ ${periodThai(periodBack(3))} (เหมา)`, status: 'paid', sentAt: dayIn(periodBack(3), 30), paidAt: dayIn(periodBack(3), 30) },
+    { subjectId: 's1', period: periodBack(2), total: 3200, qty: 8, unitPrice: 400, desc: `คณิต ${periodThai(periodBack(2))} — 8 × 400`, status: 'paid', sentAt: dayIn(periodBack(2), 31), paidAt: dayIn(periodBack(2), 31) },
+    { subjectId: 's2', period: periodBack(2), total: 3000, qty: 6, unitPrice: 500, desc: `ฟิสิกส์ ${periodThai(periodBack(2))} — 6 × 500`, status: 'paid', sentAt: dayIn(periodBack(2), 29), paidAt: dayIn(periodBack(2), 31) },
+    { subjectId: 's3', period: periodBack(2), total: 1200, qty: 3, unitPrice: 400, desc: `คณิต ${periodThai(periodBack(2))} — 3 × 400`, status: 'paid', sentAt: dayIn(periodBack(2), 31), paidAt: dayIn(periodBack(2), 31) },
+    { subjectId: 's4', period: periodBack(2), total: 3200, qty: 8, unitPrice: 3200, desc: `อังกฤษ ${periodThai(periodBack(2))} (เหมา)`, status: 'paid', sentAt: dayIn(periodBack(2), 31), paidAt: dayIn(periodBack(2), 31) },
+    { subjectId: 's5', period: periodBack(2), total: 2800, qty: 7, unitPrice: 2800, desc: `อังกฤษ ${periodThai(periodBack(2))} (เหมา)`, status: 'paid', sentAt: dayIn(periodBack(2), 31), paidAt: dayIn(periodBack(2), 31) },
     { subjectId: 's1', period: periodBack(1), total: 3200, qty: 8, unitPrice: 400, desc: `คณิต ${periodThai(periodBack(1))} — 8 × 400`, status: 'paid', sentAt: dayIn(periodBack(1), 31), paidAt: dayIn(periodBack(1), 31) },
     { subjectId: 's2', period: periodBack(1), total: 3000, qty: 6, unitPrice: 500, desc: `ฟิสิกส์ ${periodThai(periodBack(1))} — 6 × 500`, status: 'sent', sentAt: dayIn(periodBack(1), 25), dueAt: dayIn(periodBack(1), 28) },
     { subjectId: 's3', period: periodBack(1), total: 1600, qty: 4, unitPrice: 400, desc: `คณิต ${periodThai(periodBack(1))} — 4 × 400`, status: 'sent', sentAt: dayIn(thisPeriod(), 1), dueAt: dayIn(thisPeriod(), 4) },

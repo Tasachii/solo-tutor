@@ -46,7 +46,7 @@ describe('faq', () => {
   })
   it('payment status reports cumulative amount and final receipt after installments', () => {
     let state = buildScenario('default')
-    const invoice = state.invoices.find((row) => row.clientId === 'c2' && row.total === 3000)!
+    const invoice = state.invoices.find((row) => row.clientId === 'c2' && row.total === 3000 && row.status !== 'paid')!
     state = reducer(state, { type: 'recordPayment', invoiceId: invoice.id, amount: 1000, slipVerified: true })
     state = reducer(state, { type: 'recordPayment', invoiceId: invoice.id, amount: 2000, slipVerified: true })
     const result = answer(state, 'c2', 'จ่ายแล้วนะคะ')

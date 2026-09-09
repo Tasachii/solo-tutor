@@ -131,20 +131,20 @@ describe('เริ่มลอง Demo', () => {
 })
 
 describe('การกู้คืนสมุดบัญชีไม่ใช่ผลงานของครู', () => {
-  it('กู้คืนบิล 20 ใบ ไม่สร้าง invoice_issued สักใบ', async () => {
+  it('กู้คืนบิลหลายสิบใบ ไม่สร้าง invoice_issued สักใบ', async () => {
     await openApp('empty', '/app/today')
     const base = buildScenario('default')
-    // ประวัติเก่าอีก 15 ใบต่อท้ายของเดิม 5 ใบ — ยอดชำระเดิมยังชี้บิลที่มีอยู่จริง
+    // ประวัติเก่าอีกสามเดือนต่อท้ายของเดิม (เดโมมีสามเดือนอยู่แล้ว) — ยอดชำระเดิมยังชี้บิลที่มีอยู่จริง
     const older: Invoice[] = ['2025-01', '2025-02', '2025-03']
       .flatMap((period) => base.invoices.map((invoice, index) => ({
         ...invoice, id: `inv-${period}-${index}`, period, status: 'sent' as const,
       })))
     const twenty = [...base.invoices, ...older]
-    expect(twenty).toHaveLength(20)
+    expect(twenty).toHaveLength(base.invoices.length * 4)
 
     act(() => { expect(store.dispatch({ type: 'restore', state: { ...base, invoices: twenty } })).toBe(true) })
 
-    expect(store.state.invoices).toHaveLength(20)
+    expect(store.state.invoices).toHaveLength(base.invoices.length * 4)
     expect(names()).not.toContain('invoice_issued')
     expect(names()).not.toContain('payment_recorded')
     expect(names()).not.toContain('students_changed')
