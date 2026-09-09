@@ -598,6 +598,18 @@ SOLO_CROSS_BROWSER=1 npm run e2e:mock
 - คอมโพเนนต์ที่ประกาศ**ข้างใน**คอมโพเนนต์หน้า (`RowCard` ใน AdminHomework) = remount ทุก render เหมือน J-44 — ประกาศระดับโมดูลเสมอ
 - `docs/owner-setup.md` §2 เคยบอก "อย่ากด Issue" — ล้าสมัยตั้งแต่ค่าหลุดในแชท ตอนนี้ชี้ไป v2-plan §6.1 (หมุนค่าใหม่วันนี้)
 
+## 8) รอบ 9 ก.ย. ค่ำ — ชุด A-demo: โหมดเดโมส่งผ่าน LINE OA จริงได้ (commit ดูใน ledger J-48)
+
+**หลักการใหม่ (v2-plan §2):** OA ขึ้นกับ บัญชีที่ล็อกอิน + ช่อง active + ผู้ปกครองที่จับคู่ด้วยรหัสของครูคนนั้น — ไม่ขึ้นกับว่าสมุดเป็นเดโมหรือจริง · ในเดโม OA โผล่**เฉพาะเมื่อล็อกอินแล้ว** ผู้ชมเดโมทั่วไปเห็นเหมือนเดิมทุกอย่าง (ตรวจครบทั้ง 6 จุดที่อ่าน `oaAvailable`)
+
+**ที่เปลี่ยน:** `oaAvailable` = `oaDelivery || (config && (real || มี session))` · reducer `lineWorkspace`/`oaStart`/`oaRecover` + validation ไม่ล็อกโหมดจริงแล้ว · `secureDraft` เผยแพร่เอกสารในเดโมเมื่อล็อกอิน · **ลิงก์ในเดโมเป็น `#/document/<token>` ทุกกรณี** (เดิม `#/client/g2` เปิดแล้วเห็น localStorage ของเครื่องผู้รับ) · `messageSendIssue` ในเดโมตรวจเฉพาะ regex ลิงก์เก่า (ข้าม financialRevision เพราะผูก `today` ที่เดโมเดินทุกวัน) · `oaDedupeKey()` ที่เดียวใน `messageDelivery.ts` — เดโม = `WS:demo:KEY` ของจริงเท่าเดิม ใช้ครบ 4 จุดรวม `Admin.findDelivery` · workspace ของเดโมถูก carry ข้าม month-rollover / `?scenario=` / รีเซ็ต / กลับเดโม และถูกล้างเมื่อลบบัญชี · reseed ถูกปฏิเสธระหว่างมีข้อความรอผลส่ง (เมนูขึ้น toast `copy.menu.pendingOa`) · หน้า LINE OA ในเดโม = หน้าจริง + แถบเหลือง (`DemoLineWalkthrough` ลบแล้ว) · เหตุผล blocked ใหม่ `offline` (ล้มก่อนมี intent ถาวร) → เปิดแอป LINE แทน ส่วน `network` (หลัง enqueue) ไม่ fallback · `Admin.willAwait` จองหน้าต่างในเดโมที่ล็อกอินด้วย · `scripts/ops-report.sql` §2 แยกคอลัมน์ "จากเดโม"
+
+**พิสูจน์แล้ว:** unit/e2e/mock (ตัวเลขใน ledger) · reviewer แยกเลน APPROVE (คำถาม: durable split ไม่มีทางที่ล้มหลัง enqueue กลายเป็น `offline`; carry-over ครบ 4 ทาง; การจับคู่รอดข้ามการสลับชุดเพราะ `sync_line_workspace_clients` ไม่ลบแถว) · **ยังไม่พิสูจน์กับมือถือจริง** — ขั้นตอนอยู่ `docs/owner-setup.md` ข้อ 3b ทางถอย = revert ชุดนี้แล้วพิทช์โหมดจริงบัญชี KU
+
+**Follow-up ที่รู้แล้วยังไม่ทำ:** `faq.ts:102` ยังล็อกโหมดจริง (เดโมได้คำตอบ FAQ จากบิลค้างใบแรกใบเดียว) · `clearDemoLineIds` เขียนช่องเดโมโดยไม่ bump revision (best-effort) · เดโมที่มี intent ค้างจะไม่ rebuild ข้ามเดือนจนกว่าจะเคลียร์การ์ด · หน้าตั้งค่า LINE เรียก `line_delivery_target` ซ้ำ 2 เท่าตอนเปิด · module state อ่านตอน render ใน `useLineLink` (ควรเป็น `useSyncExternalStore` ถ้าโตกว่านี้)
+
+**กับดักรอบนี้:** `financialRevision` มี `state.today` → ห้ามเปิดด่านนี้ในเดโม · `message` prop ใน `LineMessageAction` เก่าหลัง dispatch ในคลิกเดียวกัน จึงต้องใช้ local `durable` flag ตัดสิน fallback · รหัสผู้จ่ายต่างกันทุกชุดข้อมูล (`c*/q*/g*/k*/n*`) การจับคู่จึง "มองเห็น" เฉพาะชุดที่จับคู่ · ชุดผสมไม่มีการ์ดของคุณแม่แพรว (จ่ายครบ) ใช้คุณพ่อภูมิ
+
 ## Prompt สำหรับ Claude Code คนถัดไป
 
 ```text

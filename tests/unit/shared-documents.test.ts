@@ -185,10 +185,11 @@ describe('การเผยแพร่ลิงก์ก่อนข้อค�
     expect(JSON.parse(String(fetchMock.mock.calls[1][1]?.body)).p_kind).toBe('receipt')
   })
 
-  it('เดโม ไม่ได้ตั้งค่าโปรเจกต์ ยังไม่เข้าสู่ระบบ หรือเซิร์ฟเวอร์ปฏิเสธ → ข้อความเดิมไม่ถูกแตะ', async () => {
+  it('ไม่ได้ตั้งค่าโปรเจกต์ ยังไม่เข้าสู่ระบบ หรือเซิร์ฟเวอร์ปฏิเสธ → ข้อความเดิมไม่ถูกแตะ', async () => {
     const { draft } = anInvoice()
+    // เดโมไม่มีทางแยกของตัวเองแล้ว (เคยคืน skipped: 'demo') — เดินบันไดเดียวกับโหมดจริงทุกขั้น
     const demo = buildScenario('default')
-    expect(await secureDraft(demo, draft)).toEqual({ draft, links: [], skipped: 'demo' })
+    expect(await secureDraft(demo, draft)).toEqual({ draft, links: [], skipped: 'not-configured' })
 
     expect(await secureDraft(realState(), draft)).toEqual({ draft, links: [], skipped: 'not-configured' })
 
@@ -198,6 +199,20 @@ describe('การเผยแพร่ลิงก์ก่อนข้อค�
     const fetchMock = await login()
     fetchMock.mockResolvedValueOnce(json({ message: 'boom' }, 500))
     expect(await secureDraft(realState(), draft)).toEqual({ draft, links: [], skipped: 'failed' })
+  })
+
+  it('เดโมที่ล็อกอินแล้ว เผยแพร่ลิงก์ที่เพิกถอนได้เหมือนโหมดจริง (เกณฑ์ผ่านชุด A-demo)', async () => {
+    // ข้อความจากสมุดตัวอย่างถึงมือถือผู้ปกครองได้แล้ว ลิงก์ที่ออกไปจึงต้องปิดได้เหมือนกัน
+    // ไม่ใช่ลิงก์ถาวรที่มีชื่อเด็กและยอดเงินอยู่ในตัว URL ตลอดไป
+    const fetchMock = await login()
+    const demo = buildScenario('default')
+    const { draft } = anInvoice()
+    fetchMock.mockResolvedValueOnce(json([{ token: 'D'.repeat(22), expires_at: LATER }]))
+    const result = await secureDraft(demo, draft)
+    expect(result.skipped).toBeNull()
+    expect(result.draft).toContain('D'.repeat(22))
+    expect(result.links).toHaveLength(1)
+    expect(fetchMock.mock.calls.filter(([url]) => String(url).includes('publish_shared_document'))).toHaveLength(1)
   })
 
   it('ข้อความที่ไม่มีลิงก์เอกสารไม่ถูกเผยแพร่อะไรเลย', async () => {

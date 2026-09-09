@@ -342,7 +342,7 @@ export default function AppShell() {
           confirmLabel={copy.menu.reset}
           onClose={() => setAsk(null)}
           onConfirm={() => {
-            if (!resetDemo()) return false
+            if (!resetDemo()) { toast.push({ text: copy.menu.pendingOa, tone: 'danger' }); return false }
             track('demo_reset')
             setMenu(false); nav('/app/today')
             return true
@@ -353,7 +353,7 @@ export default function AppShell() {
           confirmLabel={copy.menu.startReal}
           onClose={() => setAsk(null)}
           onConfirm={() => {
-            if (!dispatch({ type: 'startReal' })) return false
+            if (!dispatch({ type: 'startReal' })) { toast.push({ text: copy.menu.pendingOa, tone: 'danger' }); return false }
             track('start_real')
             // ครูที่เคยใช้จริงมาก่อนต้องกลับไปเจอสมุดบัญชีเดิม ไม่ใช่ onboarding ของบัญชีเปล่า
             // ตัวเปลี่ยนเส้นทางด้านบนพาไป onboarding เองเมื่อ workspace ยังว่าง และพา ?plan ไปด้วย

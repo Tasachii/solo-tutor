@@ -20,8 +20,12 @@ select
   (c.last_verified_at at time zone 'Asia/Bangkok')::timestamp(0) as ตรวจผ่านเมื่อ_เวลาไทย
 from public.line_channels c join auth.users u on u.id = c.provider_id;
 
-\echo '=== 2. คิวข้อความ (ยังไม่เคยส่งจริง = ทุกช่องเป็น 0) ==='
-select status as สถานะ, count(*) as จำนวน from public.message_outbox group by status order by status;
+\echo '=== 2. คิวข้อความ — แยก "จากเดโม" ออกจากของจริง (dedupe_key ของเดโมมี :demo: ตั้งแต่ 9 ก.ย.) ==='
+select
+  status as สถานะ,
+  count(*) filter (where dedupe_key not like '%:demo:%') as ของจริง,
+  count(*) filter (where dedupe_key like '%:demo:%')     as จากเดโม
+from public.message_outbox group by status order by status;
 
 \echo '=== 3. ตัวเลขการใช้งานโหมดจริง แยกตามวัน ==='
 select at::date as วันที่, event as เหตุการณ์, count(*) as ครั้ง, count(distinct teacher_id) as เบราว์เซอร์

@@ -38,7 +38,7 @@ vi.mock('../../src/integrations/lineApi', () => ({
   deliverOa: (...a: unknown[]) => api.deliverOa(...(a as [])),
 }))
 
-import { sendMessageViaOa, linkStates } from '../../src/app/oaSend'
+import { oaAvailable, sendMessageViaOa, linkStates } from '../../src/app/oaSend'
 
 /** โหมดจริงตั้งแต่ก่อน derive — ร่างจึงมี financialRevision ของโหมด/ผู้รับเงินชุดเดียวกับตอนส่ง */
 const realState = (): AppState => reducer({
@@ -132,10 +132,37 @@ describe('sendMessageViaOa', () => {
     const cancelled = await sendMessageViaOa(s, dispatch, draft)
     expect(cancelled.status === 'blocked' && cancelled.reason).toBe('cancelled')
     api.findDelivery.mockRejectedValue(new Error('offline'))
-    const network = await sendMessageViaOa(s, dispatch, draft)
-    expect(network.status === 'blocked' && network.reason).toBe('network')
+    // เน็ตตายก่อนมีรายการใดถูกบันทึก = ยังไม่มีอะไรออกจากเครื่อง → 'offline' (เปิด LINE ส่งเองได้)
+    const offline = await sendMessageViaOa(s, dispatch, draft)
+    expect(offline.status === 'blocked' && offline.reason).toBe('offline')
     expect(dispatch).not.toHaveBeenCalled()
     expect(api.deliverOa).not.toHaveBeenCalled()
+  })
+
+  it('เน็ตตายหลังบันทึกความตั้งใจส่งแล้ว → network (ห้ามเสนอทางแชร์เอง เพราะอาจถึงผู้รับแล้ว)', async () => {
+    // การส่งที่ถูกบันทึกแล้วอาจถึงผู้ปกครองจริง แม้คำตอบ HTTP จะไม่กลับมา
+    // ต่างจาก 'offline' ที่ยังไม่มีรายการใดถูกบันทึกเลย — สองกรณีนี้ต้องไม่ใช้ทางเดียวกัน
+    const s = realState()
+    const { dispatch, state } = makeDispatch(s)
+    const draft = s.messages.find(m => m.status === 'draft' && m.kind === 'reminder')!
+    api.deliverOa.mockRejectedValue(new Error('gateway timeout'))
+    const outcome = await sendMessageViaOa(s, dispatch, draft)
+    expect(outcome.status === 'blocked' && outcome.reason).toBe('network')
+    // ความตั้งใจส่งยังอยู่ในเครื่อง ครูจึงกด "ตรวจสอบผลส่ง" ต่อได้ ไม่ใช่ส่งซ้ำ
+    expect(state().messages.find(m => m.id === draft.id)!.oaDelivery).toBeTruthy()
+  })
+
+  it('เดโมที่ล็อกอินแล้ว: ส่งผ่าน OA ได้ และคีย์กันส่งซ้ำมี demo: นำหน้า', async () => {
+    // เกณฑ์ผ่านชุด A-demo — ตัวเลขจากเดโมต้องไม่ปนกับของจริงในรายงาน
+    const s = reducer({
+      ...buildScenario('default'), lineWorkspaceId: workspaceId, lineProviderId: providerId, sending: undefined,
+    }, { type: 'track', name: 'init' })
+    const { dispatch, state } = makeDispatch(s)
+    const draft = s.messages.find(m => m.status === 'draft')!
+    expect(await sendMessageViaOa(s, dispatch, draft)).toEqual({ status: 'sent' })
+    const [intent] = api.deliverOa.mock.calls[0] as unknown as [{ dedupeKey: string }]
+    expect(intent.dedupeKey).toBe(`${workspaceId}:demo:${draft.dedupeKey}`)
+    expect(state().messages.find(m => m.id === draft.id)!.status).toBe('sent')
   })
 
   it('ยอดเปลี่ยนหลังร่าง → blocked issue ก่อนแตะเครือข่ายส่ง', async () => {
@@ -159,6 +186,53 @@ describe('sendMessageViaOa', () => {
     expect(api.deliverOa).not.toHaveBeenCalled()
     // ยังไม่มีอะไรออกจากเครื่อง และข้อความยังเป็นร่างรอส่งเหมือนเดิม
     expect(state().messages.find(m => m.id === draft.id)?.status).toBe('draft')
+  })
+})
+
+describe('oaAvailable — ปุ่ม OA ไม่ขึ้นกับโหมดอีกแล้ว', () => {
+  const demo = (): AppState => ({ ...buildScenario('default'), lineWorkspaceId: workspaceId, lineProviderId: providerId })
+  const real = (): AppState => ({ ...demo(), mode: 'real' })
+  const withDelivery = (state: AppState): Message => ({
+    ...state.messages.find(m => m.status === 'draft')!,
+    oaDelivery: { providerId, workspaceId, recipientId, dedupeKey: 'k', body: 'b' },
+  })
+
+  it('โหมดจริงไม่เปลี่ยนพฤติกรรมเลย', () => {
+    expect(oaAvailable(real())).toBe(true)
+    api.config = null
+    expect(oaAvailable(real())).toBe(false)
+    // มีรายการค้างตรวจ = ปุ่มต้องอยู่ต่อ แม้บิลด์นี้ไม่มีโปรเจกต์
+    expect(oaAvailable(real(), withDelivery(real()))).toBe(true)
+  })
+
+  it('เดโม: ยังไม่เข้าสู่ระบบ = เหมือนเดิมทุกจุด · เข้าสู่ระบบแล้ว = เปิดใช้', () => {
+    api.session = null
+    expect(oaAvailable(demo())).toBe(false)
+    api.session = { user: { id: providerId } }
+    expect(oaAvailable(demo())).toBe(true)
+    // ไม่มีโปรเจกต์ให้ติดต่อ = ไม่มีทางส่ง แม้ล็อกอินแล้ว
+    api.config = null
+    expect(oaAvailable(demo())).toBe(false)
+  })
+
+  it('รายการที่เริ่มส่งไปแล้วไม่ดู session และไม่ดูโหมด — การ์ดกลางทางต้องเหลือปุ่มตรวจผลเสมอ', () => {
+    const state = demo()
+    const message = withDelivery(state)
+    api.session = null
+    expect(oaAvailable(state, message)).toBe(true)
+    api.config = null
+    expect(oaAvailable(state, message)).toBe(true)
+  })
+
+  it('ที่เก็บ session อ่านไม่ได้ (โหมดส่วนตัว) = ถือว่ายังไม่ล็อกอิน ไม่ใช่ล้มทั้งปุ่ม', () => {
+    api.session = null
+    Object.defineProperty(api, 'session', { configurable: true, get() { throw new Error('storage blocked') } })
+    try {
+      expect(oaAvailable(demo())).toBe(false)
+      expect(oaAvailable(real())).toBe(true)
+    } finally {
+      Object.defineProperty(api, 'session', { configurable: true, writable: true, value: null })
+    }
   })
 })
 

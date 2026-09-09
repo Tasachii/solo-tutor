@@ -36,8 +36,16 @@ const appUrl = (hashPath: string): string => {
   const origin = typeof location !== 'undefined' ? location.origin : ''
   return `${origin}${base}#${hashPath}`
 }
+/**
+ * ลิงก์บิล/ใบเสร็จในข้อความ — **เดโมออกลิงก์เอกสารแบบเดียวกับโหมดจริง**
+ *
+ * ก่อนหน้านี้เดโมคืน `#/client/<id>` กับ `#/receipt/<id>` ซึ่งเป็นหน้าในแอปที่อ่านจาก localStorage
+ * ของ*เครื่องที่เปิด* — ส่งไปมือถือผู้ปกครองแล้วเขาจะเห็นข้อมูลเดโมของเครื่องเขา ไม่ใช่ของครู
+ * ลิงก์ `#/document/<token>` พาข้อมูลไปในตัวลิงก์ จึงเปิดได้จากทุกเครื่อง (ส่วน route `/client/:id`
+ * กับ `/receipt/:id` ยังอยู่ — เมนู "ดูบิลแบบที่ผู้ปกครองเห็น" ของครูใช้อยู่)
+ */
 export function invoiceUrlOf(clientId: string, state?: AppState, invoiceId?: string): string {
-  if (state?.mode !== 'real') return appUrl(`/client/${clientId}`)
+  if (!state) return appUrl(`/client/${clientId}`)
   const inv = invoiceId ? state.invoices.find(i => i.id === invoiceId && i.clientId === clientId)
     : state.invoices.filter(i => i.clientId === clientId)
       .sort((a, b) => Number(a.status === 'paid') - Number(b.status === 'paid') || a.period.localeCompare(b.period))[0]
@@ -46,7 +54,7 @@ export function invoiceUrlOf(clientId: string, state?: AppState, invoiceId?: str
   try { return documentUrl(doc) } catch { return 'ติดต่อผู้ให้บริการในแชทนี้เพื่อขอเอกสาร PDF' }
 }
 export function receiptUrlOf(receiptId: string, state?: AppState): string {
-  if (state?.mode !== 'real') return appUrl(`/receipt/${receiptId}`)
+  if (!state) return appUrl(`/receipt/${receiptId}`)
   const doc = receiptDocument(state, receiptId)
   if (!doc) return 'ติดต่อผู้ให้บริการในแชทนี้เพื่อขอใบเสร็จ'
   try { return documentUrl(doc) } catch { return 'ติดต่อผู้ให้บริการในแชทนี้เพื่อขอใบเสร็จ PDF' }
@@ -226,7 +234,13 @@ export function renewalText(state: AppState, subject: Subject, exhausted: boolea
   const pk = packageStatus(state, subject)!
   const vars: Vars = {
     ...baseVars(state, subject),
-    ...(state.mode === 'real' ? { invoiceUrl: state.provider.promptpayId ? `พร้อมเพย์ ${state.provider.promptpayId} ผู้รับ ${state.provider.name} แล้วส่งสลิปกลับในแชท` : 'ติดต่อผู้ให้บริการเพื่อขอข้อมูลชำระเงิน' } : {}),
+    // แพ็กใหม่ยังไม่มีบิล จึงไม่มีเอกสารให้ลิงก์ — ต้องบอกวิธีจ่ายตรงนี้ ไม่ใช่ชี้ไปที่ลิงก์
+    // ไม่ดูโหมด: เดโมใช้เลขตัวอย่างเหมือนบรรทัดพร้อมเพย์ในใบเตือน (`payLine`) ข้อความจึงหน้าตาเหมือนของจริง
+    // ก่อนหน้านี้เดโมตกไปที่ `invoiceUrl` ของ baseVars ซึ่งกลายเป็นประโยค "ติดต่อผู้ให้บริการ…"
+    // ต่อท้าย "ดูรายละเอียดได้ที่" แล้วอ่านไม่รู้เรื่อง
+    invoiceUrl: state.provider.promptpayId.trim()
+      ? `พร้อมเพย์ ${state.provider.promptpayId} ผู้รับ ${state.provider.name} แล้วส่งสลิปกลับในแชท`
+      : 'ติดต่อผู้ให้บริการเพื่อขอข้อมูลชำระเงิน',
     packageTotal: pk.total, packagePrice: money(pk.price),
     remaining: pk.remaining,
     overBy: pk.overBy,

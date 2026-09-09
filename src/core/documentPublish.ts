@@ -70,11 +70,14 @@ async function documentFingerprint(doc: SharedDocument): Promise<string> {
 
 /**
  * `null` และ `no-link` เท่านั้นที่ปลอดภัยจะส่งโดยไม่ต้องเตือนอะไร
- * `not-configured` และ `demo` ส่งได้แต่ต้องบอกว่าลิงก์นี้กำหนดวันหมดอายุหรือปิดไม่ได้
+ * `not-configured` ส่งได้แต่ต้องบอกว่าลิงก์นี้กำหนดวันหมดอายุหรือปิดไม่ได้
  * `signed-out`, `failed`, `stale` ต้องหยุด ห้ามส่งลิงก์ที่ครูเข้าใจว่าปิดได้แต่จริง ๆ ปิดไม่ได้
+ *
+ * เคยมี `'demo'` — ตัดออก 9 ก.ย. เดโมที่ล็อกอินแล้วเผยแพร่เอกสารเข้ารหัสเหมือนโหมดจริง
+ * (อยู่ใต้บัญชีที่ล็อกอิน หมดอายุ 90 วัน เพิกถอนได้) ไม่งั้นลิงก์ที่ส่งจากเดโมจะปิดไม่ได้เลย
  */
 /** `unsupported` = ฐานหลังบ้านยังไม่ได้ migrate ให้มีตารางลิงก์ — เครื่องครูใหม่กว่าฐานได้เสมอตอน deploy */
-export type PublishSkip = 'no-link' | 'demo' | 'not-configured' | 'signed-out' | 'unsupported' | 'stale' | 'failed' | 'stale'
+export type PublishSkip = 'no-link' | 'not-configured' | 'signed-out' | 'unsupported' | 'stale' | 'failed'
 
 export interface SecureDraftResult {
   draft: string
@@ -86,7 +89,7 @@ export interface SecureDraftResult {
 /**
  * หยุดส่งเฉพาะเมื่อครูมีสิทธิ์ออกลิงก์ที่ปิดได้อยู่แล้ว แต่รอบนี้ทำไม่สำเร็จ
  *
- * `demo`, `not-configured`, `signed-out` และ `unsupported` ไม่อยู่ในนี้ เพราะทั้งสี่แบบ
+ * `not-configured`, `signed-out` และ `unsupported` ไม่อยู่ในนี้ เพราะทั้งสามแบบ
  * ออกลิงก์ที่ปิดได้ไม่ได้ตั้งแต่ต้น การหยุดส่งจึงไม่ได้ปกป้องอะไร มีแต่ทำให้ครูส่งบิลไม่ได้เลย
  * โดยเฉพาะครูที่ใช้จริงแบบไม่สมัครบัญชี ซึ่งเป็นเส้นทางที่แอปรองรับมาตลอด
  * หน้าจอต้องประกาศข้อจำกัดไว้ก่อนกดส่ง — ไม่ใช่เงียบแล้วลดระดับให้ และไม่ใช่ปิดทางส่ง
@@ -116,10 +119,13 @@ export const hasDocumentLink = (draft: string): boolean => {
  * เอกสารมาจากตัวลิงก์เอง ไม่ใช่จาก meta ของข้อความ — ร่างที่ครูแก้เอง คำตอบ FAQ และใบเสร็จ
  * จึงได้ลิงก์ใหม่เหมือนกันหมด และไม่มีทางเผยแพร่เอกสารที่ไม่ได้อยู่ในข้อความอยู่แล้ว
  */
-export async function secureDraft(state: AppState, draft: string): Promise<SecureDraftResult> {
+// `_state` เหลือไว้ในลายเซ็นเพราะทุกจุดเรียกส่ง state เข้ามาอยู่แล้ว และรอบถัดไป (OA กลาง)
+// ต้องอ่าน provider จากตรงนี้ — ตัดพารามิเตอร์ออกจะได้ diff ใหญ่ทั้ง 4 จุดเรียกโดยไม่ได้อะไร
+export async function secureDraft(_state: AppState, draft: string): Promise<SecureDraftResult> {
   const { legacy, secure } = tokensIn(draft)
   if (!legacy.length && !secure.length) return { draft, links: [], skipped: 'no-link' }
-  if (state.mode !== 'real') return { draft, links: [], skipped: 'demo' }
+  // ไม่ดูโหมด — ลิงก์ที่ออกจากเดโมก็ต้องเปิดได้จากมือถือผู้ปกครองและปิดได้เหมือนกัน (แผน v2 §2 ข้อ 4)
+  // ยังไม่ล็อกอิน = ตกที่ `signed-out` ด้านล่างเหมือนโหมดจริง ไม่ใช่ทางแยกของเดโม
   // บิลด์ที่ไม่มีโปรเจกต์ยังส่งลิงก์รุ่นเดิมได้ตามเดิม แต่หน้าจอต้องบอกว่าลิงก์นั้นปิดไม่ได้
   if (!getSupabaseConfig()) return { draft, links: [], skipped: 'not-configured' }
 

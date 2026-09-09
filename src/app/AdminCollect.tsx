@@ -67,8 +67,9 @@ export default function AdminCollect() {
           : outcome.status === 'blocked' && outcome.reason === 'issue' ? c.skipReason.issue
             : outcome.status === 'pending' ? c.skipReason.pending : c.skipReason.failed
         out.skipped.push({ name: row.clientName, reason })
-        // no-session / wrong-account / no-workspace หยุดทั้งชุด — ส่งต่อไปก็ผลเดิม
-        if (outcome.status === 'blocked' && ['no-session', 'wrong-account', 'no-workspace'].includes(outcome.reason)) { toast.push({ text: outcome.notice, tone: 'warn' }); break }
+        // no-session / wrong-account / no-workspace / offline หยุดทั้งชุด — ส่งต่อไปก็ผลเดิม
+        // `offline` = เครือข่ายล้มก่อนมีรายการใดถูกบันทึก ใบถัดไปก็ล้มเหมือนกัน ไม่ต้องไล่ทำเครื่องหมายล้มทีละใบ
+        if (outcome.status === 'blocked' && ['no-session', 'wrong-account', 'no-workspace', 'offline'].includes(outcome.reason)) { toast.push({ text: outcome.notice, tone: 'warn' }); break }
       }
     } finally {
       running.current = false; setProgress(null); setResult(out)

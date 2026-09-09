@@ -11,6 +11,7 @@ const remoteClientId = '44444444-4444-4444-8444-444444444444'
 const outboxId = '55555555-5555-4555-8555-555555555555'
 const projectOrigin = 'https://line-qa.supabase.co'
 const messageText = 'ข้อความทดสอบ LINE OA ถึงผู้ปกครอง'
+const demoMessageText = 'ข้อความทดสอบจากสมุดตัวอย่างถึงผู้ปกครองที่จับคู่แล้ว'
 const legacyKey = `${workspaceId}:qa-message-key`
 
 type MockOptions = {
@@ -199,6 +200,35 @@ const seedRealWorkspace = async (page: Page) => {
   }, { providerId, workspaceId, messageText, demo: DEMO_SLOT, real: REAL_SLOT, pointer: ACTIVE_MODE })
 }
 
+/**
+ * ช่องเดโมของครูที่เชิญผู้ปกครองไว้แล้ว — ชุด A-demo: สมุดตัวอย่างส่งผ่าน OA จริงได้
+ *
+ * ต่างจาก `seedRealWorkspace` แค่สองอย่าง: `mode` ยังเป็น `'demo'` และเขียนลงช่องเดโม
+ * ชื่อผู้รับเงินกับพร้อมเพย์คงค่าตัวอย่างของเดโมไว้ตั้งใจ ("08x-xxx-xxxx") เพื่อพิสูจน์ว่า
+ * ด่านตรวจพร้อมเพย์ยังถูกข้ามในเดโม แต่การส่งผ่าน OA ยังเกิดขึ้นจริง
+ */
+const seedPairedDemoWorkspace = async (page: Page) => {
+  await page.goto('?scenario=default#/app/admin')
+  await expect(page.locator('.skel')).toHaveCount(0)
+  await expect.poll(() => page.evaluate((demo) => localStorage.getItem(demo), DEMO_SLOT)).not.toBeNull()
+  await page.evaluate(({ providerId: provider, workspaceId: workspace, messageText: text, demo, pointer }) => {
+    const saved = JSON.parse(localStorage.getItem(demo)!)
+    saved.onboarded = true
+    saved.lineWorkspaceId = workspace
+    saved.lineProviderId = provider
+    saved.sending = undefined
+    saved.messages = [{
+      id: 'qa-demo-line-message', clientId: 'c1', kind: 'faq_reply', draft: text, edited: true,
+      status: 'draft', createdAt: saved.today, dedupeKey: 'qa-demo-message-key',
+      meta: { answerFrom: 'schedule', question: 'ขอเวลาคาบเรียน' },
+    }]
+    // ข้อความการบ้านของชุดเดโมอ้างถึงรายการเหล่านี้ — ตัดออกพร้อมกันเพื่อให้ state สอดคล้อง
+    saved.homework = []
+    localStorage.setItem(demo, JSON.stringify(saved))
+    localStorage.setItem(pointer, 'demo')
+  }, { providerId, workspaceId, messageText: demoMessageText, demo: DEMO_SLOT, pointer: ACTIVE_MODE })
+}
+
 const login = async (page: Page) => {
   await page.goto('#/app/settings/line')
   await page.getByLabel('อีเมล').fill('teacher@example.com')
@@ -334,4 +364,33 @@ test('แท็บค้างจ่าย: การ์ดของผู้ป
   await expect(rows.filter({ hasText: 'คุณแม่ต้น' }).getByRole('button', invite)).toBeVisible()
   await expect(rows.filter({ hasText: 'คุณพ่อภูมิ' }).getByRole('button', invite)).toHaveCount(0)
   expect(backend.escaped).toEqual([])
+})
+
+test('เดโม: ครูที่ล็อกอินและจับคู่แล้ว กดส่งใน LINE แล้วเข้าคิว OA จริง โดยคีย์แยกเป็น demo: และโหมดไม่พลิก', async ({ page }) => {
+  // เกณฑ์ผ่านชุด A-demo (`docs/line-oa-v2-plan.md` §4): OA ขึ้นกับบัญชี + ช่อง + การจับคู่
+  // ไม่ขึ้นกับว่าสมุดเป็นเดโมหรือจริง · แต่ตัวเลขต้องแยกนับได้ และสมุดต้องไม่ถูกสลับเป็นของจริงเงียบ ๆ
+  const backend = await installMockBackend(page, { connected: true, linked: true })
+  await seedPairedDemoWorkspace(page)
+  await login(page)
+  await page.goto('#/app/admin')
+
+  const card = page.locator('.msg').filter({ hasText: demoMessageText })
+  await card.getByRole('button', { name: 'ส่งใน LINE' }).click()
+  await expect(card).toHaveCount(0)
+
+  await expect.poll(() => page.evaluate((demo) => {
+    const state = JSON.parse(localStorage.getItem(demo)!)
+    const message = state.messages.find((row: { id: string }) => row.id === 'qa-demo-line-message')
+    return { mode: state.mode, status: message?.status, oaDelivery: message?.oaDelivery }
+  }, DEMO_SLOT)).toEqual({ mode: 'demo', status: 'sent', oaDelivery: undefined })
+
+  // ส่งจริงหนึ่งใบ และคีย์กันส่งซ้ำแยกเดโมออกจากของจริง (`scripts/ops-report.sql` นับจากคำนำหน้านี้)
+  expect(backend.lineSendCount).toBe(1)
+  expect(Object.keys(backend.outbox)).toHaveLength(1)
+  expect(Object.keys(backend.outbox)[0]).toMatch(new RegExp(`^${workspaceId}:demo:`))
+  expect(Object.keys(backend.outbox)[0]).toBe(`${workspaceId}:demo:qa-demo-message-key`)
+  expect(backend.escaped).toEqual([])
+
+  // สมุดยังเป็นข้อมูลตัวอย่าง — ป้ายเดโมต้องยังอยู่บนจอ ไม่ใช่หายไปเพราะแอบสลับโหมด
+  await expect(page.locator('.demo-badge').first()).toBeVisible()
 })

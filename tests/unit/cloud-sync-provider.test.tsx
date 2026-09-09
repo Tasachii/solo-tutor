@@ -86,6 +86,23 @@ beforeEach(async () => {
 })
 afterEach(() => { cleanup(); vi.clearAllMocks() })
 
+describe('สมุดตัวอย่างไม่ซิงก์ ไม่ว่าจะเข้าสู่ระบบหรือไม่', () => {
+  it('เดโม + เข้าสู่ระบบแล้ว → ปิดตัวเอง ไม่อ่านไม่เขียนคลาวด์ ไม่ restore', async () => {
+    // ครูเข้าสู่ระบบจากหน้า LINE OA ได้ทั้งสองโหมดตั้งแต่ 9 ก.ย. (เดโมส่งผ่าน OA จริงได้)
+    // การเข้าสู่ระบบจึงต้องไม่ลากข้อมูลจริงจากคลาวด์มาทับสมุดตัวอย่างที่กำลังโชว์อยู่
+    mocks.state = buildScenario('default')
+    expect(mocks.state.mode).toBe('demo')
+    mocks.readSnapshot.mockResolvedValue(await snapshotOf(cloudState()))
+    mount()
+    await waitFor(() => expect(cloud.status).toBe('off'))
+    expect(cloud.enabled).toBe(false)
+    await act(async () => { await cloud.syncNow() })
+    expect(mocks.readSnapshot).not.toHaveBeenCalled()
+    expect(mocks.saveSnapshot).not.toHaveBeenCalled()
+    expect(mocks.dispatch).not.toHaveBeenCalled()
+  })
+})
+
 describe('A-06 stale pull ต้องไม่ทับข้อมูลที่ครูแก้ระหว่างรอเน็ต', () => {
   it('แก้ข้อมูลตอน pull กำลังถอดรหัส → กลายเป็น conflict ไม่ restore', async () => {
     const head = await snapshotOf(cloudState())

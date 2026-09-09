@@ -248,7 +248,9 @@ describe('useLineLink — เชิญผู้ปกครอง', () => {
 })
 
 describe('useLineLink — โหมดที่ OA ใช้ไม่ได้', () => {
-  it('เดโม: ไม่อ่านช่อง ไม่ถามสถานะ ไม่ออกรหัส', async () => {
+  it('เดโมที่ยังไม่เข้าสู่ระบบ: ไม่อ่านช่อง ไม่ถามสถานะ ไม่ออกรหัส', async () => {
+    // ผู้เข้าชมเว็บสาธารณะเห็นหน้าจอเดิมทุกจุด — OA ในเดโมเปิดหลังครูเข้าสู่ระบบเท่านั้น
+    api.session = null
     state = realState({ mode: 'demo' })
     const { result } = renderHook(() => useLineLink(['c1']))
     const outcome = await act(async () => result.current.invite('c1'))
@@ -258,6 +260,20 @@ describe('useLineLink — โหมดที่ OA ใช้ไม่ได้',
     expect(api.readChannel).not.toHaveBeenCalled()
     expect(api.deliveryTarget).not.toHaveBeenCalled()
     expect(api.rpc).not.toHaveBeenCalled()
+  })
+
+  it('เดโมที่เข้าสู่ระบบแล้ว: เชิญผู้ปกครองได้เหมือนโหมดจริง (รหัสจริงของครูคนที่ล็อกอิน)', async () => {
+    // หลักการใหม่ 9 ก.ย.: OA ขึ้นกับบัญชี + ช่อง + การจับคู่ ไม่ขึ้นกับว่าสมุดเป็นเดโมหรือจริง
+    // ข้อความจากเดโมจึงถึงได้เฉพาะเครื่องที่ครูคนนี้จับคู่เองด้วยรหัสที่ตัวเองออก
+    state = realState({ mode: 'demo' })
+    const { result } = renderHook(() => useLineLink(['c1']))
+    const outcome = await act(async () => result.current.invite('c1'))
+
+    expect(outcome.ok).toBe(true)
+    expect(api.rpc).toHaveBeenCalledWith('issue_line_link_code', { p_client_id: remoteClientId })
+    expect(api.copyText).toHaveBeenCalled()
+    expect(String(api.copyText.mock.calls[0][0])).toContain('123456')
+    await waitFor(() => expect(api.readChannel).toHaveBeenCalled())
   })
 
   it('ยังไม่เข้าสู่ระบบ: เงียบสนิทเหมือนกัน', async () => {

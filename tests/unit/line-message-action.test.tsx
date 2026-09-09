@@ -69,6 +69,22 @@ describe('ปุ่มเดียว ส่งใน LINE', () => {
     expect(mocks.send).not.toHaveBeenCalled()
   })
 
+  it('เน็ตตายก่อนเข้าคิว (offline) → เปิดแอป LINE ให้ครูส่งเอง — ครูบนเวทีที่ไวไฟตายยังส่งได้', async () => {
+    mocks.send.mockResolvedValue({ status: 'blocked', reason: 'offline', notice: 'ยังไม่มีรายการใดเริ่มส่ง' })
+    const { onFallback, click } = mount(message())
+    click()
+    await waitFor(() => expect(onFallback).toHaveBeenCalledTimes(1))
+    expect(screen.queryByText(/ยังไม่มีรายการใดเริ่มส่ง/)).toBeNull()
+  })
+
+  it('เน็ตตายหลังเข้าคิวแล้ว (network) → ห้ามเปิดแอป LINE เพราะข้อความอาจถึงผู้รับแล้ว', async () => {
+    mocks.send.mockResolvedValue({ status: 'blocked', reason: 'network', notice: 'ห้ามส่งข้อความเดิมซ้ำ' })
+    const { onFallback, click } = mount(message())
+    click()
+    await waitFor(() => expect(screen.getByText(/ห้ามส่งข้อความเดิมซ้ำ/)).toBeTruthy())
+    expect(onFallback).not.toHaveBeenCalled()
+  })
+
   it('ไม่มีปุ่มชื่อ "ส่งด้วย LINE OA" อีกแล้ว', () => {
     mount(message())
     expect(screen.queryByRole('button', { name: /LINE OA/ })).toBeNull()

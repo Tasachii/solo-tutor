@@ -10,7 +10,7 @@ import { EmptyState, Skeleton, StatCard } from './components'
 import { useToast } from './components/Toast'
 import { copyText, openLine } from './share'
 import type { Message } from '../core/types'
-import { messageSendIssue } from '../core/messageDelivery'
+import { messageSendIssue, oaDedupeKey } from '../core/messageDelivery'
 import { getSession } from '../integrations/supabaseRest'
 import { lineShareUrl } from '../core/share'
 import { findDelivery } from '../integrations/lineApi'
@@ -193,11 +193,12 @@ export default function Admin() {
     if (issue) { toast.push({ text: issue, tone: 'warn' }); return }
     let popup: Window | null = null
     // จะต้องรอเครือข่ายก่อนเปิด LINE ไหม — ถ้าใช่ ต้องจองหน้าต่างตั้งแต่ยังอยู่ในคลิกเดิม
-    const willAwait = state.mode === 'real' && hasDocumentLink(m.draft)
+    // เดโมที่ล็อกอินแล้วก็เผยแพร่เอกสารเหมือนจริง จึงต้องจองหน้าต่างก่อนรอเน็ตด้วย ไม่งั้น Safari บล็อกแชร์ชีต
+    const willAwait = hasDocumentLink(m.draft) && (state.mode === 'real' || (configured && signedIn))
     if (state.lineWorkspaceId) {
-      let signedIn = false
-      try { signedIn = getSession()?.user.id === state.lineProviderId } catch { /* refuse without verified local session */ }
-      if (!signedIn) {
+      let sameAccount = false // ไม่ใช่แค่ล็อกอิน — ต้องเป็นบัญชีเดียวกับที่ถือ workspace นี้ (ต่างจาก signedIn ด้านบน)
+      try { sameAccount = getSession()?.user.id === state.lineProviderId } catch { /* refuse without verified local session */ }
+      if (!sameAccount) {
         toast.push({ text: 'เข้าสู่บัญชี LINE OA เดิมเพื่อตรวจว่าเคยส่งรายการนี้แล้วหรือยัง', tone: 'warn' }); return
       }
       // Reserve a window in the original click, before network awaits lose user activation on Safari.
@@ -205,7 +206,7 @@ export default function Admin() {
       if (!popup) { toast.push({ text: 'กรุณาอนุญาตการเปิดหน้าต่าง LINE แล้วกดอีกครั้ง', tone: 'warn' }); return }
       popup.opener = null
       try {
-        const prior = await findDelivery(`${state.lineWorkspaceId}:${m.dedupeKey}`)
+        const prior = await findDelivery(oaDedupeKey(state, m))
         if (prior && !(prior.status === 'skipped' && prior.last_error === 'user-cancelled')) {
           popup.close()
           toast.push({ text: 'มีรายการนี้ใน LINE OA แล้ว กดปุ่มตรวจสอบผลส่งเพื่อป้องกันการส่งซ้ำ', tone: 'warn' }); return

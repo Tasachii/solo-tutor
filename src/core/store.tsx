@@ -15,7 +15,7 @@ import { HOMEWORK_TEXT_MAX, homeworkOf, homeworkStatus } from './homework'
 import { balanceDue, complete as ledgerComplete, packageStatus, renewPackage, snapshotLegacyPrices, uncomplete } from './ledger'
 import { issueReceipt } from './receipts'
 import { isUuid, isBillingMode, isISODate, isMoney, isNonNegativeMoney, isTime } from './validation'
-import { financialRevision, messageSendIssue } from './messageDelivery'
+import { financialRevision, messageSendIssue, oaDedupeKey } from './messageDelivery'
 import { migrateCanonical } from './migrations'
 import { applyClientTombstones, applyTombstones, clientTombstonesOf, mergeClientTombstones,
   mergeTombstones, pruneTombstones, tombstonesOf, withClientTombstones, withTombstones,
@@ -179,7 +179,8 @@ export function reducer(state: AppState, action: Action): AppState {
       break
     }
     case 'lineWorkspace':
-      if (s.mode !== 'real' || s.lineWorkspaceId || !isUuid(action.id) || !isUuid(action.providerId)) return state
+      // ไม่ดูโหมด — สมุดตัวอย่างมีสมุด LINE ของตัวเองได้ ใต้บัญชีครูที่ล็อกอินอยู่ (แผน v2 §2)
+      if (s.lineWorkspaceId || !isUuid(action.id) || !isUuid(action.providerId)) return state
       s = { ...s, lineWorkspaceId: action.id, lineProviderId: action.providerId }; break
     case 'oaCancelled':
       if (s.sending) return state
@@ -188,10 +189,11 @@ export function reducer(state: AppState, action: Action): AppState {
     case 'oaRecover':
     case 'oaStart': {
       const msg = s.messages.find(m => m.id === action.id)
-      if (s.mode !== 'real' || !msg || msg.status !== 'draft' || msg.oaDelivery
+      // ไม่ดูโหมด — เดโมเข้าคิว OA ได้เมื่อครูล็อกอินและผู้ปกครองจับคู่แล้ว (คีย์ของเดโมมี demo: นำหน้า)
+      if (!msg || msg.status !== 'draft' || msg.oaDelivery
         || s.lineProviderId !== action.delivery.providerId
         || !!s.sending || s.lineWorkspaceId !== action.delivery.workspaceId
-        || !isUuid(action.delivery.recipientId) || action.delivery.dedupeKey !== `${s.lineWorkspaceId}:${msg.dedupeKey}`
+        || !isUuid(action.delivery.recipientId) || action.delivery.dedupeKey !== oaDedupeKey(s, msg)
         || typeof action.delivery.body !== 'string' || !action.delivery.body.trim() || action.delivery.body.length > 5000
         || (action.type === 'oaStart' && (action.delivery.body !== msg.draft || messageSendIssue(s, msg)))) return state
       s = { ...s, messages: s.messages.map(m => m.id === msg.id ? { ...m, draft: action.delivery.body, oaDelivery: action.delivery } : m) }
@@ -641,10 +643,55 @@ export function migrate(raw: unknown): AppState | null {
  * ข้ามเดือนเมื่อไหร่ชุดข้อมูลทั้งชุด (เดือนก่อน + เดือนนี้) ก็ผิดช่วง ต้องสร้างใหม่
  * ยังอยู่เดือนเดิมแค่เดินวันให้ทัน งานที่กดเช็คชื่อไว้ตอนสาธิตจะได้ไม่หาย
  */
+/**
+ * สมุดตัวอย่างมีสมุด LINE (`lineWorkspaceId` + `lineProviderId`) ของตัวเองได้ตั้งแต่ 9 ก.ย.
+ * ทุกทางที่ "สร้างชุดข้อมูลใหม่ทับของเดิม" ต้องยกคู่ id นี้มาด้วย ไม่งั้นการจับคู่ผู้ปกครองหลุด
+ * ทุกครั้งที่ครูกดสลับชุดข้อมูล/รีเซ็ต/ข้ามเดือน แล้วต้องออกรหัสใหม่ให้ผู้ปกครองกลางเวที
+ *
+ * ยกได้เฉพาะภายในโหมดเดียวกัน — id ของสมุดจริงต้องไม่มีทางไหลเข้าช่องเดโม และกลับกัน
+ * ยกทั้งคู่หรือไม่ยกเลย: `validateState` บังคับว่าสองฟิลด์นี้ต้องมีหรือไม่มีพร้อมกัน
+ */
+/**
+ * ยังมี "ความตั้งใจส่ง" ที่บันทึกไว้และรอตรวจผลอยู่ไหม
+ *
+ * reducer กัน `restore`/`replace`/`startReal` ไว้แล้วเมื่อมีรายการค้าง (บรรทัด ~170) แต่สองทาง
+ * ที่สร้างชุดข้อมูลใหม่ของเดโมไม่ผ่าน reducer เลย (ข้ามเดือน และ `?scenario=` ตอน hydrate)
+ * ถ้าปล่อยให้สร้างใหม่ การ์ดที่ค้างอยู่จะกลับมาเป็นปุ่ม "ส่งใน LINE" ธรรมดา แล้วครูแชร์เองซ้ำได้
+ * — ตัวกันส่งซ้ำฝั่งเซิร์ฟเวอร์กันได้แค่ทาง OA ไม่ได้กันการเปิดแอป LINE ส่งมือ
+ */
+const hasPendingOa = (state: AppState): boolean => state.messages.some(m => m.oaDelivery)
+
+const carryLineIds = (from: AppState, to: AppState): AppState =>
+  from.mode !== to.mode || !from.lineWorkspaceId || !from.lineProviderId ? to
+    : { ...to, lineWorkspaceId: from.lineWorkspaceId, lineProviderId: from.lineProviderId }
+
+/**
+ * บัญชีครูถูกลบบนเซิร์ฟเวอร์แล้ว — สมุด LINE ที่ช่องเดโมชี้ไปอยู่ใต้ provider ที่ไม่มีอยู่อีกต่อไป
+ * ปล่อยค้างไว้ เดโมรอบหน้าจะพยายามส่งผ่าน workspace ของบัญชีที่ตายแล้วโดยไม่มีอะไรอธิบาย
+ * ล้างเฉพาะสองฟิลด์นี้ ข้อมูลตัวอย่างที่เหลือไม่ใช่ของบัญชีใคร จึงไม่ต้องแตะ
+ */
+const clearDemoLineIds = (): void => {
+  try {
+    const slot = readSlot('demo')
+    if (!slot || (slot.state.lineWorkspaceId === undefined && slot.state.lineProviderId === undefined
+      && !hasPendingOa(slot.state))) return
+    const { lineWorkspaceId: _workspace, lineProviderId: _provider, ...rest } = slot.state
+    // รายการที่ค้างตรวจผลชี้ไปที่ provider ที่ไม่มีแล้ว — เหลือไว้คือการ์ดที่กดตรวจก็ไม่ได้
+    // กดยกเลิกก็ไม่ได้ (ต้องเข้าสู่ระบบด้วยบัญชีที่ถูกลบ) และ validateState จะปฏิเสธทั้งก้อน
+    localStorage.setItem(DEMO_SLOT_KEY, JSON.stringify({
+      ...rest, messages: rest.messages.map(m => m.oaDelivery ? { ...m, oaDelivery: undefined } : m),
+    }))
+  } catch { /* best effort หลังการลบบนเซิร์ฟเวอร์สำเร็จแล้ว — ล้มที่นี่ต้องไม่ทำให้การลบค้าง */ }
+}
+
 function refreshDemoDay(saved: AppState): AppState {
   const now = todayISO()
   if (saved.today === now) return saved
-  if (periodOf(saved.today) !== periodOf(now)) return buildScenario(saved.scenarioId)
+  // ข้ามเดือน = สร้างชุดใหม่ทั้งชุด แต่สมุด LINE ของช่องนี้ต้องอยู่ต่อ
+  // ยกเว้นยังมีรายการ OA ค้างตรวจ — เดินวันให้ทันไปก่อน ชุดจะถูกสร้างใหม่รอบหน้าหลังครูตรวจผลเสร็จ
+  if (periodOf(saved.today) !== periodOf(now) && !hasPendingOa(saved)) {
+    return carryLineIds(saved, buildScenario(saved.scenarioId))
+  }
   return { ...saved, today: now }
 }
 
@@ -681,11 +728,14 @@ function hydrate(scenarioFromUrl: string | null): Hydrated {
       // ห้ามเขียนทับ ให้ไปเส้นทางกู้คืนที่เก็บ raw ไว้ครบ
       if (saved.mode !== mode) throw new Error('foreign workspace in slot')
       // A demo query parameter must never overwrite an existing real workspace.
-      const chosen = saved.mode === 'demo' && scenarioFromUrl && isScenario(scenarioFromUrl)
-        ? buildScenario(scenarioFromUrl) : saved
+      // สลับชุดข้อมูลจาก URL ก็เป็นการสร้างชุดใหม่ทับของเดิม — สมุด LINE ของช่องเดโมต้องอยู่ต่อ
+      // และห้ามทับเมื่อยังมีรายการ OA ค้างตรวจ (กฎเดียวกับที่ reducer ใช้กับ replace/restore)
+      const switchScenario = saved.mode === 'demo' && !!scenarioFromUrl && isScenario(scenarioFromUrl)
+        && !hasPendingOa(saved)
+      const chosen = switchScenario ? carryLineIds(saved, buildScenario(scenarioFromUrl!)) : saved
       const dated = chosen.mode === 'real' ? { ...chosen, today: todayISO() } : refreshDemoDay(chosen)
       return { mode, state: normalize(dated), didReset: false, recoveryRaw: null, savedRaw: raw,
-        applyInitialScenario: saved.mode === 'demo' && !!scenarioFromUrl && isScenario(scenarioFromUrl) }
+        applyInitialScenario: switchScenario }
     }
     const fresh = mode === 'real'
       ? buildReal()
@@ -978,6 +1028,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const applyAccountDeletion = useCallback((clean: AppState, durableRaw: string | null, writable: boolean) => {
     accountDeletionPending.current = false
+    clearDemoLineIds()
     savedRaw.current = durableRaw
     current.current = clean
     blocked.current = !writable
@@ -1174,10 +1225,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
    */
   const resetDemo = useCallback((scenarioId?: string) => {
     if (current.current.mode !== 'demo') return false
-    return dispatch({ type: 'replace', state: normalize(buildScenario(scenarioId ?? current.current.scenarioId)) })
+    return dispatch({ type: 'replace',
+      state: normalize(carryLineIds(current.current, buildScenario(scenarioId ?? current.current.scenarioId))) })
   }, [dispatch])
   const backToDemo = useCallback((scenarioId?: string) => {
     if (current.current.mode !== 'real') return false
+    // ไม่ต้องยก id มาที่นี่: ช่องเดโมที่มีของอยู่แล้วชนะเมล็ดนี้ (`switchWorkspace` overwrite=false)
+    // แล้วเดินผ่าน refreshDemoDay ซึ่งยกให้เอง · ช่องว่างเปล่าไม่มีสมุด LINE ให้ยก และ id
+    // ของสมุดจริงที่กำลังออกจากมาต้องไม่ไหลเข้าช่องเดโมเด็ดขาด
     return switchWorkspace('demo', normalize(buildScenario(scenarioId ?? 'default')), false)
   }, [switchWorkspace])
   const value = useMemo<StoreValue>(() => ({ state, dispatch, track, mode, resetDemo, backToDemo, didReset,

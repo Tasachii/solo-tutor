@@ -51,6 +51,9 @@ describe('faq', () => {
     state = reducer(state, { type: 'recordPayment', invoiceId: invoice.id, amount: 2000, slipVerified: true })
     const result = answer(state, 'c2', 'จ่ายแล้วนะคะ')
     expect(result.text).toContain('3,000')
-    expect(result.text).toContain('/receipt/')
+    // เดโมออกลิงก์เอกสารเหมือนโหมดจริงตั้งแต่ 9 ก.ย. — `#/receipt/<id>` อ่านจาก localStorage
+    // ของเครื่องที่เปิด จึงเปิดจากมือถือผู้ปกครองไม่ได้ ลิงก์ที่ส่งออกต้องพาข้อมูลไปในตัวเอง
+    expect(result.text).toContain('#/document/')
+    expect(result.text).not.toContain('#/receipt/')
   })
 })

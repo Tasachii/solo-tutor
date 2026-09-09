@@ -2,6 +2,7 @@ import type { AppState, BillingMode, HomeworkItem } from './types'
 import { isParticle } from './particle'
 import { isStyle } from './style'
 import { HOMEWORK_TEXT_MAX } from './homework'
+import { oaDedupeKey } from './messageDelivery'
 
 export const MESSAGE_KINDS = ['invoice', 'reminder', 'renewal', 'renewal_exhausted', 'receipt', 'faq_reply',
   'moved', 'cancelled', 'summary', 'nudge', 'homework', 'homework_reminder'] as const
@@ -317,11 +318,12 @@ export function validateState(value: unknown): StateValidation {
       || !isString(row.draft) || !row.draft.trim() || !isString(row.dedupeKey) || !row.dedupeKey.trim()) errors.push(`messages[${index}]: สถานะหรือข้อมูลไม่ถูกต้อง`)
     if (row.oaDelivery !== undefined) {
       const d = row.oaDelivery
-      if (!isRecord(d) || row.status !== 'draft' || state.mode !== 'real'
+      // ไม่ดูโหมด — สมุดตัวอย่างมีรายการ OA ค้างตรวจได้ แต่คีย์ต้องเป็นคีย์ของโหมดนั้นเป๊ะ
+      if (!isRecord(d) || row.status !== 'draft'
         || d.workspaceId !== state.lineWorkspaceId || d.providerId !== state.lineProviderId
         || !['providerId', 'workspaceId', 'recipientId'].every(k => isUuid(d[k]))
         || !isString(d.body) || !d.body.trim() || d.body !== row.draft
-        || d.dedupeKey !== `${state.lineWorkspaceId}:${row.dedupeKey}`) errors.push(`messages[${index}].oaDelivery: ไม่ถูกต้อง`)
+        || d.dedupeKey !== oaDedupeKey(state, { dedupeKey: String(row.dedupeKey) })) errors.push(`messages[${index}].oaDelivery: ไม่ถูกต้อง`)
     }
     if ((row.sentAt !== undefined && !isISODate(row.sentAt)) || (row.edited !== undefined && typeof row.edited !== 'boolean')
       || (row.meta !== undefined && !isRecord(row.meta))) errors.push(`messages[${index}]: ข้อมูลเสริมไม่ถูกต้อง`)

@@ -28,10 +28,31 @@ export function financialRevision(state: AppState, message: Message): string | n
   return `v1:${(first >>> 0).toString(16).padStart(8, '0')}${(second >>> 0).toString(16).padStart(8, '0')}`
 }
 
+/**
+ * คีย์กันส่งซ้ำของรายการ OA — เดโมมี `demo:` นำหน้า ข้อความจากสมุดตัวอย่างจึงแยกออกจากของจริงได้
+ *
+ * ตัวเลข traction ต้องไม่ปน (`scripts/ops-report.sql` นับแยกจากคำนำหน้านี้) และคีย์ของโหมดจริง
+ * ต้องไม่เปลี่ยนรูปแม้แต่ตัวอักษรเดียว ไม่งั้นรายการที่เข้าคิวไว้ก่อน deploy จะกลายเป็นคนละใบ
+ * แล้วครูจะส่งซ้ำโดยไม่มีอะไรฟ้อง — ที่นี่จึงเป็นที่เดียวที่ประกอบคีย์ ทุกจุดต้องเรียกตัวนี้
+ */
+export const oaDedupeKey = (
+  state: Pick<AppState, 'mode' | 'lineWorkspaceId'>,
+  message: Pick<Message, 'dedupeKey'>,
+): string => `${state.lineWorkspaceId}:${state.mode === 'demo' ? 'demo:' : ''}${message.dedupeKey}`
+
 export function messageSendIssue(state: AppState, message: Message): string | null {
   if (!message.draft.trim()) return 'กรุณาเขียนข้อความก่อนส่ง'
   if (!state.clients.some(client => client.id === message.clientId)) return 'ไม่พบผู้รับข้อความ กรุณาโหลดข้อมูลล่าสุดแล้วลองใหม่'
   if (message.draft.length > LINE_TEXT_LIMIT) return 'ข้อความยาวเกินที่ LINE รับได้ กรุณาย่อข้อความหรือส่งเอกสาร PDF แยกก่อนส่ง'
+  // ลิงก์ในแอปอ่านจาก localStorage ของ*เครื่องที่เปิด* ส่งไปมือถือผู้ปกครองจะเห็นข้อมูลของเครื่องเขา
+  // เดโมส่งถึงมือถือจริงได้แล้ว ด่านนี้จึงต้องอยู่เหนือทางออกของเดโม ไม่ใช่ใต้
+  if (/#\/(client|receipt)\//.test(message.draft)) return 'ข้อความนี้ยังใช้ลิงก์เดิมที่เปิดได้เฉพาะเครื่องนี้ กรุณาสร้างข้อความใหม่ก่อนส่ง'
+  /**
+   * เดโมข้ามอีกสองด่านที่เหลือโดยเจตนา:
+   * - `financialRevision` ผูก `state.today` และ `refreshDemoDay` เดินวันของเดโมทุกวัน
+   *   ร่างที่แคชไว้คืนก่อนพิทช์จะถูกปิดการส่งบนเวทีทั้งที่ตัวเลขไม่ได้เปลี่ยน
+   * - ชื่อผู้รับเงิน/พร้อมเพย์ของเดโมเป็นค่าตัวอย่างที่ตั้งใจให้ไม่ใช่เลขจริง
+   */
   if (state.mode !== 'real') return null
   if (isFinancialMessage(message) && message.meta?.financialRevision !== financialRevision(state, message)) {
     return 'ยอดหรือข้อมูลเปลี่ยนหลังเขียนข้อความ กรุณาสร้างข้อความจากยอดล่าสุดก่อนส่ง (ข้อความที่แก้เองยังถูกเก็บไว้)'
@@ -41,6 +62,5 @@ export function messageSendIssue(state: AppState, message: Message): string | nu
   if (financial && (!state.provider.name.trim() || !isPaymentDestination(state.provider.promptpayId))) {
     return 'กรุณาตั้งชื่อผู้รับเงินและเลขพร้อมเพย์ที่ถูกต้องก่อนส่งข้อมูลชำระเงิน'
   }
-  if (/#\/(client|receipt)\//.test(message.draft)) return 'ข้อความนี้ยังใช้ลิงก์เดิมที่เปิดได้เฉพาะเครื่องนี้ กรุณาสร้างข้อความใหม่ก่อนส่ง'
   return null
 }

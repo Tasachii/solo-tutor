@@ -13,8 +13,18 @@ import { oaAvailable, sendMessageViaOa } from './oaSend'
  *
  * No share fallback after durable OA intent: even a failed HTTP response may have delivered.
  */
-/** OA ไม่ใช่ทางของผู้รับคนนี้ (ยังไม่ผูก / ไม่มีบัญชี / ไม่มี workspace) → เปิดแอป LINE ให้ครูส่งเองแทน ไม่ใช่ error */
-const FALL_BACK_REASONS = new Set(['no-session', 'no-workspace', 'not-linked', 'wrong-account'])
+/**
+ * OA ไม่ใช่ทางของผู้รับคนนี้ (ยังไม่ผูก / ไม่มีบัญชี / ไม่มี workspace) → เปิดแอป LINE ให้ครูส่งเองแทน ไม่ใช่ error
+ *
+ * `offline` อยู่ในนี้ด้วย เพราะ `sendMessageViaOa` คืนค่านี้เฉพาะตอนเครือข่ายล้ม**ก่อน**
+ * มีรายการ OA ใดถูกบันทึกลง storage — ยังไม่มีอะไรออกจากเครื่อง แชร์เองได้ตามปกติ
+ * ครูบนเวทีที่ไวไฟตายจึงยังส่งได้ · `network` (ล้มหลังบันทึกแล้ว) ต้องไม่อยู่ในนี้:
+ * ข้อความอาจถึงผู้ปกครองแล้วแม้คำตอบจะไม่กลับมา ทางเดียวคือกดตรวจผล
+ *
+ * ห้ามพึ่ง `!message.oaDelivery` เป็นด่านนี้: `message` เป็น prop ที่แช่ไว้ตอนกด
+ * รายการที่ถูกบันทึกในคลิกเดียวกันจะยังอ่านได้ว่า undefined อยู่ ด่านจริงคือชื่อเหตุผลนี้
+ */
+const FALL_BACK_REASONS = new Set(['no-session', 'no-workspace', 'not-linked', 'wrong-account', 'offline'])
 
 export default function LineMessageAction({ message, disabled = false, onSent, onFallback }: {
   message: Message; disabled?: boolean; onSent?: () => void; onFallback?: () => void

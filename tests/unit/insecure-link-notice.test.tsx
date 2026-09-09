@@ -67,8 +67,26 @@ describe('คำเตือนเรื่องลิงก์ที่ปิ�
     expect(screen.queryByTestId('signed-out-link-notice')).toBeNull()
   })
 
-  it('โหมดเดโมไม่ต้องเตือน เพราะไม่ได้ส่งถึงผู้ปกครองจริง', () => {
+  /**
+   * เดโมส่งผ่าน OA จริงได้แล้ว (9 ก.ย.) แต่คำเตือนสองอันนี้ยังไม่ขึ้นในเดโม และนั่นถูกต้อง:
+   * สิ่งที่คำเตือนปกป้องคือ "ชื่อเด็กจริงกับยอดเงินจริงในลิงก์ที่ปิดไม่ได้" — ข้อมูลตัวอย่างไม่มีทั้งสอง
+   * ล็อกอินแล้วเดโมเผยแพร่ลิงก์ที่ปิดได้เหมือนโหมดจริงอยู่แล้ว จึงไม่มีอะไรต้องเตือนเช่นกัน
+   */
+  it('โหมดเดโมยังไม่ต้องเตือน แม้ยังไม่เข้าสู่ระบบ — ข้อมูลตัวอย่างไม่มีชื่อเด็กจริงหรือยอดจริง', () => {
     configure()
+    mocks.state = { ...mocks.state, mode: 'demo' }
+    show()
+    expect(screen.queryByTestId('insecure-link-notice')).toBeNull()
+    expect(screen.queryByTestId('signed-out-link-notice')).toBeNull()
+  })
+
+  it('เดโมที่เข้าสู่ระบบแล้ว — เหมือนโหมดจริงที่เข้าสู่ระบบแล้ว คือไม่มีคำเตือน (ลิงก์ปิดได้จริง)', async () => {
+    configure()
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(json({
+      access_token: 'a', refresh_token: 'r', expires_in: 3600,
+      user: { id: userId, email: 'teacher@example.com' },
+    }))
+    await signIn('teacher@example.com', 'password')
     mocks.state = { ...mocks.state, mode: 'demo' }
     show()
     expect(screen.queryByTestId('insecure-link-notice')).toBeNull()
@@ -90,7 +108,6 @@ describe('คำเตือนเรื่องลิงก์ที่ปิ�
     const { publishBlocks } = await import('../../src/core/documentPublish')
     expect(publishBlocks('signed-out')).toBe(false)
     expect(publishBlocks('not-configured')).toBe(false)
-    expect(publishBlocks('demo')).toBe(false)
     expect(publishBlocks('no-link')).toBe(false)
     // ฐานยังไม่ได้อัปเดต: ลองใหม่กี่ครั้งก็ไม่ผ่าน หยุดส่งเท่ากับส่งบิลไม่ได้เลย
     expect(publishBlocks('unsupported')).toBe(false)

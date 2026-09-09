@@ -1,6 +1,6 @@
 import type { AppState, Message, OaDelivery } from '../core/types'
 import type { Action } from '../core/store'
-import { messageSendIssue } from '../core/messageDelivery'
+import { messageSendIssue, oaDedupeKey } from '../core/messageDelivery'
 import { getSession, getSupabaseConfig } from '../integrations/supabaseRest'
 import { deliverOa, deliveryTarget, findDelivery, type OutboxRow } from '../integrations/lineApi'
 import { publishBlocks, secureDraft, type PublishSkip } from '../core/documentPublish'
@@ -18,7 +18,7 @@ export type OaSendOutcome =
   | { status: 'sent' }
   | { status: 'pending'; notice: string }
   | { status: 'review'; notice: string; outboxId?: string }
-  | { status: 'blocked'; reason: 'no-session' | 'wrong-account' | 'no-workspace' | 'cancelled' | 'issue' | 'not-linked' | 'storage' | 'network' | 'publish'; notice: string }
+  | { status: 'blocked'; reason: 'no-session' | 'wrong-account' | 'no-workspace' | 'cancelled' | 'issue' | 'not-linked' | 'storage' | 'offline' | 'network' | 'publish'; notice: string }
 
 export const NOTICE = {
   noSession: 'กรุณาเข้าสู่ระบบที่หน้าตั้งค่า LINE OA ก่อน',
@@ -28,6 +28,7 @@ export const NOTICE = {
   notLinked: 'ยังส่งผ่าน OA ให้ผู้ปกครองนี้ไม่ได้ ตรวจการเชื่อมบัญชีและรหัสผู้ปกครอง หรือใช้ปุ่มเปิด LINE',
   storage: 'บันทึกรายการส่งไม่สำเร็จ จึงยังไม่ได้ส่งผ่าน OA',
   network: 'ติดต่อระบบ OA ไม่สำเร็จ หากรายการเริ่มส่งแล้วให้กดตรวจสอบอีกครั้ง ห้ามส่งข้อความเดิมซ้ำ',
+  offline: 'ติดต่อระบบ OA ไม่สำเร็จ และยังไม่มีรายการใดเริ่มส่ง เปิด LINE เพื่อส่งเองได้',
   publishFailed: 'สร้างลิงก์ที่ปิดได้ไม่สำเร็จ ยังไม่ได้ส่ง กรุณาลองอีกครั้ง',
   publishSignedOut: 'ยังไม่ได้เข้าสู่ระบบบัญชีครู จึงยังออกลิงก์ที่ปิดได้ไม่ได้ ยังไม่ได้ส่ง',
   publishStale: 'ลิงก์ในข้อความนี้ถูกปิดไปแล้ว ยังไม่ได้ส่ง กรุณาสร้างร่างจากยอดล่าสุดก่อน',
@@ -37,13 +38,25 @@ export const NOTICE = {
   pending: 'ยังยืนยันผลส่งไม่ได้ กดตรวจสอบอีกครั้ง ระบบจะใช้รายการเดิมเพื่อป้องกันการส่งซ้ำ',
 } as const
 
-/** ปุ่ม OA มีความหมายเฉพาะโหมดจริงที่ผูกโปรเจกต์แล้ว (หรือมีรายการค้างตรวจอยู่) */
 const publishNotice = (skipped: PublishSkip | null): string =>
   skipped === 'signed-out' ? NOTICE.publishSignedOut
     : skipped === 'stale' ? NOTICE.publishStale : NOTICE.publishFailed
 
+/** ที่เก็บ session อ่านไม่ได้ (โหมดส่วนตัว/สิทธิ์ถูกปิด) = ถือว่ายังไม่ได้เข้าสู่ระบบ ไม่ใช่ล้มทั้งปุ่ม */
+const sessionPresent = (): boolean => { try { return !!getSession() } catch { return false } }
+
+/**
+ * OA เปิดให้ใช้เมื่อไหร่ — **ไม่ขึ้นกับว่าสมุดเป็นเดโมหรือจริง** (หลักการใหม่ 9 ก.ย. ข้อ 1)
+ *
+ * ขึ้นกับสามอย่าง: มีโปรเจกต์ให้ติดต่อ + บัญชีครูที่ล็อกอิน + ผู้ปกครองที่จับคู่ด้วยรหัสของครูคนนั้น
+ * (ข้อสามตรวจตอนส่ง ที่นี่คุมสองข้อแรก) · ข้อความจากเดโมจึงถึงได้เฉพาะเครื่องที่ครูจับคู่เอง
+ *
+ * ในเดโมต้องล็อกอินก่อน — ผู้เข้าชมเว็บสาธารณะที่ยังไม่ล็อกอินต้องเห็นหน้าจอเดิมทุกจุด
+ * รายการที่เริ่มส่งไปแล้ว (`oaDelivery`) เป็นข้อยกเว้นเดียวที่ไม่ดูทั้ง session และโหมด:
+ * การ์ดกลางทางต้องเหลือปุ่ม "ตรวจสอบผลส่ง" ไว้เสมอ ไม่งั้นครูออกจากระบบแล้วรายการค้างจะไม่มีใครตรวจ
+ */
 export const oaAvailable = (state: AppState, message?: Message): boolean =>
-  state.mode === 'real' && (!!getSupabaseConfig() || !!message?.oaDelivery)
+  !!message?.oaDelivery || (!!getSupabaseConfig() && (state.mode === 'real' || sessionPresent()))
 
 const TERMINAL: OutboxRow['status'][] = ['sent', 'failed', 'skipped', 'manual_review']
 
@@ -63,6 +76,8 @@ export async function sendMessageViaOa(
     }
     return { status: 'pending', notice: NOTICE.pending }
   }
+  // ความตั้งใจส่งถูกบันทึกลง storage แล้วหรือยัง — ตัวชี้ขาดว่าเครือข่ายล้มแล้วแชร์เองต่อได้ไหม
+  let durable = !!message.oaDelivery
   try {
     const session = getSession()
     if (!session) return { status: 'blocked', reason: 'no-session', notice: NOTICE.noSession }
@@ -72,7 +87,7 @@ export async function sendMessageViaOa(
     }
     if (!intent) {
       if (!state.lineWorkspaceId) return { status: 'blocked', reason: 'no-workspace', notice: NOTICE.noWorkspace }
-      const dedupeKey = `${state.lineWorkspaceId}:${message.dedupeKey}`
+      const dedupeKey = oaDedupeKey(state, message)
       const previous = await findDelivery(dedupeKey)
       if (previous?.status === 'skipped' && previous.last_error === 'user-cancelled') {
         return { status: 'blocked', reason: 'cancelled', notice: NOTICE.cancelled }
@@ -110,13 +125,23 @@ export async function sendMessageViaOa(
       if (!dispatch({ type: previous ? 'oaRecover' : 'oaStart', id: message.id, delivery: intent })) {
         return { status: 'blocked', reason: 'storage', notice: NOTICE.storage }
       }
+      // จากบรรทัดนี้ไป การส่งอาจถึงผู้รับแล้วแม้คำตอบจะไม่กลับมา — ห้ามเสนอทางแชร์เองอีก
+      durable = true
       if (previous?.status === 'sent') return settle(previous, intent.providerId)
     }
     const previous = await findDelivery(intent.dedupeKey)
     if (previous && TERMINAL.includes(previous.status)) return settle(previous, intent.providerId)
     return settle(await deliverOa(intent, message.dedupeKey, intent.body), intent.providerId)
   } catch {
-    return { status: 'blocked', reason: 'network', notice: NOTICE.network }
+    /**
+     * แยกสองกรณีที่ผลต่างกันคนละแบบ (ก่อนหน้านี้เป็น 'network' ทั้งคู่):
+     * - `durable` = มีรายการ OA ที่บันทึกไว้แล้ว การส่งอาจถึงผู้รับแล้ว → ต้องกดตรวจผล ห้ามแชร์ซ้ำ
+     * - ไม่ `durable` = ยังไม่มีอะไรออกจากเครื่องเลย (เช่นเน็ตตายตั้งแต่ `findDelivery`)
+     *   → เปิดแอป LINE ให้ครูส่งเองได้ตามปกติ ครูบนเวทีที่ไวไฟตายจึงยังส่งได้
+     */
+    return durable
+      ? { status: 'blocked', reason: 'network', notice: NOTICE.network }
+      : { status: 'blocked', reason: 'offline', notice: NOTICE.offline }
   }
 }
 
@@ -125,7 +150,8 @@ export type LinkState = 'linked' | 'not-linked' | 'unknown'
 
 export async function linkStates(state: AppState, clientIds: string[]): Promise<Record<string, LinkState>> {
   const out: Record<string, LinkState> = {}
-  if (!oaAvailable(state) || !state.lineWorkspaceId || !getSession()) {
+  // อ่าน session ผ่านตัวเดียวกับ oaAvailable — ที่เก็บที่อ่านไม่ได้ต้องได้ 'unknown' ไม่ใช่ promise ที่ล้ม
+  if (!oaAvailable(state) || !state.lineWorkspaceId || !sessionPresent()) {
     for (const id of clientIds) out[id] = 'unknown'
     return out
   }
