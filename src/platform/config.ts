@@ -28,7 +28,7 @@ export const validSoloPromptPay = (raw: string): string => {
 
 // ค่าตัวอย่างสำหรับข้อมูลเดโมเท่านั้น
 export const LEGACY_TOKEN_FILE = '' // ว่าง = ใช้ token ใน index.css (spec ข้อ 10)
-export const PROVIDER_NAME = 'ครูเบนซ์'
+export const PROVIDER_NAME = 'ครูพี่หยก'
 export const PROMPTPAY_DISPLAY = '08x-xxx-xxxx'
 /** ค่าธุรกิจจริงมาจาก environment และ fail closed เมื่อไม่ครบหรือรูปแบบไม่ถูกต้อง */
 export const SUPPORT_CONTACT = validSupportContact(envValue('VITE_SUPPORT_CONTACT'))

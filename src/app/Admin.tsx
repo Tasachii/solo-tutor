@@ -16,7 +16,7 @@ import { getSession } from '../integrations/supabaseRest'
 import { lineShareUrl } from '../core/share'
 import { findDelivery } from '../integrations/lineApi'
 import LineMessageAction from './LineMessageAction'
-import { LineInviteAction } from './useLineLink'
+import { LineInviteAction, LineOaStatus } from './useLineLink'
 import { isPaymentDestination } from '../core/paymentDestination'
 import AdminCollect from './AdminCollect'
 import AdminHomework from './AdminHomework'
@@ -108,8 +108,8 @@ function MessageCard({ m, awaiting, queueActive, left, linkOnly, onSend, onSent,
           {!m.oaDelivery && <button className="btn btn--ghost btn--sm" onClick={onSkip}>{copy.common.skip}</button>}
         </div>
       )}
-      {/* ต่อท้ายการ์ดเสมอ ไม่ครอบและไม่ขยับ LineMessageAction (กับดัก J-44) — ปุ่มนี้ไม่ส่งอะไรทั้งสิ้น */}
-      <LineInviteAction clientId={m.clientId} disabled={queueActive} />
+      {/* ต่อท้ายการ์ดเสมอ ไม่ครอบและไม่ขยับ LineMessageAction (กับดัก J-44) — แค่บอกสถานะ ไม่มีปุ่ม */}
+      <LineInviteAction clientId={m.clientId} disabled={queueActive} variant="status" />
     </li>
   )
 }
@@ -280,6 +280,7 @@ export default function Admin() {
   return (
     <div className="pane">
       {actionError && <p className="fld__err" role="alert">{actionError}</p>}
+      <LineOaStatus />
       {state.mode === 'real' && <p><Link to="/app/settings/line">ตั้งค่า LINE OA และเชื่อมผู้ปกครอง</Link></p>}
       {state.mode === 'real' && !isPaymentDestination(state.provider.promptpayId) && <p className="warnbar">ยังไม่ได้ตั้งค่าพร้อมเพย์ที่ถูกต้อง <Link to="/app/onboarding">ตั้งค่าข้อมูลรับเงิน</Link></p>}
       <div className="chips">

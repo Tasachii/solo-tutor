@@ -7,9 +7,11 @@ import type { AppState } from '../../src/core/types'
 import { ToastProvider } from '../../src/app/components/Toast'
 
 /**
- * ปุ่ม "เชิญผู้ปกครองเข้า LINE" บนการ์ดข้อความในแท็บรอส่ง
+ * การ์ดข้อความในแท็บรอส่ง: ไม่มีปุ่มเชิญแล้ว (เจ้าของ 13 ก.ย. 04:43 "เชิญผู้ปกครองเข้ากลุ่มไม่เอา")
+ * บอกแค่ "ยังไม่ได้แอด LINE OA" เฉพาะคนที่ยังไม่ผูก และหัวแท็บบอกว่าครูเชื่อม OA แล้วหรือยัง
+ * ปุ่มเชิญตัวจริงยังอยู่ที่หน้านักเรียน/หน้าตั้งค่า — ทดสอบพฤติกรรมปุ่มโดย render ตรง ๆ ด้านล่าง
  *
- * กับดัก J-44: ปุ่มเชิญต้องเป็นพี่น้องที่ต่อ*ท้าย* ห้ามครอบหรือขยับ LineMessageAction
+ * กับดัก J-44: สิ่งที่ต่อท้ายการ์ดต้องเป็นพี่น้องที่ต่อ*ท้าย* ห้ามครอบหรือขยับ LineMessageAction
  * ถ้าย้าย React จะ mount ปุ่มส่งใหม่ แล้วข้อความแจ้งผลที่เพิ่งตั้งไว้หายทันที
  */
 const providerId = '11111111-1111-4111-8111-111111111111'
@@ -51,7 +53,7 @@ vi.mock('../../src/core/store', async original => ({
 }))
 
 import Admin from '../../src/app/Admin'
-import { __resetLineLinkCache } from '../../src/app/useLineLink'
+import { LineInviteAction, __resetLineLinkCache } from '../../src/app/useLineLink'
 import { lineLinkCopy } from '../../src/app/lineLinkCopy'
 
 const channel = (status = 'active') => ({
@@ -64,6 +66,10 @@ const target = (linked: boolean) => ({
 
 const show = () => render(
   <MemoryRouter initialEntries={['/app/admin?tab=drafts']}><ToastProvider><Admin /></ToastProvider></MemoryRouter>,
+)
+/** ปุ่มเชิญตัวจริง (หน้านักเรียน/ตั้งค่า) — ห่อด้วย li.msg ให้เทสเดิมที่หา card ทำงานเหมือนเดิม */
+const showButton = () => render(
+  <MemoryRouter><ToastProvider><ul><li className="msg"><div className="btnrow"><button>ส่งใน LINE</button></div><LineInviteAction clientId="c2" /></li></ul></ToastProvider></MemoryRouter>,
 )
 
 beforeEach(() => {
@@ -85,45 +91,86 @@ beforeEach(() => {
 })
 afterEach(cleanup)
 
-describe('ปุ่มเชิญผู้ปกครองบนการ์ดข้อความ', () => {
-  it('เข้าสู่ระบบ + ช่อง OA พร้อม + ผู้ปกครองยังไม่ผูก → ขึ้นปุ่มเชิญ', async () => {
+describe('สถานะ LINE OA บนการ์ดข้อความและหัวแท็บแอดมิน', () => {
+  it('เข้าสู่ระบบ + ช่อง OA พร้อม + ผู้ปกครองยังไม่ผูก → บอก "ยังไม่ได้แอด LINE OA" ไม่มีปุ่มเชิญ และหัวแท็บบอกว่าเชื่อม OA แล้ว', async () => {
     show()
-    await waitFor(() => expect(screen.getAllByRole('button', { name: lineLinkCopy.invite }).length).toBeGreaterThan(0))
+    await waitFor(() => expect(screen.getAllByTestId('line-unlinked').length).toBeGreaterThan(0))
+    expect(screen.getAllByTestId('line-unlinked')[0].textContent).toBe(lineLinkCopy.unlinkedParent)
+    expect(screen.queryByRole('button', { name: lineLinkCopy.invite })).toBeNull()
+    expect(screen.getByTestId('oa-status').textContent).toContain(lineLinkCopy.linked)
+    expect(screen.getByTestId('oa-status').textContent).toContain('OA ของครู QA')
   })
 
-  it('ผู้ปกครองผูกแล้ว → ไม่มีปุ่มเชิญ (ปุ่มส่งใน LINE จะไปทาง OA ให้เอง)', async () => {
+  it('ผู้ปกครองผูกแล้ว → ไม่ขึ้นอะไรบนการ์ด (ปุ่มส่งใน LINE จะไปทาง OA ให้เอง)', async () => {
     api.deliveryTarget.mockResolvedValue(target(true))
     show()
     await waitFor(() => expect(api.deliveryTarget).toHaveBeenCalled())
-    await waitFor(() => expect(screen.queryByRole('button', { name: lineLinkCopy.invite })).toBeNull())
+    await waitFor(() => expect(screen.getByTestId('oa-status')).toBeTruthy())
+    expect(screen.queryAllByTestId('line-unlinked')).toHaveLength(0)
+    expect(screen.queryByRole('button', { name: lineLinkCopy.invite })).toBeNull()
+  })
+
+  it('ยังไม่ได้เชื่อมช่อง OA → หัวแท็บเป็นทางไปหน้าตั้งค่า การ์ดไม่พูดซ้ำ', async () => {
+    api.readChannel.mockResolvedValue(null)
+    show()
+    await waitFor(() => expect(screen.getByRole('link', { name: lineLinkCopy.oaSetup })).toBeTruthy())
+    expect(screen.queryAllByTestId('line-unlinked')).toHaveLength(0)
+    expect(screen.queryByRole('button', { name: lineLinkCopy.invite })).toBeNull()
+  })
+
+  it('ยังไม่เข้าสู่ระบบ → หัวแท็บชวนเข้าสู่ระบบ การ์ดเงียบ และปุ่มส่งเดิมยังอยู่ครบ', async () => {
+    api.session = null
+    show()
+    expect(screen.getByRole('link', { name: lineLinkCopy.oaSignIn })).toBeTruthy()
+    expect(api.readChannel).not.toHaveBeenCalled()
+    expect(screen.queryAllByTestId('line-unlinked')).toHaveLength(0)
+    expect(screen.getAllByRole('button', { name: 'ส่งใน LINE' }).length).toBeGreaterThan(0)
+  })
+
+  it('ระหว่างที่ยังไม่รู้สถานะ ไม่ขึ้นอะไรเพิ่ม (จอไม่กระโดดไปสถานะที่ผิด)', () => {
+    api.readChannel.mockReturnValue(new Promise(() => undefined))
+    api.deliveryTarget.mockReturnValue(new Promise(() => undefined))
+    show()
+    expect(screen.queryAllByTestId('line-unlinked')).toHaveLength(0)
+    expect(screen.queryByTestId('oa-status')).toBeNull()
+  })
+
+  it('สถานะต่อท้ายการ์ด ไม่ครอบและไม่ขยับปุ่มส่งใน LINE (J-44)', async () => {
+    show()
+    await waitFor(() => expect(screen.getAllByTestId('line-unlinked').length).toBeGreaterThan(0))
+    const send = screen.getAllByRole('button', { name: 'ส่งใน LINE' })[0]
+    const card = send.closest('li.msg')!
+    const tag = within(card as HTMLElement).getByTestId('line-unlinked')
+    const rows = [...card.querySelectorAll(':scope > .btnrow')]
+    expect(rows[0].contains(send)).toBe(true)
+    expect(rows[0].contains(tag)).toBe(false)
+    expect(tag.compareDocumentPosition(rows[0]) & Node.DOCUMENT_POSITION_PRECEDING).toBeTruthy()
+  })
+})
+
+describe('ปุ่มเชิญผู้ปกครอง (หน้านักเรียน / หน้าตั้งค่า)', () => {
+  it('เข้าสู่ระบบ + ช่อง OA พร้อม + ผู้ปกครองยังไม่ผูก → ขึ้นปุ่มเชิญ', async () => {
+    showButton()
+    await waitFor(() => expect(screen.getAllByRole('button', { name: lineLinkCopy.invite }).length).toBeGreaterThan(0))
   })
 
   it('ยังไม่ได้เชื่อมช่อง OA → เป็นทางไปหน้าตั้งค่า ไม่ใช่ปุ่มเชิญที่กดแล้วไม่เกิดอะไร', async () => {
     api.readChannel.mockResolvedValue(null)
-    show()
-    await waitFor(() => expect(screen.getAllByRole('link', { name: lineLinkCopy.setup }).length).toBeGreaterThan(0))
+    showButton()
+    await waitFor(() => expect(screen.getByRole('link', { name: lineLinkCopy.setup })).toBeTruthy())
     expect(screen.queryByRole('button', { name: lineLinkCopy.invite })).toBeNull()
   })
 
-  it('ยังไม่เข้าสู่ระบบ → ชวนไปหน้าตั้งค่า และปุ่มส่งเดิมยังอยู่ครบ', async () => {
+  it('ยังไม่เข้าสู่ระบบ → ชวนไปหน้าตั้งค่า', () => {
     api.session = null
-    show()
-    await waitFor(() => expect(screen.getAllByRole('link', { name: lineLinkCopy.inviteSignedOut }).length).toBeGreaterThan(0))
+    showButton()
+    expect(screen.getByRole('link', { name: lineLinkCopy.inviteSignedOut })).toBeTruthy()
     expect(api.readChannel).not.toHaveBeenCalled()
-    expect(screen.getAllByRole('button', { name: 'ส่งใน LINE' }).length).toBeGreaterThan(0)
-  })
-
-  it('ระหว่างที่ยังไม่รู้สถานะ ไม่ขึ้นปุ่มอะไรเพิ่ม (จอไม่กระโดดไปสถานะที่ผิด)', () => {
-    api.readChannel.mockReturnValue(new Promise(() => undefined))
-    api.deliveryTarget.mockReturnValue(new Promise(() => undefined))
-    show()
-    expect(screen.queryByRole('button', { name: lineLinkCopy.invite })).toBeNull()
-    expect(screen.queryByRole('link', { name: lineLinkCopy.setup })).toBeNull()
   })
 
   /** กดเชิญบนการ์ดใบแรก แล้วคืนการ์ดใบนั้น — การ์ดใบอื่นเป็นของผู้จ่ายคนอื่น สถานะจึงไม่เปลี่ยนตาม */
   const inviteFirst = async (): Promise<HTMLElement> => {
-    show()
+    showButton()
     await waitFor(() => expect(screen.getAllByRole('button', { name: lineLinkCopy.invite }).length).toBeGreaterThan(0))
     const button = screen.getAllByRole('button', { name: lineLinkCopy.invite })[0]
     const card = button.closest('li.msg') as HTMLElement
@@ -141,7 +188,8 @@ describe('ปุ่มเชิญผู้ปกครองบนการ์�
     api.deliveryTarget.mockReturnValue(new Promise(() => undefined))
     fireEvent.click(within(card).getByRole('button', { name: lineLinkCopy.check }))
 
-    await waitFor(() => expect(api.deliveryTarget.mock.calls.length).toBeGreaterThan(1))
+    // ระหว่างรอ (คำขอค้างไม่มีวันกลับ) ปุ่มทั้งสองต้องยังอยู่ ไม่ใช่หายแล้วค่อยโผล่
+    await new Promise(r => setTimeout(r, 60))
     expect(within(card).getByRole('button', { name: lineLinkCopy.check })).toBeTruthy()
     expect(within(card).getByRole('button', { name: lineLinkCopy.invite })).toBeTruthy()
   })
@@ -163,18 +211,4 @@ describe('ปุ่มเชิญผู้ปกครองบนการ์�
     expect(within(card).queryByRole('button', { name: lineLinkCopy.check })).toBeNull()
   })
 
-  it('ปุ่มเชิญเป็นพี่น้องที่ต่อท้าย ไม่ครอบและไม่ขยับปุ่มส่งใน LINE (J-44)', async () => {
-    show()
-    await waitFor(() => expect(screen.getAllByRole('button', { name: lineLinkCopy.invite }).length).toBeGreaterThan(0))
-
-    const send = screen.getAllByRole('button', { name: 'ส่งใน LINE' })[0]
-    const invite = screen.getAllByRole('button', { name: lineLinkCopy.invite })[0]
-    const card = send.closest('li.msg')!
-    expect(invite.closest('li.msg')).toBe(card)
-    // ปุ่มส่งยังอยู่ใน .btnrow ใบแรกของการ์ดเหมือนเดิม และปุ่มเชิญอยู่คนละกล่องที่มาทีหลัง
-    const rows = [...card.querySelectorAll(':scope > .btnrow')]
-    expect(rows[0].contains(send)).toBe(true)
-    expect(rows[0].contains(invite)).toBe(false)
-    expect(invite.closest('.btnrow')!.compareDocumentPosition(rows[0]) & Node.DOCUMENT_POSITION_PRECEDING).toBeTruthy()
-  })
 })

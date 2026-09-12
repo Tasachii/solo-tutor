@@ -69,7 +69,7 @@ function RowCard({ row, queueActive }: { row: HomeworkRow; queueActive: boolean 
     {/* ปุ่มส่งปุ่มเดียวต่อแถว — ยังไม่ผูก OA ให้ไปแท็บรอส่งซึ่งเปิดแอป LINE ให้ครูส่งเอง (เจ้าของ 12 ก.ย.) */}
     {draft && <LineMessageAction message={draft} disabled={queueActive} onFallback={() => nav('/app/admin?tab=drafts')} />}
     {/* ต่อท้ายเสมอ ไม่ครอบและไม่ขยับ LineMessageAction (กับดัก J-44) */}
-    <LineInviteAction clientId={row.item.clientId} disabled={queueActive} />
+    <LineInviteAction clientId={row.item.clientId} disabled={queueActive} variant="status" />
   </li>
 }
 

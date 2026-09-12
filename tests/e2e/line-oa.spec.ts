@@ -360,9 +360,11 @@ test('แท็บค้างจ่าย: การ์ดของผู้ป
   await login(page)
   await page.goto('#/app/admin?tab=collect')
   const rows = page.getByTestId('collect-row')
-  const invite = { name: 'เชิญผู้ปกครองเข้า LINE', exact: true }
-  await expect(rows.filter({ hasText: 'คุณแม่ต้น' }).getByRole('button', invite)).toBeVisible()
-  await expect(rows.filter({ hasText: 'คุณพ่อภูมิ' }).getByRole('button', invite)).toHaveCount(0)
+  // การ์ดในแอดมินไม่มีปุ่มเชิญแล้ว — บอกสถานะเฉพาะคนที่ยังไม่ผูก (เจ้าของ 13 ก.ย.)
+  await expect(rows.filter({ hasText: 'คุณแม่ต้น' }).getByTestId('line-unlinked')).toHaveText('ยังไม่ได้แอด LINE OA')
+  await expect(rows.filter({ hasText: 'คุณพ่อภูมิ' }).getByTestId('line-unlinked')).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'เชิญผู้ปกครองเข้า LINE', exact: true })).toHaveCount(0)
+  await expect(page.getByTestId('oa-status')).toContainText('LINE OA: เชื่อมแล้ว')
   expect(backend.escaped).toEqual([])
 })
 

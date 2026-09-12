@@ -142,7 +142,7 @@ export default function AdminCollect() {
                 <button className="btn btn--secondary btn--sm" onClick={() => nudge(row)}>{c.nudge}</button>
               </div>}
             {/* ต่อท้ายแถวเสมอ ไม่ครอบและไม่ขยับ LineMessageAction (กับดัก J-44) */}
-            <LineInviteAction clientId={row.invoice.clientId} disabled={!!progress || queueActive} />
+            <LineInviteAction clientId={row.invoice.clientId} disabled={!!progress || queueActive} variant="status" />
           </li>
         })}
       </ul>

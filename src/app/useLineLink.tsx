@@ -323,16 +323,33 @@ export function useLineLink(clientIds: string[] = []) {
   }
 }
 
+/** หัวแท็บแอดมิน: ครูเชื่อม LINE OA แล้วหรือยัง — บรรทัดเดียว ไม่ขึ้นเลยถ้าโปรเจกต์นี้ไม่มี OA (เจ้าของ 13 ก.ย. 04:43) */
+export function LineOaStatus() {
+  const { state } = useStore()
+  const link = useLineLink()
+  if (!oaAvailable(state)) return null
+  if (!link.session) return <p className="hint" data-testid="oa-status"><Link to="/app/settings/line">{lineLinkCopy.oaSignIn}</Link></p>
+  if (!link.channelLoaded) return null
+  if (link.channel?.status !== 'active') return <p className="hint" data-testid="oa-status"><Link to="/app/settings/line">{lineLinkCopy.oaSetup}</Link></p>
+  return <p className="hint" data-testid="oa-status">{lineLinkCopy.linked}{link.channel.display_name ? ` · ${link.channel.display_name}` : ''}</p>
+}
+
 /**
- * ปุ่มเชิญผู้ปกครองที่วางข้าง ๆ ปุ่ม "ส่งใน LINE" ได้ทุกที่ — การ์ดในแอดมิน 3 แท็บ และหน้านักเรียน
+ * ปุ่มเชิญผู้ปกครองที่วางข้าง ๆ ปุ่ม "ส่งใน LINE" — หน้านักเรียนและหน้าตั้งค่า OA (การ์ดในแอดมิน 3 แท็บใช้ variant="status" ไม่มีปุ่ม)
  *
  * กับดัก J-44: ห้ามครอบหรือย้าย LineMessageAction ปุ่มนี้จึงเป็นพี่น้องที่ต่อ*ท้าย*เสมอ
  * ไม่มีการส่งอะไรจากปุ่มนี้ และไม่แตะสถานะข้อความ — เชิญแล้วข้อความยังเป็นร่างเหมือนเดิม
  */
-export function LineInviteAction({ clientId, disabled = false }: { clientId: string; disabled?: boolean }) {
+export function LineInviteAction({ clientId, disabled = false, variant = 'button' }: { clientId: string; disabled?: boolean; variant?: 'button' | 'status' }) {
   const { state } = useStore()
   const link = useLineLink([clientId])
   if (!oaAvailable(state)) return null
+  // การ์ดข้อความในแอดมิน: ไม่มีปุ่ม บอกแค่ว่าผู้ปกครองคนนี้ยังไม่ได้แอด OA (คนที่ผูกแล้วไม่ต้องบอกอะไร)
+  // สถานะของครูเอง (ยังไม่เข้าสู่ระบบ / ยังไม่เชื่อมช่อง) อยู่ที่หัวแท็บ <LineOaStatus/> ไม่ต้องซ้ำทุกการ์ด
+  if (variant === 'status') {
+    if (!link.session || !link.channelLoaded || link.channel?.status !== 'active') return null
+    return link.status(clientId) === 'unlinked' ? <p className="hint" data-testid="line-unlinked">{lineLinkCopy.unlinkedParent}</p> : null
+  }
   if (!link.session) {
     return <Link className="btn btn--ghost btn--sm" to="/app/settings/line">{lineLinkCopy.inviteSignedOut}</Link>
   }
