@@ -210,12 +210,11 @@ The browser suites share `./dist` and port 4173, so run them one at a time. A li
 
 - [`docs/features.md`](docs/features.md) — every capability, screen by screen, in Thai
 - [`docs/owner-setup.md`](docs/owner-setup.md) — the steps only the owner can do, with the real values and the exact buttons
-- [`docs/production-ledger.md`](docs/production-ledger.md) — every production task with its evidence, pass criterion and what is still open
+- [`docs/production-ledger.md`](docs/production-ledger.md) — every production task with its evidence, pass criterion and what is still open; the running record for whoever picks the project up next
 - [`docs/data-inventory.md`](docs/data-inventory.md) — what data lives where, for how long, and the erasure gaps that code cannot close
 - [`docs/incident-runbook.md`](docs/incident-runbook.md) · [`docs/backup-restore.md`](docs/backup-restore.md) — when something breaks, and how to restore from an encrypted dump
 - [`docs/line-oa-setup.md`](docs/line-oa-setup.md) — connecting a LINE OA end to end
 - [`docs/google-sheets/README.md`](docs/google-sheets/README.md) — the optional Sheets mirror
-- [`handoff.md`](handoff.md) — the running record of every working session, authoritative for whoever picks the project up next
 
 ## Pitch materials
 
