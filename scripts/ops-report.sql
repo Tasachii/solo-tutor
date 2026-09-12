@@ -20,6 +20,22 @@ select
   (c.last_verified_at at time zone 'Asia/Bangkok')::timestamp(0) as ตรวจผ่านเมื่อ_เวลาไทย
 from public.line_channels c join auth.users u on u.id = c.provider_id;
 
+\echo '=== 1c. 3 ชั่วโมงล่าสุด: webhook รับอะไรบ้าง และรหัสจับคู่ถูกใช้ไหม (ไม่พิมพ์ตัวรหัส) ==='
+select
+  (claimed_at at time zone 'Asia/Bangkok')::timestamp(0) as รับเมื่อ_เวลาไทย,
+  status as สถานะ,
+  left(coalesce(last_error, ''), 80) as ข้อผิดพลาด
+from public.line_webhook_events
+where claimed_at >= now() - interval '3 hours'
+order by claimed_at desc limit 20;
+select
+  (created_at at time zone 'Asia/Bangkok')::timestamp(0) as ออกรหัสเมื่อ_เวลาไทย,
+  case when used_at is not null then 'ใช้แล้ว' when expires_at < now() then 'หมดอายุ' else 'ยังไม่ถูกใช้' end as สถานะ,
+  (used_at at time zone 'Asia/Bangkok')::timestamp(0) as ใช้เมื่อ_เวลาไทย
+from public.line_link_codes
+where created_at >= now() - interval '3 hours'
+order by created_at desc limit 20;
+
 \echo '=== 2. คิวข้อความ — แยก "จากเดโม" ออกจากของจริง (dedupe_key ของเดโมมี :demo: ตั้งแต่ 9 ก.ย.) ==='
 select
   status as สถานะ,
