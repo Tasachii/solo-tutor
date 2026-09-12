@@ -127,3 +127,27 @@ test.describe('ตัวนับคอร์ส', () => {
     expect((await taught(page)).done).toBe(before.done)
   })
 })
+
+/**
+ * ล็อกส่ง (เจ้าของ 12 ก.ย. ค่ำ): กดส่งบนการ์ดที่ยังไม่ผูก OA → เปิดแอป LINE → ค้างถาม "ส่งแล้วหรือยัง"
+ * ระหว่างนั้นปุ่มส่งจางทุกแท็บโดยไม่บอกเหตุผล ครูหาอยู่ 15 นาที — ต้องบอกและปลดได้จากทุกแท็บ
+ */
+test('ล็อกส่งจากแท็บรอส่งต้องบอกเหตุผลบนแท็บอื่น และปลดได้ตรงนั้น', async ({ page }) => {
+  await page.addInitScript(() => { window.open = (() => ({} as Window)) as typeof window.open })
+  await page.goto('?scenario=default#/app/admin?tab=drafts')
+  await expect(page.locator('.msg').first()).toBeVisible()
+  await page.locator('.msg').first().getByRole('button', { name: 'ส่งใน LINE' }).click()
+  await expect(page.locator('.confirm__q')).toBeVisible()
+
+  await page.getByRole('button', { name: copy.admin.tabCollect }).click()
+  const lock = page.getByTestId('sending-lock')
+  await expect(lock).toBeVisible()
+  await expect(lock).toContainText(copy.admin.lockedNotice)
+  // ปุ่มส่งบนแท็บนี้ถูกล็อกจริง
+  const send = page.getByRole('button', { name: 'ส่งใน LINE' }).first()
+  if (await send.count()) await expect(send).toBeDisabled()
+
+  await lock.getByRole('button', { name: copy.admin.lockedCancel }).click()
+  await expect(lock).toHaveCount(0)
+  if (await send.count()) await expect(send).toBeEnabled()
+})

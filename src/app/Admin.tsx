@@ -297,6 +297,15 @@ export default function Admin() {
         </button>
       </div>
 
+      {/* ล็อกนี้มาจากแท็บรอส่ง แต่ทำให้ปุ่มส่งจางทุกแท็บ — บอกเหตุผลและให้ปลดได้จากทุกแท็บ ไม่ต้องไล่หาการ์ด */}
+      {awaiting && <div className="warnbar" role="status" data-testid="sending-lock">
+        {copy.admin.lockedNotice}
+        <div className="btnrow btnrow--tight">
+          {tab !== 'drafts' && <button className="btn btn--secondary btn--sm" onClick={() => setParams({ tab: 'drafts' })}>{copy.admin.lockedGo}</button>}
+          <button className="btn btn--ghost btn--sm" onClick={() => dispatch({ type: 'sendingStop' })}>{copy.admin.lockedCancel}</button>
+        </div>
+      </div>}
+
       {tab === 'collect' && <AdminCollect />}
       {tab === 'homework' && <AdminHomework />}
 
