@@ -17,4 +17,4 @@ dist
 supabase/.temp/
 
 # ภาพจากการเดินแอปด้วย scripts/qa-walk.mjs — ของรอบตรวจ ไม่ใช่ของโปรเจกต์
-/qa-walk/
+/qa-walk*/
