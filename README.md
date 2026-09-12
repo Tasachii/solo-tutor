@@ -6,11 +6,11 @@ Back-office for a tutor who teaches alone. Tap once to mark a session taught; at
 
 <p align="center"><img src="docs/brand/solo-tutor-square.jpg" width="320" alt="Solo Tutor — the tutor penguin at the easel" /></p>
 
-| หน้าแรก — one button into the demo | วันนี้ — one tap per session |
+| หน้าแรก — one button into the demo | วันนี้ — the week strip, then one tap per session |
 |---|---|
 | ![Landing page on a phone](docs/images/landing.jpg) | ![Today view with the เช็คชื่อ button](docs/images/today.jpg) |
 
-| นักเรียน — each student with their own billing mode | แอดมิน — drafts waiting for the teacher to read and send |
+| นักเรียน — billing mode and **สอนไปแล้ว x/N** per student | แอดมิน — drafts waiting for the teacher to read and send |
 |---|---|
 | ![Students list](docs/images/students.jpg) | ![Admin drafts tab](docs/images/admin-drafts.jpg) |
 
@@ -39,12 +39,16 @@ A solo tutor with 11–50 students keeps attendance in a notebook, a phone note 
 ## Features
 
 ### Daily teaching
-- **วันนี้** lists today's sessions with done/waiting counters; **เช็คชื่อ** marks one taught, a repeat tap does not double-count, and a toast undoes it
-- **+ เพิ่มวันนี้** adds an unscheduled session; **เลื่อน** and **งดคาบนี้** move or cancel one and draft the parent message on the spot — the bill is computed from attendance, not the timetable
+- **วันนี้** opens on a one-week calendar strip with a session count per day; the calendar button expands it to the month and back without leaving the page. Tap any day to see who is scheduled; future days show **เลื่อน** only, since a session that has not happened cannot be marked
+- **เช็คชื่อ** marks one taught, a repeat tap does not double-count, and a toast undoes it; each row shows **สอนไปแล้ว 8/16** for the student's course, turning **ครบแล้ว 8/8** when the course is complete
+- **+ เพิ่มวันนี้** adds one session; **+ จองล่วงหน้า** on any other day books one or a weekly series (**จองซ้ำทุกสัปดาห์** — pick weekdays and a number of weeks, up to 26; the button says how many sessions it will create before you press it)
+- **Slot locking** — a time that already belongs to another active student is refused and the holder is named; a **สอนกลุ่ม** chip overrides it on purpose, when booking and when moving
+- **เลื่อน** and **งดคาบนี้** move or cancel a session and draft the parent message on the spot — the bill is computed from attendance, not the timetable
 - Packages that are down to 1–2 sessions raise a renewal draft; an exhausted package still allows attendance but says the session is not yet paid
 
 ### Students and pricing
 - Add one at a time (name, payer — siblings can share one — LINE ID, and a billing mode: รายครั้ง · เหมาเดือน · แพ็ก of 10 or 20 or a custom count) or **เพิ่มหลายคน** by pasting from Excel, Google Sheets or LINE, or uploading CSV/XLSX; headers are guessed, duplicates dropped
+- **Course counter** — every non-package student has a course length (the teacher's own default from `⋯` → **จำนวนครั้งต่อคอร์ส**, overridable per student); attendance drives **สอนไปแล้ว x/N**, the list shows **ครบคอร์สแล้ว** when it is reached, and the student page offers **ต่อคอร์ส** (start counting again from 0, history and bills untouched) and **แถมครั้งให้** (extra sessions on this round)
 - Filters: ทั้งหมด · รายครั้ง · เหมาเดือน · แพ็ก · ใกล้หมดแพ็ก · ค้างจ่าย
 - Price changes mid-month apply to new sessions only; the billing mode cannot change while unbilled work exists, and the app says why
 - Pause a student (history kept, not counted toward the free cap), resume, or delete — a deleted student stays deleted across backups, devices and the cloud, and the server forgets the payer too
@@ -60,8 +64,9 @@ A solo tutor with 11–50 students keeps attendance in a notebook, a phone note 
 ### Messages to parents
 - Every message is drafted from the ledger: new bill · three-step balance notices (สุภาพ → ชัดเจน → รอบสุดท้าย by days overdue) · a short nudge · package renewal · receipt · moved/cancelled session · mid-month summary · homework and homework reminders · answers to parent questions
 - **ส่งใน LINE** is one button: if the parent is paired with the teacher's LINE OA the message goes out through the OA; if not, the LINE app opens with the message for the teacher to send. A message whose numbers changed after drafting cannot be sent
-- **ค้างจ่าย** tab: every unpaid bill in one place, sorted by days overdue, with the notice step due, the last notice sent and how many; **การบ้าน** tab: assign to several students at once, track received/overdue, reminders draft themselves
-- **แชท**: a parent's question in the OA (how much, is there class, sessions left, paid yet) gets an answer drafted from real data for the teacher to approve
+- **ค้างจ่าย** tab: every unpaid bill in one place, sorted by days overdue, with the notice step due, the last notice sent and how many; **สร้างข้อความเตือนยอด** drafts a short reminder when none is waiting. **การบ้าน** tab: assign to several students at once, track received/overdue, reminders draft themselves
+- **แชท**: type the question a parent asked (how much, is there class, sessions left, paid yet) and the answer is drafted from real data for the teacher to approve and send. Replies parents type in LINE are stored on the server but not yet shown in the app
+- While a message opened in the LINE app is still waiting for **ส่งแล้ว / ยังไม่ได้ส่ง**, every other send button is locked; a banner on each admin tab says so and offers **ยกเลิกการส่งที่ค้าง**
 
 ### LINE OA
 - A teacher connects their own OA once (Channel secret + long-lived token, encrypted at rest); the app sets the webhook URL and runs LINE's endpoint test itself
