@@ -28,6 +28,7 @@ Back-office for a tutor who teaches alone. Tap once to mark a session taught; at
 - [Usage](#usage)
 - [Testing](#testing)
 - [Project documentation](#project-documentation)
+- [Pitch materials](#pitch-materials)
 - [Roadmap](#roadmap)
 - [License](#license)
 
@@ -191,11 +192,11 @@ A failing scheduled job opens one GitHub Issue labelled `ops-alert` and comments
 ## Testing
 
 ```bash
-npm test            # 864 unit tests in 104 files (vitest, jsdom, clock frozen at 2025-09-02)
+npm test            # 865 unit tests in 104 files (vitest, jsdom, clock frozen at 2025-09-02)
 npm run test:db     # 18 SQL contract files against every migration on postgres:16 and postgres:17 (Docker)
 npm run test:edge   # 48 Edge Function tests (Deno)
-npm run e2e         # 161 browser tests on the real build, Pixel 7 and desktop (Playwright)
-npm run e2e:mock    # 30 LINE OA flows against a mocked backend
+npm run e2e         # 177 browser tests on the real build, Pixel 7 and desktop (Playwright)
+npm run e2e:mock    # 38 LINE OA flows against a mocked backend
 ```
 
 The browser suites share `./dist` and port 4173, so run them one at a time. A live-site pass at phone size — manifest, offline, long Thai names, backup file, check-in — is `node scripts/mobile-check.mjs`; it is deliberately not part of CI because it reaches the deployed site.
@@ -211,9 +212,23 @@ The browser suites share `./dist` and port 4173, so run them one at a time. A li
 - [`docs/google-sheets/README.md`](docs/google-sheets/README.md) — the optional Sheets mirror
 - [`handoff.md`](handoff.md) — the running record of every working session, authoritative for whoever picks the project up next
 
+## Pitch materials
+
+The deck and scripts used at the KU Startup 101 final pitch on 13 September 2026, kept in the repository so the team can rebuild or edit them.
+
+| File | What it is |
+| --- | --- |
+| [`docs/pitch/Solo Tutor Endgame.pdf`](docs/pitch/Solo%20Tutor%20Endgame.pdf) | The 19-page deck as presented (1280×720) |
+| [`docs/pitch/Solo Tutor Endgame.pptx`](docs/pitch/Solo%20Tutor%20Endgame.pptx) · [`.html`](docs/pitch/Solo%20Tutor%20Endgame.html) | The same deck as PowerPoint (one full-page image per slide) and as the single-file HTML source with fonts and images embedded |
+| [`docs/pitch/สคริป for pitching.pdf`](docs/pitch/%E0%B8%AA%E0%B8%84%E0%B8%A3%E0%B8%B4%E0%B8%9B%20for%20pitching.pdf) | Speaker script, slide by slide — timing, who speaks, stage cues, and the 7-minute cut |
+| [`docs/pitch/สคริปเดโม.pdf`](docs/pitch/%E0%B8%AA%E0%B8%84%E0%B8%A3%E0%B8%B4%E0%B8%9B%E0%B9%80%E0%B8%94%E0%B9%82%E0%B8%A1.pdf) | The 90-second live demo, tap by tap on the ผสม sample data, with the morning-of checklist and fallbacks |
+| [`docs/pitch/Q&A Tutor.pdf`](docs/pitch/Q%26A%20Tutor.pdf) | Judges' questions with short answers, numbers first |
+
+The demo runs on the deployed app in demo mode with a real LINE OA behind it — the steps that need a phone and the owner's account are in [`docs/owner-setup.md`](docs/owner-setup.md) ข้อ 3a.
+
 ## Roadmap
 
-Shipped in the last two days: separate demo and real ledgers, encrypted revocable parent links, tombstones so deleted students stay deleted everywhere, the owner analytics view, refunds visible to the teacher, the single **ส่งใน LINE** button, and the first real bill delivered through a LINE OA on 9 September 2026. Still open, in the order the ledger lists them: a "use this tab instead" takeover for the single-writer lock, a restore rehearsal against a real dump, and a per-student erasure policy for students who already have bills — that one needs a legal answer before code.
+Shipped on 12 September 2026: a week-strip calendar on the home screen that expands to the month, advance booking of weekly series, slot locking with a **สอนกลุ่ม** override, a per-student course counter (**สอนไปแล้ว 8/10**) with ต่อคอร์ส and แถมครั้งให้, and the first demo-mode messages delivered through the LINE OA to a real phone. Shipped in the two days before that: separate demo and real ledgers, encrypted revocable parent links, tombstones so deleted students stay deleted everywhere, the owner analytics view, refunds visible to the teacher, the single **ส่งใน LINE** button, and the first real bill delivered through a LINE OA on 9 September 2026. Still open, in the order the ledger lists them: a "use this tab instead" takeover for the single-writer lock, a restore rehearsal against a real dump, and a per-student erasure policy for students who already have bills — that one needs a legal answer before code.
 
 ## License
 
