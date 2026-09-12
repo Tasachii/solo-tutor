@@ -14,6 +14,8 @@ import { copy } from '../copy'
 import { draftCount } from '../core/selectors'
 import { BottomSheet, ConfirmSheet, DemoBadge, Icon, PenguinMark, type IconName } from './components'
 import { ProfileSheet } from './ProfileSheet'
+import { CourseDefaultSheet } from './CourseDefaultSheet'
+import { COURSE_SESSIONS_FALLBACK } from '../core/ledger'
 import { SheetsSheet } from './SheetsSheet'
 import { ImportSheet } from './ImportSheet'
 import { download, rosterCsv } from '../core/export'
@@ -43,6 +45,7 @@ export default function AppShell() {
   const [frame, setFrame] = useState<Frame>(readFrame)
   const [keys, setKeys] = useState(false)
   const [profile, setProfile] = useState(false)
+  const [courseOpen, setCourseOpen] = useState(false)
   const [sheetsOpen, setSheetsOpen] = useState(false)
   const [importOpen, setImportOpen] = useState(false)
   const [sheets, setSheets] = useState(readSheetsConfig)
@@ -200,6 +203,9 @@ export default function AppShell() {
                 )}
                 {/* ในเดโม "รูปแบบการเก็บเงิน" คือการสลับชุดข้อมูล ซึ่งอยู่แท็บ เดโม อยู่แล้ว — โชว์สองที่ครูงง (เจ้าของ 9 ก.ย.) */}
                 {real && <button className="row" onClick={() => { setMenu(false); nav('/start') }}>{copy.menu.style}</button>}
+                <button className="row" onClick={() => { setMenu(false); setCourseOpen(true) }}>
+                  {copy.course.defaultTitle} · {state.courseSessionsDefault ?? COURSE_SESSIONS_FALLBACK}
+                </button>
                 {state.clients[0] && (
                   <button className="row" onClick={() => { setMenu(false); nav(`/client/${state.clients[0].id}`) }}>
                     {copy.menu.clientView}
@@ -319,6 +325,7 @@ export default function AppShell() {
       )}
 
       {profile && <ProfileSheet onClose={() => setProfile(false)} />}
+      {courseOpen && <CourseDefaultSheet onClose={() => setCourseOpen(false)} />}
 
       {sheetsOpen && <SheetsSheet current={sheets} onSaved={setSheets} onClose={() => setSheetsOpen(false)} />}
 

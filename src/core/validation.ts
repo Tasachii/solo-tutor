@@ -23,6 +23,14 @@ export function isISODate(value: unknown): value is string {
 export const isTime = (value: unknown): value is string =>
   typeof value === 'string' && /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(value)
 
+/**
+ * จำนวนครั้งต่อคอร์ส — จำนวนเต็ม 1..MAX เท่านั้น
+ * มีเพดานเพราะตัวเลขนี้ไปโผล่เป็น "x/N" บนหน้าจอ ค่ามหาศาลทำให้แถวแตกและไม่มีความหมายจริง
+ */
+export const COURSE_SESSIONS_MAX = 500
+export const isCourseSessions = (value: unknown): value is number =>
+  Number.isSafeInteger(value) && Number(value) > 0 && Number(value) <= COURSE_SESSIONS_MAX
+
 export function isBillingMode(value: unknown): value is BillingMode {
   if (!value || typeof value !== 'object') return false
   const billing = value as Record<string, unknown>
@@ -80,6 +88,7 @@ export function validateState(value: unknown): StateValidation {
     || (state.provider.particle !== undefined && !isParticle(state.provider.particle))) errors.push('provider: ไม่ถูกต้อง')
   if (typeof state.onboarded !== 'boolean') errors.push('onboarded: ไม่ถูกต้อง')
   if (state.style !== undefined && !isStyle(state.style)) errors.push('style: ไม่ถูกต้อง')
+  if (state.courseSessionsDefault !== undefined && !isCourseSessions(state.courseSessionsDefault)) errors.push('courseSessionsDefault: ไม่ถูกต้อง')
   if (state.lastBackupAt !== undefined && !isISODate(state.lastBackupAt)) errors.push('lastBackupAt: ไม่ถูกต้อง')
   if (!isRecord(state.counters)
     || !isNonNegativeMoney(state.counters.receipt) || !isNonNegativeMoney(state.counters.invoice)) errors.push('counters: ต้องเป็นจำนวนเต็มไม่ติดลบ')
@@ -162,6 +171,7 @@ export function validateState(value: unknown): StateValidation {
       }
     }
     if (row.label !== undefined && !isString(row.label)) errors.push(`subjects[${index}].label: ไม่ถูกต้อง`)
+    if (row.courseSessions !== undefined && !isCourseSessions(row.courseSessions)) errors.push(`subjects[${index}].courseSessions: ไม่ถูกต้อง`)
   })
   state.units.forEach((row, index) => {
     if (!isRecord(row)) { errors.push(`units[${index}]: ต้องเป็น object`); return }

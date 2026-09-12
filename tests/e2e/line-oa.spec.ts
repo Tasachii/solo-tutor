@@ -394,3 +394,54 @@ test('เดโม: ครูที่ล็อกอินและจับค
   // สมุดยังเป็นข้อมูลตัวอย่าง — ป้ายเดโมต้องยังอยู่บนจอ ไม่ใช่หายไปเพราะแอบสลับโหมด
   await expect(page.locator('.demo-badge').first()).toBeVisible()
 })
+
+/**
+ * การบ้านต้องถึงผู้ปกครองทาง OA จริง ไม่ใช่แค่ร่างค้างในแอป (เจ้าของ 12 ก.ย.)
+ *
+ * เดินทางเดียวกับที่ครูทำจริง: มอบหมายจากแท็บการบ้าน แล้วกดส่งบนแถวนั้นเลย
+ */
+test('แท็บการบ้าน: มอบหมายแล้วกดส่งใน LINE บนแถวนั้น ส่งถึงผู้ปกครองผ่าน OA จริง', async ({ page }) => {
+  const backend = await installMockBackend(page, { connected: true, linked: true })
+  await seedRealWorkspace(page)
+  await login(page)
+
+  await page.goto('#/app/admin?tab=homework')
+  await page.getByRole('button', { name: 'น้องแพรว', exact: true }).click()
+  await page.getByRole('textbox', { name: copy.homework.text }).fill('อ่านบทที่ 4 แล้วทำข้อ 1–5')
+  await page.getByRole('button', { name: copy.homework.assign }).click()
+
+  const row = page.getByTestId('homework-row').filter({ hasText: 'อ่านบทที่ 4' })
+  await expect(row).toHaveCount(1)
+  // ปุ่มส่งต้องมีปุ่มเดียวต่อแถว — เคยมีสองปุ่มชื่อเดียวกัน ครูไม่รู้ว่าอันไหนส่งจริง
+  await expect(row.getByRole('button', { name: 'ส่งใน LINE' })).toHaveCount(1)
+  await row.getByRole('button', { name: 'ส่งใน LINE' }).click()
+
+  await expect.poll(() => backend.lineSendCount).toBe(1)
+  const keys = Object.keys(backend.outbox)
+  expect(keys).toHaveLength(1)
+  expect(keys[0]).toMatch(new RegExp(`^${workspaceId}:hw:`))
+  expect(backend.outbox[keys[0]].body).toContain('อ่านบทที่ 4')
+  expect(backend.escaped).toEqual([])
+})
+
+/**
+ * แชท: ครูพิมพ์คำถามที่ผู้ปกครองส่งมา ระบบร่างคำตอบ แล้วคำตอบนั้นต้องส่งเข้า OA ได้จริง
+ */
+test('แท็บแชท: ร่างคำตอบแล้วส่งใน LINE ถึงผู้ปกครองผ่าน OA จริง', async ({ page }) => {
+  const backend = await installMockBackend(page, { connected: true, linked: true })
+  await seedRealWorkspace(page)
+  await login(page)
+
+  await page.goto('#/app/admin?tab=chat&chat=c1')
+  await page.getByRole('textbox', { name: copy.admin.realAskLabel }).fill('เดือนนี้ค่าเรียนเท่าไหร่คะ')
+  await page.getByRole('button', { name: 'ร่างคำตอบ' }).click()
+
+  // ห้องแชทนี้มีร่างที่ seed ไว้อยู่ก่อนแล้ว — ต้องเล็งใบใหม่ที่เพิ่งร่าง ไม่ใช่ใบแรกที่เจอ
+  const card = page.locator('.draftcard').filter({ hasNotText: messageText })
+  await expect(card).toHaveCount(1)
+  await card.getByRole('button', { name: 'ส่งใน LINE' }).click()
+
+  await expect.poll(() => backend.lineSendCount).toBe(1)
+  expect(Object.keys(backend.outbox)).toHaveLength(1)
+  expect(backend.escaped).toEqual([])
+})

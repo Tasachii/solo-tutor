@@ -14,6 +14,12 @@ export interface Client { id: string; name: string; lineId?: string; phone?: str
 export interface Subject {
   id: string; name: string; clientId: string; billing: BillingMode
   label?: string; active: boolean; createdAt: ISODate
+  /**
+   * จำนวนครั้งทั้งคอร์สที่ตกลงกับผู้ปกครอง — ใช้บอก "สอนไปแล้ว 3/10" เท่านั้น ไม่แตะการคิดเงิน
+   * ไม่ตั้ง = ใช้ค่าเริ่มต้นของครูคนนี้ (`AppState.courseSessionsDefault`) เพราะแต่ละคนไม่เท่ากัน
+   * แพ็ก/คอร์สที่ขายเป็นชุดมีตัวนับของตัวเองอยู่แล้ว (packageStatus) จึงไม่ใช้ช่องนี้
+   */
+  courseSessions?: number
   /** วันที่หยุดให้บริการ ใช้ปิดช่วงเหมาเดือนในอนาคต; ข้อมูลเก่าอาจไม่มีค่านี้ */
   inactiveAt?: ISODate
   /** Immutable service spans preserve stopped months across later reactivation. */
@@ -149,6 +155,11 @@ export interface AppState {
   onboarded: boolean
   /** วิธีเก็บเงินหลักที่เลือกตอนเข้าใช้ — เรื่องหน้าจอ ไม่แตะ ledger · ไม่ตั้ง = ผสม */
   style?: WorkStyle
+  /**
+   * จำนวนครั้งต่อคอร์สที่ครูคนนี้ใช้เป็นค่าเริ่มต้น — นักเรียนที่ไม่ได้ตั้งเองใช้ค่านี้
+   * ไม่ตั้ง = COURSE_SESSIONS_FALLBACK (ข้อมูลเก่าและไฟล์สำรองเปิดได้เหมือนเดิมทุกไบต์)
+   */
+  courseSessionsDefault?: number
   /** วันที่สำรองข้อมูลล่าสุด — เตือนครูเมื่อทิ้งช่วงนาน */
   lastBackupAt?: ISODate
   /**

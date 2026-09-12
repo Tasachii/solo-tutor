@@ -1,6 +1,6 @@
 import type { AppState, Client, ServiceUnit, Subject } from '../core/types'
 import { PROMPTPAY_DISPLAY, PROVIDER_NAME } from '../platform/config'
-import { addDays, iso, parseISO, periodOf, todayISO, weekday } from '../core/format'
+import { addDays, dayIn, daysInPeriod, iso, parseISO, periodOf, todayISO, weekday } from '../core/format'
 
 /**
  * เดโมเดินตามนาฬิกาเครื่อง — กรรมการเปิดดูวันไหนก็เห็นเดือนนั้น
@@ -17,14 +17,8 @@ export function periodBack(n: number, from: string = thisPeriod()): string {
   return `${Math.floor(total / 12)}-${String((total % 12) + 1).padStart(2, '0')}`
 }
 
-/** วันสุดท้ายของเดือน — กันวันที่ 31 หล่นไปเดือนถัดไปตอนเดือนนั้นมี 30 วัน */
-export const daysInPeriod = (period: string): number => {
-  const [y, m] = period.split('-').map(Number)
-  return new Date(Date.UTC(y, m, 0)).getUTCDate()
-}
-/** วันที่ `day` ของ period นั้น — เกินสิ้นเดือนให้ยึดสิ้นเดือน */
-export const dayIn = (period: string, day: number): string =>
-  `${period}-${String(Math.min(day, daysInPeriod(period))).padStart(2, '0')}`
+/** วันสุดท้ายของเดือนและวันที่ `day` ของเดือนนั้น — ตัวจริงอยู่ใน core/format.ts (ปฏิทินใช้ตัวเดียวกัน) */
+export { daysInPeriod, dayIn } from '../core/format'
 
 export const emptyBase = (): AppState => ({
   schemaVersion: 5, revision: 0, mode: 'demo', professionId: 'tutor', scenarioId: 'empty',
@@ -50,6 +44,8 @@ export interface SubjectPlan {
   id: string; name: string; clientId: string; clientName: string
   billing: Subject['billing']; label: string
   days: number[]; time: string
+  /** จำนวนครั้งทั้งคอร์ส — ตั้งไว้ในชุดตัวอย่างเพื่อให้ "สอนไปแล้ว x/N" อ่านแล้วสมจริง ไม่ใช่ 10/10 ทุกคน */
+  courseSessions?: number
   /** จำนวน completion ที่ต้องเกิดในเดือน (ล็อกให้ตัวเลขตรง spec) */
   augDone: number; sepDoneBeforeToday: number
   /** มีคาบวันนี้ไหม และเช็คไปแล้วหรือยัง */
@@ -74,6 +70,7 @@ export function buildFromPlans(plans: SubjectPlan[], scenarioId: string): AppSta
     subjects.push({
       id: p.id, name: p.name, clientId: p.clientId, billing: p.billing,
       label: p.label, active: true, createdAt: START,
+      ...(p.courseSessions !== undefined ? { courseSessions: p.courseSessions } : {}),
     })
 
     const dates = datesOn(p.days, START, END)

@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useStore } from '../core/store'
 import { professionById } from '../professions'
 import { copy } from '../copy'
-import { clientById, packageStatus } from '../core/ledger'
+import { clientById, courseProgress, packageStatus } from '../core/ledger'
 import { overdueDaysBySubject } from '../core/selectors'
 import { currentEstimate } from '../core/messages'
 import { money, periodOf } from '../core/format'
@@ -107,6 +107,7 @@ export default function Subjects() {
       <ul className="rows">
         {shown.map((s) => {
           const pk = packageStatus(state, s)
+          const course = courseProgress(state, s)
           const od = overdueDaysBySubject(state, s.id)
           const c = clientById(state, s.clientId)
           const tone = pk ? (pk.state === 'ok' ? 'ok' : pk.state === 'low' ? 'warn' : 'danger') : 'ok'
@@ -120,8 +121,11 @@ export default function Subjects() {
                     {s.billing.mode === 'per_unit' && ` ${money(s.billing.rate)}`}
                     {s.billing.mode === 'flat_monthly' && ` ${money(s.billing.amount)}`}
                     {pk && ` ${pk.used}/${pk.total}`}
+                    {course && ` · ${course.done}/${course.total}`}
                   </span>
                   {pk && <ProgressBar value={pk.used} max={pk.total} tone={tone} />}
+                  {course && <ProgressBar value={course.done} max={course.total}
+                    tone={course.state === 'done' ? 'danger' : course.state === 'near' ? 'warn' : 'ok'} />}
                 </span>
                 {/* เดิมเป็นตัวเลขเปล่า ๆ ที่หมายถึงคนละอย่างในแต่ละแถว */}
                 <span className="srow__side">

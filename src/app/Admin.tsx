@@ -280,7 +280,6 @@ export default function Admin() {
     <div className="pane">
       {actionError && <p className="fld__err" role="alert">{actionError}</p>}
       {state.mode === 'real' && <p><Link to="/app/settings/line">ตั้งค่า LINE OA และเชื่อมผู้ปกครอง</Link></p>}
-      {state.mode === 'real' && <p className="hint">ลิงก์เอกสารเป็นสำเนาตามวันที่ ผู้ที่ได้รับลิงก์อ่านข้อมูลได้ กรุณาตรวจผู้รับก่อนส่ง</p>}
       {state.mode === 'real' && !isPaymentDestination(state.provider.promptpayId) && <p className="warnbar">ยังไม่ได้ตั้งค่าพร้อมเพย์ที่ถูกต้อง <Link to="/app/onboarding">ตั้งค่าข้อมูลรับเงิน</Link></p>}
       <div className="chips">
         <button className={`chip${tab === 'drafts' ? ' chip--on' : ''}`} aria-pressed={tab === 'drafts'} onClick={() => setParams({ tab: 'drafts' })}>

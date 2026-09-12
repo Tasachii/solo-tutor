@@ -60,14 +60,14 @@ function RowCard({ row, queueActive }: { row: HomeworkRow; queueActive: boolean 
       }}>{h.remindAgain}</button>}
       {draft && <>
         <button className="btn btn--ghost btn--sm" onClick={() => { void copyText(draft.draft).then(ok => toast.push({ text: ok ? copy.toast.copied : copy.toast.copyFailed, tone: ok ? 'ok' : 'danger' })) }}>{copy.admin.copyText}</button>
-        <button className="btn btn--secondary btn--sm" onClick={() => nav('/app/admin?tab=drafts')}>{copy.admin.sendLine}</button>
       </>}
       <button className="btn btn--ghost btn--sm btn--danger-text" onClick={() => {
         if (pendingOa) { toast.push({ text: h.removeBlocked, tone: 'warn' }); return }
         if (dispatch({ type: 'deleteHomework', id: row.item.id })) toast.push({ text: h.removed, tone: 'warn' })
       }}>{h.remove}</button>
     </div>
-    {draft && <LineMessageAction message={draft} disabled={queueActive} />}
+    {/* ปุ่มส่งปุ่มเดียวต่อแถว — ยังไม่ผูก OA ให้ไปแท็บรอส่งซึ่งเปิดแอป LINE ให้ครูส่งเอง (เจ้าของ 12 ก.ย.) */}
+    {draft && <LineMessageAction message={draft} disabled={queueActive} onFallback={() => nav('/app/admin?tab=drafts')} />}
     {/* ต่อท้ายเสมอ ไม่ครอบและไม่ขยับ LineMessageAction (กับดัก J-44) */}
     <LineInviteAction clientId={row.item.clientId} disabled={queueActive} />
   </li>
@@ -108,7 +108,6 @@ export default function AdminHomework() {
       <StatCard label={h.stats.pending} value={`${summary.pending}`} tone="brand" />
       <StatCard label={h.stats.submitted} value={`${summary.submitted}`} tone="ok" />
     </div>
-    {state.mode !== 'real' && <p className="hint">{h.demoNote}</p>}
     <section className="card hwform" aria-label={h.assignTitle}>
       <h2 className="h2">{h.assignTitle}</h2>
       <div className="fld">
@@ -124,7 +123,6 @@ export default function AdminHomework() {
       </div>
       <label className="fld"><span className="fld__l">{h.text}</span>
         <textarea className="inp inp--area" rows={3} maxLength={HOMEWORK_TEXT_MAX} value={text} onChange={e => setText(e.target.value)} /></label>
-      <p className="hint">{h.textHint}</p>
       <label className="fld"><span className="fld__l">{h.due}</span>
         <input className="inp" type="date" min={state.today} value={dueAt} onChange={e => setDueAt(e.target.value)} /></label>
       {error && <p className="fld__err" role="alert">{error}</p>}

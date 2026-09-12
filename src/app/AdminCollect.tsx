@@ -93,7 +93,6 @@ export default function AdminCollect() {
       <StatCard label={c.stats.outstanding} value={money(summary.outstanding)} tone="danger" />
       <StatCard label={c.stats.overSeven} value={`${summary.overSeven}`} tone={summary.overSeven ? 'danger' : undefined} />
     </div>
-    {state.mode !== 'real' && <p className="hint">{c.demoNote}</p>}
     {oa && !workspace && <p className="hint"><Link to="/app/settings/line">ตั้งค่า LINE OA และเชื่อมผู้ปกครอง</Link></p>}
     {rows.length === 0 ? <EmptyState icon="✓" title={c.empty} /> : <>
       {oa && workspace && <div className="btnrow">
@@ -103,7 +102,6 @@ export default function AdminCollect() {
         {progress && <button className="btn btn--ghost" onClick={() => { stop.current = true }}>{copy.common.cancel}</button>}
         <button className="btn btn--ghost btn--sm" disabled={checking || !!progress} onClick={() => void checkLinks()}>{c.oaCheck}</button>
       </div>}
-      {oa && workspace && <p className="hint">{c.sendAllOaHint}</p>}
       {result && <div className="bulk" role="status">
         {fill(c.bulkResult, { sent: result.sent, skipped: result.skipped.length })}
         {result.skipped.length > 0 && <ul>{result.skipped.map((s, i) => <li key={i}>{s.name} — {s.reason}</li>)}</ul>}
@@ -133,9 +131,11 @@ export default function AdminCollect() {
                 <p className="msg__preview"><span className={`tagk tagk--${row.draft.kind}`}>{copy.admin.kinds[row.draft.kind]}</span> {row.draft.draft}</p>
                 <div className="btnrow">
                   <button className="btn btn--ghost btn--sm" onClick={() => { void copyText(row.draft!.draft).then(ok => toast.push({ text: ok ? copy.toast.copied : copy.toast.copyFailed, tone: ok ? 'ok' : 'danger' })) }}>{copy.admin.copyText}</button>
-                  <button className="btn btn--secondary btn--sm" onClick={() => nav('/app/admin?tab=drafts')}>{copy.admin.sendLine}</button>
                 </div>
-                <LineMessageAction message={row.draft} disabled={!!progress || queueActive} />
+                {/* ปุ่มส่งปุ่มเดียวต่อแถว (เจ้าของ 12 ก.ย.: "ส่งในไลน์มีตั้งสองอัน")
+                    ผูก OA แล้วส่งผ่าน OA ตรงนี้ · ยังไม่ผูกให้ไปแท็บรอส่งซึ่งเปิดแอป LINE ให้ครูส่งเอง */}
+                <LineMessageAction message={row.draft} disabled={!!progress || queueActive}
+                  onFallback={() => nav('/app/admin?tab=drafts')} />
               </>
               : <div className="btnrow">
                 <span className="dim">{c.noDraft}</span>

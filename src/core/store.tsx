@@ -8,13 +8,14 @@ import { buildReal, buildScenario, isScenario } from './scenarios'
 import { appendEvent } from './events'
 import { periodOf, todayISO } from './format'
 import { isWellFormed } from './backup'
+import { bookSeriesPlan } from './booking'
 import { urlParam } from './urlParams'
 import { billingChangeIssue, buildPackageInvoice, closableSubjects, isFinalizedPeriod, markOverdue, mutationTouchesFinalizedPeriod, reconcileDraftInvoices } from './billing'
 import { deriveDrafts, refreshDrafts, retractDrafts, applySend, cancelledText, mkMessage, movedText, nudgeMessage, homeworkAssignMessage, homeworkReminderMessage } from './messages'
 import { HOMEWORK_TEXT_MAX, homeworkOf, homeworkStatus } from './homework'
 import { balanceDue, complete as ledgerComplete, packageStatus, renewPackage, snapshotLegacyPrices, uncomplete } from './ledger'
 import { issueReceipt } from './receipts'
-import { isUuid, isBillingMode, isISODate, isMoney, isNonNegativeMoney, isTime } from './validation'
+import { isUuid, isBillingMode, isCourseSessions, isISODate, isMoney, isNonNegativeMoney, isTime } from './validation'
 import { financialRevision, messageSendIssue, oaDedupeKey } from './messageDelivery'
 import { migrateCanonical } from './migrations'
 import { applyClientTombstones, applyTombstones, clientTombstonesOf, mergeClientTombstones,
@@ -81,6 +82,9 @@ export type Action =
   | { type: 'reactivateSubject'; subjectId: string }
   | { type: 'deleteSubject'; subjectId: string }
   | { type: 'addUnit'; subjectId: string; time: string; label?: string; date?: string }
+  | { type: 'bookSeries'; subjectId: string; time: string; weekdays: number[]; from: string; weeks: number; label?: string; allowClash?: boolean }
+  | { type: 'setCourseDefault'; sessions: number }
+  | { type: 'setCourseSessions'; subjectId: string; sessions: number | null }
   | { type: 'chat'; clientId: string; from: 'client' | 'provider'; text: string; viaAdmin?: boolean }
   | { type: 'waitlist'; entry: AppState['waitlist'][number] }
   | { type: 'setToday'; date: string }
@@ -269,6 +273,8 @@ export function reducer(state: AppState, action: Action): AppState {
       if (!action.subject.id || !action.subject.clientId || !action.subject.name.trim()
         || !action.clientName.trim() || !isISODate(action.subject.createdAt)
         || typeof action.subject.active !== 'boolean' || !isBillingMode(action.subject.billing)) return state
+      // จำนวนครั้งของคอร์สเป็นเรื่องหน้าจอ แต่ค่าที่พังต้องไม่ลงสมุด ไม่งั้น validateState ปฏิเสธทั้งก้อนตอนกู้คืน
+      if (action.subject.courseSessions !== undefined && !isCourseSessions(action.subject.courseSessions)) return state
       const current = s.subjects.find((x) => x.id === action.subject.id)
       const exists = !!current
       if (current && current.active !== action.subject.active) return state
@@ -350,6 +356,35 @@ export function reducer(state: AppState, action: Action): AppState {
         }],
       }
       break
+    /**
+     * จองล่วงหน้าเป็นชุด — "ทุกจันทร์กับพฤหัส 17:00 อีก 8 สัปดาห์"
+     *
+     * เป็น action เดียวจบเพราะการบันทึกทีละคาบหมายถึงเขียน storage หลายสิบรอบ
+     * และถ้าขาดกลางทางครูจะได้ตารางครึ่งเดียวโดยไม่รู้ตัว
+     * กฎ: ข้ามรอบบิลที่ปิดแล้ว (ย้อนไปเพิ่มคาบในเดือนที่ออกบิลไปแล้วไม่ได้)
+     * และข้ามคาบที่ซ้ำวัน-เวลาเดิมของนักเรียนคนเดียวกัน กดสองรอบจึงไม่ได้ตารางซ้อน
+     */
+    case 'bookSeries': {
+      const plan = bookSeriesPlan(s, action)
+      if (!plan?.dates.length) return state
+      s = { ...s, units: [...s.units, ...plan.dates.map((date) => ({
+        id: nid('u'), subjectId: action.subjectId, scheduledAt: date, time: action.time,
+        durationMin: 60, label: action.label, adHoc: true,
+      }))] }
+      break
+    }
+    /** ค่าเริ่มต้นจำนวนครั้งต่อคอร์สของครูคนนี้ — ไม่ย้อนไปเขียนทับคนที่ตั้งเองไว้แล้ว */
+    case 'setCourseDefault':
+      if (!isCourseSessions(action.sessions)) return state
+      s = { ...s, courseSessionsDefault: action.sessions }; break
+    /** ตั้ง/ล้างจำนวนครั้งของนักเรียนคนเดียว — null = กลับไปใช้ค่าเริ่มต้นของครู */
+    case 'setCourseSessions': {
+      if (!s.subjects.some((row) => row.id === action.subjectId)) return state
+      if (action.sessions !== null && !isCourseSessions(action.sessions)) return state
+      s = { ...s, subjects: s.subjects.map((row) => row.id === action.subjectId
+        ? { ...row, courseSessions: action.sessions ?? undefined } : row) }
+      break
+    }
     case 'chat':
       if (!s.clients.some(client => client.id === action.clientId) || !action.text.trim()) return state
       s = { ...s, chats: [...s.chats, { id: nid('ch'), clientId: action.clientId, from: action.from, text: action.text, at: s.today, viaAdmin: action.viaAdmin }] }

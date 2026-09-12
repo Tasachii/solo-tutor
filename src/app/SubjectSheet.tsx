@@ -1,11 +1,11 @@
 import { useRef, useState } from 'react'
 import { useStore } from '../core/store'
-import { packageStatus } from '../core/ledger'
+import { COURSE_SESSIONS_FALLBACK, packageStatus } from '../core/ledger'
 import { professionById } from '../professions'
 import { copy } from '../copy'
 import { BottomSheet } from './components'
 import type { BillingMode, Subject } from '../core/types'
-import { isMoney } from '../core/validation'
+import { isCourseSessions, isMoney } from '../core/validation'
 import { billingChangeIssue, type BillingChangeIssue } from '../core/billing'
 import { defaultBillingFor } from '../core/style'
 import { fillVocab } from '../professions'
@@ -78,6 +78,8 @@ export default function SubjectSheet({ subject, onClose }: { subject?: Subject; 
   const usedPack = subject && b?.mode === 'package' ? packageStatus(state, subject)?.used ?? 0 : 0
   const [pkTotal, setPkTotal] = useState(String(b?.mode === 'package' ? b.total : 10))
   const [pkPrice, setPkPrice] = useState(String(b?.mode === 'package' ? b.price : 3500))
+  /** จำนวนครั้งของคอร์ส — ว่าง = ใช้ค่าเริ่มต้นของครู (ไม่ใช่แพ็ก แพ็กนับจากจำนวนครั้งที่ซื้ออยู่แล้ว) */
+  const [courseSessions, setCourseSessions] = useState(subject?.courseSessions ? String(subject.courseSessions) : '')
   const [err, setErr] = useState<Record<string, string>>({})
   const [capIssue, setCapIssue] = useState<CapIssue | null>(null)
   const [packageIntent, setPackageIntent] = useState<'opening_balance' | 'paid_purchase'>('opening_balance')
@@ -95,6 +97,7 @@ export default function SubjectSheet({ subject, onClose }: { subject?: Subject; 
     if (mode === 'per_unit' && !billing) e.rate = copy.common.numberPositive
     if (mode === 'flat_monthly' && !billing) e.flat = copy.common.numberPositive
     if (mode === 'package' && !billing) e.pk = copy.common.numberPositive
+    if (mode !== 'package' && courseSessions.trim() && !isCourseSessions(Number(courseSessions))) e.course = copy.common.numberPositive
     setErr(e)
     if (Object.keys(e).length || !billing || changeIssue) return
     // เพดานแพ็กฟรี — เช็คก่อน dispatch เพื่อบอกครูว่าติดอะไร ไม่ใช่ปฏิเสธเงียบ ๆ
@@ -109,6 +112,7 @@ export default function SubjectSheet({ subject, onClose }: { subject?: Subject; 
       subject: {
         id, name: name.trim(), clientId, billing,
         label: subject?.label, active: subject?.active ?? true, createdAt: subject?.createdAt ?? state.today,
+        ...(mode !== 'package' && courseSessions.trim() ? { courseSessions: Number(courseSessions) } : {}),
       },
       clientName: clientName.trim(),
       lineId: lineId.trim() || null,
@@ -183,6 +187,24 @@ export default function SubjectSheet({ subject, onClose }: { subject?: Subject; 
           <input className="inp" inputMode="numeric" value={flat} onChange={(e) => setFlat(e.target.value)} />
           {err.flat && <span className="fld__err">{err.flat}</span>}
         </label>
+      )}
+      {mode !== 'package' && (
+        <div className="fld">
+          <span className="fld__l">{copy.course.field}</span>
+          <div className="chips">
+            {(prof.packagePresets ?? [10, 20]).map((n) => (
+              <button key={n} type="button" className={`chip${courseSessions === String(n) ? ' chip--on' : ''}`}
+                aria-pressed={courseSessions === String(n)} onClick={() => setCourseSessions(String(n))}>{n}</button>
+            ))}
+            <button type="button" className={`chip${courseSessions === '' ? ' chip--on' : ''}`} aria-pressed={courseSessions === ''}
+              onClick={() => setCourseSessions('')}>
+              {copy.course.useDefault.replace('{n}', String(state.courseSessionsDefault ?? COURSE_SESSIONS_FALLBACK))}
+            </button>
+          </div>
+          <input className="inp" inputMode="numeric" aria-label={copy.course.field} value={courseSessions}
+            onChange={(e) => setCourseSessions(e.target.value.replace(/\D/g, '').slice(0, 3))} />
+          {err.course && <span className="fld__err">{err.course}</span>}
+        </div>
       )}
       {mode === 'package' && (
         <>

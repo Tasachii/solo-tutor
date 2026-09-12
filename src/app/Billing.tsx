@@ -100,8 +100,12 @@ export default function Billing() {
         {/* อธิบายว่าตัวเลขนี้มาจากไหน — ราคาขายไม่ควรอยู่ในเครื่องมือของผู้ใช้ */}
         {dash.recovered > 0
           ? <details className="hint hint--fold"><summary>{copy.billing.recoveredWhy}</summary>{copy.billing.recoveredHow}</details>
-          : <p className="hint">{copy.billing.firstMonthHint}</p>}
-        <button className="btn btn--secondary btn--block" onClick={() => setShare(true)}>{copy.billing.share}</button>
+          : null}
+        {/* การ์ดแชร์มีค่าเมื่อมีตัวเลขให้อวด — เดือนที่ยังเป็น 0 การ์ดจะเขียนว่า "ช่วยไว้ 0 บาท"
+            ซึ่งพูดแทนครูในทางที่ไม่จริงและไม่มีใครอยากแชร์ (เจ้าของ 12 ก.ย.: "ไม่แน่ใจว่ามีมันดีไหม") */}
+        {dash.recovered > 0 && (
+          <button className="btn btn--secondary btn--block" onClick={() => setShare(true)}>{copy.billing.share}</button>
+        )}
       </section>
 
       {closable.length > 0 && (
@@ -163,7 +167,6 @@ export default function Billing() {
           track('export_csv', { period }); toast.push({ text: copy.toast.exported, tone: 'ok' })
         }}>{copy.billing.exportCsv}</button>
       </div>
-      <p className="hint">{copy.billing.exportNote}</p>
 
       {confirmClose && (
         <BottomSheet title={copy.billing.closeMonth} sub={`${copy.billing.closeConfirm} ${closable.length}`} onClose={() => setConfirmClose(false)}

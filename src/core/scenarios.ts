@@ -18,15 +18,15 @@ const PKG = (total: number, price: number, purchasedAt: string) =>
 
 const defaultPlans = (): SubjectPlan[] => [
   { id: 's1', name: 'น้องแพรว', clientId: 'c1', clientName: 'คุณแม่แพรว', billing: { mode: 'per_unit', rate: 400 },
-    label: 'คณิต', days: [2, 5], time: '16:00', augDone: 8, sepDoneBeforeToday: 0, todayUnit: { time: '16:00', done: true } },
+    label: 'คณิต', days: [2, 5], time: '16:00', augDone: 8, sepDoneBeforeToday: 0, todayUnit: { time: '16:00', done: true }, courseSessions: 12 },
   { id: 's2', name: 'น้องภูมิ', clientId: 'c2', clientName: 'คุณพ่อภูมิ', billing: { mode: 'per_unit', rate: 500 },
-    label: 'ฟิสิกส์', days: [1, 2], time: '17:00', augDone: 6, sepDoneBeforeToday: 1, todayUnit: { time: '17:00', done: false } },
+    label: 'ฟิสิกส์', days: [1, 2], time: '17:00', augDone: 6, sepDoneBeforeToday: 1, todayUnit: { time: '17:00', done: false }, courseSessions: 8 },
   { id: 's3', name: 'น้องมิว', clientId: 'c3', clientName: 'คุณแม่มิว', billing: { mode: 'per_unit', rate: 400 },
     label: 'คณิต', days: [1, 4], time: '15:00', augDone: 4, sepDoneBeforeToday: 1 },
   { id: 's4', name: 'น้องต้น', clientId: 'c4', clientName: 'คุณแม่ต้น', billing: { mode: 'flat_monthly', amount: 3200 },
-    label: 'อังกฤษ', days: [3, 6], time: '10:00', augDone: 8, sepDoneBeforeToday: 0 },
+    label: 'อังกฤษ', days: [3, 6], time: '10:00', augDone: 8, sepDoneBeforeToday: 0, courseSessions: 16 },
   { id: 's5', name: 'น้องฟ้า', clientId: 'c4', clientName: 'คุณแม่ต้น', billing: { mode: 'flat_monthly', amount: 2800 },
-    label: 'อังกฤษ', days: [3, 6], time: '11:00', augDone: 7, sepDoneBeforeToday: 0 },
+    label: 'อังกฤษ', days: [3, 6], time: '11:00', augDone: 7, sepDoneBeforeToday: 0, courseSessions: 16 },
   { id: 's6', name: 'น้องเจ', clientId: 'c5', clientName: 'คุณพ่อเจ', billing: PKG(10, 3500, dayIn(periodBack(1), 10)),
     label: 'เคมี', days: [4, 0], time: '14:00', augDone: 5, sepDoneBeforeToday: 0 },
   { id: 's7', name: 'น้องเนย', clientId: 'c6', clientName: 'คุณแม่เนย', billing: PKG(10, 3500, dayIn(periodBack(2), 20)),
@@ -164,13 +164,13 @@ function scenarioPackageHeavy(): AppState {
 
 function scenarioMonthlyHeavy(): AppState {
   const plans: SubjectPlan[] = [
-    { id: 'm1', name: 'น้องเอิร์ธ', clientId: 'n1', clientName: 'คุณแม่เอิร์ธ', billing: { mode: 'per_unit', rate: 400 }, label: 'คณิต', days: [1, 2], time: '16:00', augDone: 8, sepDoneBeforeToday: 1, todayUnit: { time: '16:00', done: true } },
+    { id: 'm1', name: 'น้องเอิร์ธ', clientId: 'n1', clientName: 'คุณแม่เอิร์ธ', billing: { mode: 'per_unit', rate: 400 }, label: 'คณิต', days: [1, 2], time: '16:00', augDone: 8, sepDoneBeforeToday: 1, todayUnit: { time: '16:00', done: true }, courseSessions: 12 },
     { id: 'm2', name: 'น้องบีม', clientId: 'n2', clientName: 'คุณพ่อบีม', billing: { mode: 'per_unit', rate: 500 }, label: 'ฟิสิกส์', days: [2, 4], time: '17:00', augDone: 6, sepDoneBeforeToday: 0, todayUnit: { time: '17:00', done: false } },
     { id: 'm3', name: 'น้องแทน', clientId: 'n3', clientName: 'คุณแม่แทน', billing: { mode: 'per_unit', rate: 450 }, label: 'เคมี', days: [3, 5], time: '15:00', augDone: 7, sepDoneBeforeToday: 0 },
     { id: 'm4', name: 'น้องพลอย', clientId: 'n4', clientName: 'คุณแม่พลอย', billing: { mode: 'per_unit', rate: 400 }, label: 'อังกฤษ', days: [1, 4], time: '14:00', augDone: 5, sepDoneBeforeToday: 1 },
     { id: 'm5', name: 'น้องจูน', clientId: 'n5', clientName: 'คุณพ่อจูน', billing: { mode: 'per_unit', rate: 400 }, label: 'คณิต', days: [2, 6], time: '13:00', augDone: 6, sepDoneBeforeToday: 0 },
     { id: 'm6', name: 'น้องปาล์ม', clientId: 'n6', clientName: 'คุณแม่ปาล์ม', billing: { mode: 'per_unit', rate: 500 }, label: 'ชีวะ', days: [3, 6], time: '18:00', augDone: 4, sepDoneBeforeToday: 0 },
-    { id: 'm7', name: 'น้องเฟิร์น', clientId: 'n7', clientName: 'คุณแม่เฟิร์น', billing: { mode: 'flat_monthly', amount: 3000 }, label: 'อังกฤษ', days: [1, 5], time: '10:00', augDone: 8, sepDoneBeforeToday: 1 },
+    { id: 'm7', name: 'น้องเฟิร์น', clientId: 'n7', clientName: 'คุณแม่เฟิร์น', billing: { mode: 'flat_monthly', amount: 3000 }, label: 'อังกฤษ', days: [1, 5], time: '10:00', augDone: 8, sepDoneBeforeToday: 1, courseSessions: 16 },
     { id: 'm8', name: 'น้องกิ๊ฟ', clientId: 'n8', clientName: 'คุณแม่กิ๊ฟ', billing: { mode: 'flat_monthly', amount: 2600 }, label: 'คณิต', days: [4, 6], time: '11:00', augDone: 7, sepDoneBeforeToday: 0 },
   ]
   let s = buildFromPlans(plans, 'monthly-heavy')
@@ -186,7 +186,7 @@ function scenarioMonthlyHeavy(): AppState {
 
 function scenarioPerUnit(): AppState {
   const plans: SubjectPlan[] = [
-    { id: 'u1', name: 'น้องมิน', clientId: 'q1', clientName: 'คุณแม่มิน', billing: { mode: 'per_unit', rate: 400 }, label: 'คณิต', days: [1, 2], time: '16:00', augDone: 8, sepDoneBeforeToday: 1, todayUnit: { time: '16:00', done: true } },
+    { id: 'u1', name: 'น้องมิน', clientId: 'q1', clientName: 'คุณแม่มิน', billing: { mode: 'per_unit', rate: 400 }, label: 'คณิต', days: [1, 2], time: '16:00', augDone: 8, sepDoneBeforeToday: 1, todayUnit: { time: '16:00', done: true }, courseSessions: 12 },
     { id: 'u2', name: 'น้องพีช', clientId: 'q2', clientName: 'คุณพ่อพีช', billing: { mode: 'per_unit', rate: 500 }, label: 'ฟิสิกส์', days: [2, 4], time: '17:00', augDone: 6, sepDoneBeforeToday: 0, todayUnit: { time: '17:00', done: false } },
     { id: 'u3', name: 'น้องไอซ์', clientId: 'q3', clientName: 'คุณแม่ไอซ์', billing: { mode: 'per_unit', rate: 450 }, label: 'เคมี', days: [3, 5], time: '15:00', augDone: 7, sepDoneBeforeToday: 0 },
     { id: 'u4', name: 'น้องเนม', clientId: 'q4', clientName: 'คุณแม่เนม', billing: { mode: 'per_unit', rate: 400 }, label: 'อังกฤษ', days: [1, 4], time: '14:00', augDone: 5, sepDoneBeforeToday: 1 },
@@ -205,7 +205,7 @@ function scenarioPerUnit(): AppState {
 
 function scenarioFlatHeavy(): AppState {
   const plans: SubjectPlan[] = [
-    { id: 'f1', name: 'น้องเฟิร์น', clientId: 'g1', clientName: 'คุณแม่เฟิร์น', billing: { mode: 'flat_monthly', amount: 3000 }, label: 'อังกฤษ', days: [1, 5], time: '16:00', augDone: 8, sepDoneBeforeToday: 1, todayUnit: { time: '16:00', done: true } },
+    { id: 'f1', name: 'น้องเฟิร์น', clientId: 'g1', clientName: 'คุณแม่เฟิร์น', billing: { mode: 'flat_monthly', amount: 3000 }, label: 'อังกฤษ', days: [1, 5], time: '16:00', augDone: 8, sepDoneBeforeToday: 1, todayUnit: { time: '16:00', done: true }, courseSessions: 16 },
     { id: 'f2', name: 'น้องกิ๊ฟ', clientId: 'g2', clientName: 'คุณแม่กิ๊ฟ', billing: { mode: 'flat_monthly', amount: 2600 }, label: 'คณิต', days: [2, 4], time: '17:00', augDone: 7, sepDoneBeforeToday: 0, todayUnit: { time: '17:00', done: false } },
     { id: 'f3', name: 'น้องบอส', clientId: 'g3', clientName: 'คุณพ่อบอส', billing: { mode: 'flat_monthly', amount: 3200 }, label: 'ฟิสิกส์', days: [3, 6], time: '15:00', augDone: 8, sepDoneBeforeToday: 0 },
     { id: 'f4', name: 'น้องแนน', clientId: 'g4', clientName: 'คุณแม่แนน', billing: { mode: 'flat_monthly', amount: 2800 }, label: 'เคมี', days: [1, 4], time: '14:00', augDone: 6, sepDoneBeforeToday: 1 },

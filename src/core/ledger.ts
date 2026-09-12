@@ -76,6 +76,26 @@ export function snapshotLegacyPrices(s: AppState, onlySubjectId?: string): AppSt
   return changed ? { ...s, completions } : s
 }
 
+/**
+ * ความคืบหน้าของคอร์ส — "สอนไปแล้ว 3/10"
+ *
+ * นับจากการเช็คชื่อจริงของนักเรียนคนนั้นทั้งหมด ไม่ใช่รายเดือน เพราะคอร์สหนึ่งกินหลายเดือน
+ * คาบที่งดไปแล้วไม่ถูกนับ (completionsOfSubject กรองให้) — ครูจึงเชื่อตัวเลขนี้ได้เท่าที่เช็คชื่อจริง
+ * แพ็กคืน null เพราะมีตัวนับของตัวเองอยู่แล้ว สองตัวนับบนการ์ดเดียวกันทำให้ครูอ่านผิด
+ */
+export interface CourseProgress { done: number; total: number; state: 'ok' | 'near' | 'done' }
+
+/** ไม่ตั้งทั้งรายคนและค่าเริ่มต้นของครู = ใช้ค่านี้ (เจ้าของ 12 ก.ย.: "default เปน 0/10 ก็ได้") */
+export const COURSE_SESSIONS_FALLBACK = 10
+
+export function courseProgress(s: AppState, subject: Subject): CourseProgress | null {
+  if (subject.billing.mode === 'package') return null
+  const total = subject.courseSessions ?? s.courseSessionsDefault ?? COURSE_SESSIONS_FALLBACK
+  if (!Number.isSafeInteger(total) || total <= 0) return null
+  const done = completionsOfSubject(s, subject.id).length
+  return { done, total, state: done >= total ? 'done' : total - done <= 2 ? 'near' : 'ok' }
+}
+
 export interface PackageStatus {
   total: number; used: number; remaining: number; overBy: number; price: number
   purchasedUnits: number; carriedCredits: number; entitlementTotal: number

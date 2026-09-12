@@ -5,7 +5,7 @@ import { professionById } from '../professions'
 import { copy } from '../copy'
 import { homeworkText, summaryText } from '../core/messages'
 import { copyText, openLine } from './share'
-import { clientById, completionsIn, isCompleted, packageStatus, subjectById } from '../core/ledger'
+import { clientById, completionsIn, courseProgress, isCompleted, packageStatus, subjectById } from '../core/ledger'
 import { invoiceFor } from '../core/billing'
 import { currentEstimate } from '../core/messages'
 import { dateThai, money, periodOf, periodThai } from '../core/format'
@@ -52,6 +52,7 @@ export default function SubjectDetail() {
   const period = periodOf(state.today)
   const client = clientById(state, s.clientId)
   const pk = packageStatus(state, s)
+  const course = courseProgress(state, s)
   const qty = completionsIn(state, s.id, period).length
   const inv = invoiceFor(state, s.id, period)
   const mustArchive = mustArchiveSubject(state, s.id)
@@ -86,6 +87,22 @@ export default function SubjectDetail() {
           <b className="num">{pk ? copy.detail.fromPackage : money(inv?.total ?? currentEstimate(state, s, period))}</b>
         </div>
       </section>
+
+      {course && (
+        <section className="card">
+          <div className="rowhead">
+            <h2 className="h2">{copy.course.label}</h2>
+            {course.state !== 'ok' && <span className={`pill ${course.state === 'done' ? 'pill--ok' : 'pill--warn'}`}>
+              {course.state === 'done' ? copy.course.doneTag : copy.course.nearTag}
+            </span>}
+          </div>
+          {/* ตัวเลขต้องอ่านได้ด้วยตา ไม่ใช่มีแค่แถบ — ProgressBar ใส่ label ไว้ให้ screen reader เท่านั้น */}
+          <div className="kv"><span>{copy.course.taught}</span><b className="num">{course.done}/{course.total}</b></div>
+          <ProgressBar value={course.done} max={course.total}
+            label={copy.course.progress.replace('{done}', String(course.done)).replace('{total}', String(course.total))}
+            tone={course.state === 'done' ? 'danger' : course.state === 'near' ? 'warn' : 'ok'} />
+        </section>
+      )}
 
       {pk && (
         <section className="card">
@@ -212,7 +229,6 @@ export default function SubjectDetail() {
             toast.push({ text: ok ? copy.toast.copied : copy.toast.copyFailed, tone: ok ? 'ok' : 'danger' })
             if (ok) setHomework(null)
           }}>{copy.detail.homeworkCopy}</button>}>
-          <p className="hint">{copy.detail.homeworkHint}</p>
           <label className="fld"><span className="fld__l">{copy.detail.homeworkField}</span>
             <textarea className="inp" rows={4} value={homework} onChange={(e) => setHomework(e.target.value)} /></label>
         </BottomSheet>

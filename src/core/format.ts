@@ -31,6 +31,35 @@ export function diffDays(a: string, b: string): number {
   const pa = parseISO(a); const pb = parseISO(b)
   return Math.round((Date.UTC(pa.y, pa.m - 1, pa.day) - Date.UTC(pb.y, pb.m - 1, pb.day)) / 86400000)
 }
+/** จำนวนวันของเดือนนั้น — กันวันที่ 31 หล่นไปเดือนถัดไปตอนเดือนนั้นมี 30 วัน */
+export const daysInPeriod = (period: string): number => {
+  const [y, m] = period.split('-').map(Number)
+  return new Date(Date.UTC(y, m, 0)).getUTCDate()
+}
+/** วันที่ `day` ของ period นั้น — เกินสิ้นเดือนให้ยึดสิ้นเดือน */
+export const dayIn = (period: string, day: number): string =>
+  `${period}-${pad(Math.min(day, daysInPeriod(period)))}`
+/** เลื่อนเดือน: shiftPeriod('2025-12', 1) → '2026-01' */
+export function shiftPeriod(period: string, n: number): string {
+  const [y, m] = period.split('-').map(Number)
+  const total = y * 12 + (m - 1) + n
+  return `${Math.floor(total / 12)}-${pad((total % 12) + 1)}`
+}
+/**
+ * ช่องทั้งหมดของตารางปฏิทินเดือนนั้น เรียงตามสัปดาห์ที่เริ่มวันอาทิตย์
+ * null = ช่องว่างก่อนวันที่ 1 (ไม่เติมวันของเดือนข้างเคียง ครูจะได้ไม่กดผิดเดือน)
+ * คำนวณจาก string ล้วน ไม่แตะนาฬิกาเครื่อง — เทสตรึงวันได้และ CI ที่รัน UTC ได้ผลเท่ากัน
+ */
+export function monthGrid(period: string): (string | null)[] {
+  const first = dayIn(period, 1)
+  const lead = weekday(first)
+  const days = daysInPeriod(period)
+  const cells: (string | null)[] = Array.from({ length: lead }, () => null)
+  for (let day = 1; day <= days; day += 1) cells.push(dayIn(period, day))
+  while (cells.length % 7 !== 0) cells.push(null)
+  return cells
+}
+
 /** "2 ก.ย." */
 export function dateThai(d: string): string {
   const { m, day } = parseISO(d)
