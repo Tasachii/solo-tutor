@@ -36,6 +36,12 @@ from public.line_link_codes
 where created_at >= now() - interval '3 hours'
 order by created_at desc limit 20;
 
+\echo '=== 1d. ข้อความจากเดโมใน 3 ชั่วโมงล่าสุด — คีย์กันซ้ำ (ไว้รู้ว่ารีเซ็ตแล้วส่งซ้ำได้ไหม) ==='
+select (created_at at time zone 'Asia/Bangkok')::timestamp(0) as สร้างเมื่อ_เวลาไทย, status as สถานะ, kind as ชนิด, dedupe_key as คีย์
+from public.message_outbox
+where created_at >= now() - interval '3 hours' and dedupe_key like '%:demo:%'
+order by created_at desc limit 20;
+
 \echo '=== 2. คิวข้อความ — แยก "จากเดโม" ออกจากของจริง (dedupe_key ของเดโมมี :demo: ตั้งแต่ 9 ก.ย.) ==='
 select
   status as สถานะ,
