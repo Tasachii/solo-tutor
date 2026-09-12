@@ -42,6 +42,30 @@
 
 ---
 
+## ข้อ 0 — deploy ฟังก์ชัน `usage` (2 นาที) · **ทำก่อนพิทช์ถ้าจะพูดถึงตัวเลขผู้ใช้**
+
+พบ 12 ก.ย. จากการยิงเว็บจริง: ฟังก์ชัน `usage` บนโปรดักชันเป็นรุ่นก่อน 8 ก.ย. จึง **ปฏิเสธ** เหตุการณ์ต้นทางทั้งหมด
+(`landing_view` `pricing_view` `demo_started` `demo_completed` `signup_started` `onboarding_completed` ตอบ 400 `invalid-event`)
+ส่วน `app_open` `students_changed` `invoice_issued` `payment_recorded` ยังบันทึกปกติ
+
+```bash
+supabase login                       # บัญชีเจ้าของโปรเจกต์
+supabase functions deploy usage --project-ref qbuafdbmpkffzbkqoysb
+```
+
+ตรวจว่าผ่าน:
+
+```bash
+curl -s -X POST https://qbuafdbmpkffzbkqoysb.supabase.co/functions/v1/usage \
+  -H 'Origin: https://tasachii.github.io' -H 'Content-Type: application/json' \
+  -d '{"v":2,"event_id":"11111111-1111-4111-8111-111111111111","teacher_id":"22222222-2222-4222-8222-222222222222","session_id":"33333333-3333-4333-8333-333333333333","event":"landing_view","count":1,"route":"landing","audience":"team","mode":null,"campaign":null}'
+# ต้องได้ {"ok":true}
+```
+
+**ถ้ายังไม่ deploy: ห้ามพูดตัวเลขผู้เข้าชม ผู้เริ่มเดโม หรือผู้สมัครบนเวที** — ตัวเลขเหล่านั้นไม่เคยถูกบันทึก ไม่ใช่ว่าไม่มีคนทำ
+
+---
+
 ## ข้อ 1 — PromptPay ของทีม (15 นาที) · **ไม่ใช่ตัวขวางการพิทช์**
 
 > เรื่องนี้กระทบ **ปุ่ม "ขอเปิด Pro" อย่างเดียว** คือช่องทางให้ครูโอนค่าสมาชิกมาที่ทีม
