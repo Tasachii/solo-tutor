@@ -180,6 +180,9 @@ function scenarioMonthlyHeavy(): AppState {
     { subjectId: 'm3', period: periodBack(1), total: 3150, qty: 7, unitPrice: 450, desc: `เคมี ${periodThai(periodBack(1))} — 7 × 450`, status: 'sent', sentAt: dayIn(periodBack(1), 25), dueAt: dayIn(periodBack(1), 28) },
     { subjectId: 'm4', period: periodBack(1), total: 2000, qty: 5, unitPrice: 400, desc: `อังกฤษ ${periodThai(periodBack(1))} — 5 × 400`, status: 'sent', sentAt: dayIn(periodBack(1), 18), dueAt: dayIn(periodBack(1), 21) },
     { subjectId: 'm7', period: periodBack(1), total: 3000, qty: 8, unitPrice: 3000, desc: `อังกฤษ ${periodThai(periodBack(1))} (เหมา)`, status: 'paid', sentAt: dayIn(periodBack(1), 31), paidAt: dayIn(periodBack(1), 31) },
+    { subjectId: 'm5', period: periodBack(1), total: 2400, qty: 6, unitPrice: 400, desc: `คณิต ${periodThai(periodBack(1))} — 6 × 400`, status: 'paid', sentAt: dayIn(periodBack(1), 30), paidAt: dayIn(periodBack(1), 31) },
+    { subjectId: 'm6', period: periodBack(1), total: 2000, qty: 4, unitPrice: 500, desc: `ชีวะ ${periodThai(periodBack(1))} — 4 × 500`, status: 'sent', sentAt: dayIn(periodBack(1), 31), dueAt: dayIn(thisPeriod(), 3) },
+    { subjectId: 'm8', period: periodBack(1), total: 2600, qty: 7, unitPrice: 2600, desc: `คณิต ${periodThai(periodBack(1))} (เหมา)`, status: 'paid', sentAt: dayIn(periodBack(1), 31), paidAt: dayIn(periodBack(1), 31) },
   ])
   return markOverdue(s)
 }
@@ -199,6 +202,8 @@ function scenarioPerUnit(): AppState {
     { subjectId: 'u2', period: periodBack(1), total: 3000, qty: 6, unitPrice: 500, desc: `ฟิสิกส์ ${periodThai(periodBack(1))} — 6 × 500`, status: 'sent', sentAt: dayIn(periodBack(1), 29), dueAt: dayIn(thisPeriod(), 1) },
     { subjectId: 'u3', period: periodBack(1), total: 3150, qty: 7, unitPrice: 450, desc: `เคมี ${periodThai(periodBack(1))} — 7 × 450`, status: 'sent', sentAt: dayIn(periodBack(1), 25), dueAt: dayIn(periodBack(1), 28) },
     { subjectId: 'u4', period: periodBack(1), total: 2000, qty: 5, unitPrice: 400, desc: `อังกฤษ ${periodThai(periodBack(1))} — 5 × 400`, status: 'paid', sentAt: dayIn(periodBack(1), 31), paidAt: dayIn(periodBack(1), 31) },
+    { subjectId: 'u5', period: periodBack(1), total: 2400, qty: 6, unitPrice: 400, desc: `คณิต ${periodThai(periodBack(1))} — 6 × 400`, status: 'paid', sentAt: dayIn(periodBack(1), 30), paidAt: dayIn(periodBack(1), 31) },
+    { subjectId: 'u6', period: periodBack(1), total: 2000, qty: 4, unitPrice: 500, desc: `ชีวะ ${periodThai(periodBack(1))} — 4 × 500`, status: 'sent', sentAt: dayIn(periodBack(1), 31), dueAt: dayIn(thisPeriod(), 3) },
   ])
   return markOverdue(s)
 }
@@ -218,6 +223,8 @@ function scenarioFlatHeavy(): AppState {
     { subjectId: 'f2', period: periodBack(1), total: 2600, qty: 7, unitPrice: 2600, desc: `คณิต ${periodThai(periodBack(1))} (เหมา)`, status: 'sent', sentAt: dayIn(periodBack(1), 29), dueAt: dayIn(thisPeriod(), 1) },
     { subjectId: 'f3', period: periodBack(1), total: 3200, qty: 8, unitPrice: 3200, desc: `ฟิสิกส์ ${periodThai(periodBack(1))} (เหมา)`, status: 'sent', sentAt: dayIn(periodBack(1), 25), dueAt: dayIn(periodBack(1), 28) },
     { subjectId: 'f4', period: periodBack(1), total: 2800, qty: 6, unitPrice: 2800, desc: `เคมี ${periodThai(periodBack(1))} (เหมา)`, status: 'paid', sentAt: dayIn(periodBack(1), 31), paidAt: dayIn(periodBack(1), 31) },
+    { subjectId: 'f5', period: periodBack(1), total: 3000, qty: 8, unitPrice: 3000, desc: `คณิต ${periodThai(periodBack(1))} (เหมา)`, status: 'paid', sentAt: dayIn(periodBack(1), 30), paidAt: dayIn(periodBack(1), 31) },
+    { subjectId: 'f6', period: periodBack(1), total: 2000, qty: 5, unitPrice: 400, desc: `ชีวะ ${periodThai(periodBack(1))} — 5 × 400`, status: 'sent', sentAt: dayIn(periodBack(1), 31), dueAt: dayIn(thisPeriod(), 3) },
   ])
   return markOverdue(s)
 }

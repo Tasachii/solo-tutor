@@ -76,3 +76,22 @@ describe('ยอดค้างกับใบที่ต้องลงมื�
     expect(invoiceToActOn(s, 's1', '2025-09')!.id).toBe('inv-draft-now')
   })
 })
+
+/**
+ * เจ้าของ 13 ก.ย. 03:09: "ตัวเลขผมว่าแปลก ๆ" — ยอดควรได้ 16,600 แต่เข้าแล้ว 5,800 + ค้าง 5,800 ไม่ครบ
+ * เพราะสองคนยังไม่ออกบิล หน้าจอต้องบอกส่วนที่หายไป และเดือนที่จบแล้วในข้อมูลตัวอย่างต้องปิดยอดครบทุกคน
+ */
+describe('ยอดควรได้ = เข้าแล้ว + ค้างสะสม + ยังไม่ออกบิล', () => {
+  it('เดือนที่ผ่านมาของทุกชุดตัวอย่างไม่มีใครค้างออกบิล', () => {
+    for (const id of ['default', 'per-unit', 'flat-heavy', 'monthly-heavy', 'package-heavy'] as const) {
+      const d = dashboard(buildScenario(id), '2025-08')
+      expect(d.unbilledCount, id).toBe(0)
+      expect(d.expected, id).toBe(d.received + d.outstanding)
+    }
+  })
+  it('เดือนปัจจุบันที่ยังไม่ปิดยอด บอกจำนวนเงินและจำนวนคนที่ยังไม่ออกบิล', () => {
+    const d = dashboard(buildScenario('flat-heavy'), '2025-09')
+    expect(d.unbilledCount).toBeGreaterThan(0)
+    expect(d.expected).toBe(d.received + d.outstanding + d.unbilled)
+  })
+})

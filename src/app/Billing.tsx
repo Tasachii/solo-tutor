@@ -93,6 +93,12 @@ export default function Billing() {
           <StatCard label={copy.billing.dash.received} value={money(dash.received)} tone="ok" />
           <StatCard label={copy.billing.dash.outstanding} value={money(dash.outstanding)} tone="danger" />
         </div>
+        {dash.unbilledCount > 0 && (
+          <div className="kv" data-testid="dash-unbilled">
+            <span>{copy.billing.dash.unbilled}</span>
+            <b className="num">{money(dash.unbilled)} {copy.common.baht} · {copy.billing.dash.unbilledCount.replace('{n}', String(dash.unbilledCount))}</b>
+          </div>
+        )}
         <div className="kv">
           <span>{copy.billing.dash.recovered}</span>
           <b className="num">{money(dash.recovered)} {copy.common.baht}</b>

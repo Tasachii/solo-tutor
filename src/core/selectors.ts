@@ -6,6 +6,8 @@ import { periodOf } from './format'
 export interface Dashboard {
   expected: number; received: number; outstanding: number
   recovered: number
+  /** ส่วนของ "ยอดควรได้" ที่ยังไม่ได้ออกบิลในรอบนี้ — ไม่ใช่ค้าง เพราะยังไม่เคยขอ ครูต้องเห็นว่าเลขสามช่องบวกกันไม่ครบเพราะอะไร */
+  unbilled: number; unbilledCount: number
   breakdown: { dunned: number; counted: number; overflow: number }
 }
 
@@ -13,15 +15,19 @@ export interface Dashboard {
 export function dashboard(state: AppState, period: string): Dashboard {
   let expected = 0
   for (const inv of state.invoices) if (inv.period === period) expected += inv.total
+  let unbilled = 0, unbilledCount = 0
   for (const s of state.subjects) {
     if (s.billing.mode === 'package') continue
     if (invoiceFor(state, s.id, period)) continue
-    if (s.billing.mode === 'flat_monthly') expected += s.billing.amount
+    let projected = 0
+    if (s.billing.mode === 'flat_monthly') projected = s.billing.amount
     else {
       const rate = s.billing.rate
-      expected += completionsIn(state, s.id, period)
+      projected = completionsIn(state, s.id, period)
         .reduce((sum, completion) => sum + (completion.unitPrice ?? rate), 0)
     }
+    if (projected <= 0) continue
+    expected += projected; unbilled += projected; unbilledCount += 1
   }
 
   const received = state.payments
@@ -65,7 +71,7 @@ export function dashboard(state: AppState, period: string): Dashboard {
     overflow += overageInPeriod * packageUnitPrice({ total: pk.purchasedUnits, price: pk.price })
   }
 
-  return { expected, received, outstanding, recovered: dunned + counted + overflow, breakdown: { dunned, counted, overflow } }
+  return { expected, received, outstanding, unbilled, unbilledCount, recovered: dunned + counted + overflow, breakdown: { dunned, counted, overflow } }
 }
 
 export const draftCount = (state: AppState): number => state.messages.filter((m) => m.status === 'draft').length
