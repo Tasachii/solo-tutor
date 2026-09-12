@@ -6,7 +6,7 @@ import { copy } from '../copy'
 import { addDays, dateThai, dateThaiFull, dayIn, monthGrid, periodOf, periodThaiFull, shiftPeriod, weekday } from '../core/format'
 import { courseProgress, isCompleted, packageStatus, subjectById, unitsOn } from '../core/ledger'
 import { bookSeriesPlan, slotTaken, BOOK_SERIES_MAX_WEEKS } from '../core/booking'
-import { BottomSheet, ConfirmSheet, EmptyState, Skeleton, StatCard } from './components'
+import { BottomSheet, ConfirmSheet, EmptyState, Icon, Skeleton, StatCard } from './components'
 import { useToast } from './components/Toast'
 import type { AppState } from '../core/types'
 
@@ -27,11 +27,14 @@ const holders = (state: AppState, date: string, time: string, exceptSubjectId?: 
     .filter((subject) => subject?.active !== false)
     .map((subject) => subject?.name ?? ''))].filter(Boolean).join(' · ')
 
-/** จำนวนคาบและจำนวนที่เช็คชื่อแล้วของแต่ละวันในเดือนที่เปิดอยู่ — ใช้วาดจุดบนปฏิทิน */
-function monthCounts(state: AppState, period: string): Map<string, { n: number; done: number }> {
+/**
+ * จำนวนคาบและจำนวนที่เช็คชื่อแล้วของ "ทุกวัน" ที่มีคาบ — ใช้วาดจุดบนปฏิทิน
+ * ไม่กรองตามเดือน เพราะแถบสัปดาห์คร่อมสองเดือนได้ (27 ก.ย.–3 ต.ค.) แล้ววันของอีกเดือนจะไม่มีจุด
+ */
+function dayCounts(state: AppState): Map<string, { n: number; done: number }> {
   const map = new Map<string, { n: number; done: number }>()
   for (const unit of state.units) {
-    if (unit.cancelled || periodOf(unit.scheduledAt) !== period) continue
+    if (unit.cancelled) continue
     // นักเรียนที่หยุดเรียนแล้วไม่โผล่ในตารางวัน ปฏิทินจึงต้องไม่นับเขาด้วย ไม่งั้นจุดกับรายการไม่ตรงกัน
     if (subjectById(state, unit.subjectId)?.active === false) continue
     const cell = map.get(unit.scheduledAt) ?? { n: 0, done: 0 }
@@ -74,10 +77,15 @@ export default function Today() {
   const units = useMemo(() => unitsOn(state, selected), [state, selected])
   const cancelled = useMemo(
     () => state.units.filter((u) => u.scheduledAt === selected && u.cancelled), [state, selected])
-  const counts = useMemo(() => monthCounts(state, period), [state, period])
-  const cells = useMemo(() => monthGrid(period), [period])
-  const monthTotal = useMemo(() => [...counts.values()].reduce((sum, cell) => sum + cell.n, 0), [counts])
-  const monthDone = useMemo(() => [...counts.values()].reduce((sum, cell) => sum + cell.done, 0), [counts])
+  const counts = useMemo(() => dayCounts(state), [state])
+  /** ทั้งเดือนย่อไว้ก่อน — เปิดแอปมาต้องเห็นงานวันนี้ ไม่ใช่ตารางเดือนเต็มจอ (เจ้าของ 12 ก.ย.: "มันรกไป") */
+  const [expanded, setExpanded] = useState(false)
+  const cells = useMemo(() => expanded
+    ? monthGrid(period)
+    : Array.from({ length: 7 }, (_, i) => addDays(selected, i - weekday(selected))), [expanded, period, selected])
+  const month = useMemo(() => [...counts.entries()].filter(([date]) => periodOf(date) === period), [counts, period])
+  const monthTotal = useMemo(() => month.reduce((sum, [, cell]) => sum + cell.n, 0), [month])
+  const monthDone = useMemo(() => month.reduce((sum, [, cell]) => sum + cell.done, 0), [month])
 
   // คาบที่กำลังเลื่อน
   const [moving, setMoving] = useState<string | null>(null)
@@ -115,6 +123,8 @@ export default function Today() {
     const next = shiftPeriod(period, step)
     setSelected(next === periodOf(state.today) ? state.today : dayIn(next, Number(selected.slice(8, 10))))
   }
+  /** ปุ่มลูกศรเลื่อนเท่าที่ตาเห็น — ย่ออยู่เลื่อนทีละสัปดาห์ กางอยู่เลื่อนทีละเดือน */
+  const goStep = (step: number) => { if (expanded) goMonth(step); else setSelected(addDays(selected, step * 7)) }
 
   const onComplete = (unitId: string, subjectId: string) => {
     if (!dispatch({ type: 'complete', unitId })) {
@@ -192,12 +202,16 @@ export default function Today() {
     <div className="pane">
       {state.provider.name && <p className="greet">{copy.today.greet} {state.provider.name}</p>}
 
-      {/* ปฏิทินอยู่บนสุดของหน้าแรก — ครูวางแผนล่วงหน้าได้ว่าใครเรียนวันไหน ไม่ใช่เห็นแค่วันนี้วันเดียว */}
+      {/* ปฏิทินอยู่บนสุดของหน้าแรก — ครูวางแผนล่วงหน้าได้ว่าใครเรียนวันไหน ไม่ใช่เห็นแค่วันนี้วันเดียว
+          ปกติย่อเหลือสัปดาห์เดียว กดปุ่มปฏิทินกางเป็นทั้งเดือน กดอีกทีย่อกลับ — ไม่ต้องเปลี่ยนหน้า ไม่ต้องกดย้อนกลับ */}
       <section className="cal" aria-label={cal.title}>
         <div className="cal__hd">
-          <button className="btn btn--ghost btn--sm cal__nav" aria-label={cal.prev} onClick={() => goMonth(-1)}>‹</button>
+          <button className="btn btn--ghost btn--sm cal__nav" aria-label={expanded ? cal.prev : cal.prevWeek} onClick={() => goStep(-1)}>‹</button>
           <b className="cal__title">{periodThaiFull(period)}</b>
-          <button className="btn btn--ghost btn--sm cal__nav" aria-label={cal.next} onClick={() => goMonth(1)}>›</button>
+          <button className="btn btn--ghost btn--sm cal__nav" aria-label={expanded ? cal.next : cal.nextWeek} onClick={() => goStep(1)}>›</button>
+          <button className={`btn btn--ghost btn--sm cal__toggle${expanded ? ' cal__toggle--on' : ''}`}
+            aria-expanded={expanded} aria-label={expanded ? cal.collapse : cal.expand}
+            onClick={() => setExpanded((open) => !open)}><Icon name="cal" size={18} /></button>
         </div>
         <div className="cal__wk" aria-hidden="true">
           {cal.weekdays.map((d, i) => <span key={i}>{d}</span>)}
@@ -219,9 +233,10 @@ export default function Today() {
             )
           })}
         </div>
-        <p className="cal__sum dim">
+        {/* สรุปทั้งเดือนมีความหมายก็ต่อเมื่อเห็นทั้งเดือน — ย่ออยู่แล้วบอกเลขเดือนคือทำให้แถบสัปดาห์ชวนอ่านผิด */}
+        {expanded && <p className="cal__sum dim">
           {fill(cal.monthUnits, { n: monthTotal })} · {fill(cal.monthDone, { n: monthDone })}
-        </p>
+        </p>}
       </section>
 
       <div className="rowhead">
@@ -260,8 +275,11 @@ export default function Today() {
                   <span className="urow__meta">
                     {u.label ?? s.label}
                     {pk && <i className={`pk pk--${pk.state}`}>{pk.overBy ? `เกิน ${pk.overBy}` : `เหลือ ${pk.remaining}/${pk.total}`}</i>}
-                    {/* "สอนไปแล้ว 3/10" ของคอร์สที่ไม่ได้ขายเป็นแพ็ก — ขยับทันทีที่เช็คชื่อ */}
-                    {course && <i className={`pk pk--${course.state === 'done' ? 'exhausted' : course.state === 'near' ? 'low' : 'ok'}`}>{fill(copy.course.short, { done: course.done, total: course.total })}</i>}
+                    {/* "สอนไปแล้ว 3/10" ของคอร์สที่ไม่ได้ขายเป็นแพ็ก — ขยับทันทีที่เช็คชื่อ
+                        ครบคอร์สใช้สีเหลืองไม่ใช่แดง เพราะมันคือ "ถึงเวลาตัดสินใจต่อคอร์ส" ไม่ใช่ความผิดพลาด */}
+                    {course && <i className={`pk pk--${course.state === 'ok' ? 'ok' : 'low'}`}>
+                      {fill(course.state === 'done' ? copy.course.shortDone : copy.course.short, { done: course.done, total: course.total })}
+                    </i>}
                   </span>
                 </span>
                 {isDone ? (

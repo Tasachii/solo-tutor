@@ -15,6 +15,9 @@ import { modesFor } from '../core/style'
 import { keptForRecords } from '../core/tombstones'
 import type { BillingMode } from '../core/types'
 
+const fill = (text: string, vars: Record<string, string | number>): string =>
+  text.replace(/\{(\w+)\}/g, (_m, key: string) => String(vars[key] ?? ''))
+
 type Filter = 'all' | 'per_unit' | 'flat_monthly' | 'package' | 'lowpack' | 'overdue'
 
 export default function Subjects() {
@@ -115,17 +118,20 @@ export default function Subjects() {
             <li key={s.id}>
               <button className="srow" onClick={() => nav(`/app/subjects/${s.id}`)}>
                 <span className="srow__main">
-                  <span className="srow__name">{s.name}{od > 0 && <i className="badge badge--danger">ค้าง {od} วัน</i>}</span>
+                  <span className="srow__name">{s.name}
+                    {od > 0 && <i className="badge badge--danger">ค้าง {od} วัน</i>}
+                    {/* ครบคอร์สแล้วต้องเห็นตั้งแต่รายชื่อ ครูจะได้รู้ว่าต้องคุยเรื่องต่อคอร์สกับใคร */}
+                    {course?.state === 'done' && <i className="badge badge--warn">{copy.course.doneTag}</i>}</span>
                   <span className="srow__meta">
                     {c?.name} · {modeThai(s.billing.mode)}
                     {s.billing.mode === 'per_unit' && ` ${money(s.billing.rate)}`}
                     {s.billing.mode === 'flat_monthly' && ` ${money(s.billing.amount)}`}
                     {pk && ` ${pk.used}/${pk.total}`}
-                    {course && ` · ${course.done}/${course.total}`}
+                    {course && ` · ${fill(copy.course.short, { done: course.done, total: course.total })}`}
                   </span>
                   {pk && <ProgressBar value={pk.used} max={pk.total} tone={tone} />}
                   {course && <ProgressBar value={course.done} max={course.total}
-                    tone={course.state === 'done' ? 'danger' : course.state === 'near' ? 'warn' : 'ok'} />}
+                    tone={course.state === 'ok' ? 'ok' : 'warn'} />}
                 </span>
                 {/* เดิมเป็นตัวเลขเปล่า ๆ ที่หมายถึงคนละอย่างในแต่ละแถว */}
                 <span className="srow__side">

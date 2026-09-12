@@ -5,12 +5,12 @@ import { professionById } from '../professions'
 import { copy } from '../copy'
 import { homeworkText, summaryText } from '../core/messages'
 import { copyText, openLine } from './share'
-import { clientById, completionsIn, courseProgress, isCompleted, packageStatus, subjectById } from '../core/ledger'
+import { clientById, completionsIn, courseProgress, COURSE_SESSIONS_FALLBACK, isCompleted, packageStatus, subjectById } from '../core/ledger'
 import { invoiceFor } from '../core/billing'
 import { currentEstimate } from '../core/messages'
 import { dateThai, money, periodOf, periodThai } from '../core/format'
 import { modeThai } from '../copy/tutor'
-import { BottomSheet, EmptyState, ProgressBar, BackLink } from './components'
+import { BottomSheet, ConfirmSheet, EmptyState, ProgressBar, BackLink } from './components'
 import { useToast } from './components/Toast'
 import SubjectSheet, { parseMoneyInput } from './SubjectSheet'
 import { keptForRecords } from '../core/tombstones'
@@ -18,6 +18,10 @@ import type { AppState } from '../core/types'
 import { LineInviteAction, useLineLink } from './useLineLink'
 import { lineLinkCopy } from './lineLinkCopy'
 import { oaAvailable } from './oaSend'
+import { isCourseSessions } from '../core/validation'
+
+const fill = (text: string, vars: Record<string, string | number>): string =>
+  text.replace(/\{(\w+)\}/g, (_m, key: string) => String(vars[key] ?? ''))
 
 export const mustArchiveSubject = (state: AppState, subjectId: string): boolean =>
   state.mode === 'real' && (
@@ -42,6 +46,10 @@ export default function SubjectDetail() {
   const [purchaseError, setPurchaseError] = useState('')
   const [stopping, setStopping] = useState(false)
   const [removing, setRemoving] = useState(false)
+  const [renewing, setRenewing] = useState(false)
+  const [bonusing, setBonusing] = useState(false)
+  const [bonusValue, setBonusValue] = useState('1')
+  const [bonusError, setBonusError] = useState('')
   const [limit, setLimit] = useState(20)
 
   const s = subjectById(state, id)
@@ -92,15 +100,21 @@ export default function SubjectDetail() {
         <section className="card">
           <div className="rowhead">
             <h2 className="h2">{copy.course.label}</h2>
-            {course.state !== 'ok' && <span className={`pill ${course.state === 'done' ? 'pill--ok' : 'pill--warn'}`}>
+            {/* ครบคอร์ส = ถึงเวลาตัดสินใจ ไม่ใช่ความผิดพลาด จึงเป็นสีเหลืองทั้งป้ายและแถบ ไม่ใช่สีแดง */}
+            {course.state !== 'ok' && <span className="pill pill--warn">
               {course.state === 'done' ? copy.course.doneTag : copy.course.nearTag}
             </span>}
           </div>
           {/* ตัวเลขต้องอ่านได้ด้วยตา ไม่ใช่มีแค่แถบ — ProgressBar ใส่ label ไว้ให้ screen reader เท่านั้น */}
           <div className="kv"><span>{copy.course.taught}</span><b className="num">{course.done}/{course.total}</b></div>
           <ProgressBar value={course.done} max={course.total}
-            label={copy.course.progress.replace('{done}', String(course.done)).replace('{total}', String(course.total))}
-            tone={course.state === 'done' ? 'danger' : course.state === 'near' ? 'warn' : 'ok'} />
+            label={fill(copy.course.progress, { done: course.done, total: course.total })}
+            tone={course.state === 'ok' ? 'ok' : 'warn'} />
+          {(s.courseBonus ?? 0) > 0 && <div className="kv"><span>{fill(copy.course.bonusNow, { n: s.courseBonus ?? 0 })}</span></div>}
+          <div className="btnrow">
+            <button className="btn btn--secondary btn--sm" onClick={() => setRenewing(true)}>{copy.course.renew}</button>
+            <button className="btn btn--ghost btn--sm" onClick={() => { setBonusValue('1'); setBonusError(''); setBonusing(true) }}>{copy.course.bonus}</button>
+          </div>
         </section>
       )}
 
@@ -190,6 +204,48 @@ export default function SubjectDetail() {
             <input className="inp" inputMode="numeric" value={purchasePrice} onChange={event => setPurchasePrice(event.target.value)} /></label>
           {purchaseError && <p className="fld__err" role="alert">{purchaseError}</p>}
           <p className="p">บันทึกว่าได้รับเงินค่าแพ็กใหม่ด้วยการยืนยันด้วยตนเอง ระบบจะเก็บสิทธิ์เดิมที่เหลือ ออกใบเสร็จ และร่างข้อความแจ้ง{client?.name}ให้</p>
+        </BottomSheet>
+      )}
+
+      {/* ต่อคอร์ส — ตัวเลขที่ครูเพิ่งดูอยู่จะเปลี่ยน จึงถามก่อนเสมอ และบอกว่าไม่มีอะไรหาย */}
+      {renewing && (
+        <ConfirmSheet title={fill(copy.course.renewTitle, { name: s.name })}
+          body={fill(copy.course.renewConfirm, { total: s.courseSessions ?? state.courseSessionsDefault ?? COURSE_SESSIONS_FALLBACK })}
+          confirmLabel={copy.course.renew}
+          onClose={() => setRenewing(false)}
+          onConfirm={() => {
+            if (!dispatch({ type: 'renewCourse', subjectId: s.id })) {
+              toast.push({ text: copy.common.saveFailed, tone: 'danger' }); return false
+            }
+            track('renew_course', { subjectId: s.id })
+            toast.push({ text: copy.course.renewDone, tone: 'ok' })
+          }} />
+      )}
+
+      {bonusing && (
+        <BottomSheet title={fill(copy.course.bonusTitle, { name: s.name })} sub={copy.course.bonusHint} onClose={() => setBonusing(false)}
+          footer={
+            <button className="btn btn--primary btn--block" onClick={() => {
+              const sessions = Number(bonusValue)
+              if (!isCourseSessions(sessions)) { setBonusError(copy.common.numberPositive); return }
+              if (!dispatch({ type: 'bonusCourse', subjectId: s.id, sessions })) { setBonusError(copy.common.saveFailed); return }
+              track('bonus_course', { sessions })
+              setBonusing(false)
+              toast.push({ text: fill(copy.course.bonusDone, { n: sessions }), tone: 'ok' })
+            }}>{copy.common.save}</button>
+          }>
+          <div className="fld">
+            <span className="fld__l">{copy.course.bonusField}</span>
+            <div className="chips">
+              {[1, 2, 5, 10].map((n) => (
+                <button key={n} type="button" className={`chip${bonusValue === String(n) ? ' chip--on' : ''}`}
+                  aria-pressed={bonusValue === String(n)} onClick={() => { setBonusValue(String(n)); setBonusError('') }}>{n}</button>
+              ))}
+            </div>
+            <input className="inp" inputMode="numeric" aria-label={copy.course.bonusField} value={bonusValue}
+              onChange={(e) => { setBonusValue(e.target.value.replace(/\D/g, '').slice(0, 3)); setBonusError('') }} />
+            {bonusError && <p className="fld__err" role="alert">{bonusError}</p>}
+          </div>
         </BottomSheet>
       )}
 

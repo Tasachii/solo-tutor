@@ -13,9 +13,9 @@ import { urlParam } from './urlParams'
 import { billingChangeIssue, buildPackageInvoice, closableSubjects, isFinalizedPeriod, markOverdue, mutationTouchesFinalizedPeriod, reconcileDraftInvoices } from './billing'
 import { deriveDrafts, refreshDrafts, retractDrafts, applySend, cancelledText, mkMessage, movedText, nudgeMessage, homeworkAssignMessage, homeworkReminderMessage } from './messages'
 import { HOMEWORK_TEXT_MAX, homeworkOf, homeworkStatus } from './homework'
-import { balanceDue, complete as ledgerComplete, packageStatus, renewPackage, snapshotLegacyPrices, uncomplete } from './ledger'
+import { balanceDue, completionsOfSubject, complete as ledgerComplete, packageStatus, renewPackage, snapshotLegacyPrices, uncomplete } from './ledger'
 import { issueReceipt } from './receipts'
-import { isUuid, isBillingMode, isCourseSessions, isISODate, isMoney, isNonNegativeMoney, isTime } from './validation'
+import { isUuid, isBillingMode, isCourseCount, isCourseSessions, isISODate, isMoney, isNonNegativeMoney, isTime } from './validation'
 import { financialRevision, messageSendIssue, oaDedupeKey } from './messageDelivery'
 import { migrateCanonical } from './migrations'
 import { applyClientTombstones, applyTombstones, clientTombstonesOf, mergeClientTombstones,
@@ -85,6 +85,8 @@ export type Action =
   | { type: 'bookSeries'; subjectId: string; time: string; weekdays: number[]; from: string; weeks: number; label?: string; allowClash?: boolean }
   | { type: 'setCourseDefault'; sessions: number }
   | { type: 'setCourseSessions'; subjectId: string; sessions: number | null }
+  | { type: 'renewCourse'; subjectId: string }
+  | { type: 'bonusCourse'; subjectId: string; sessions: number }
   | { type: 'chat'; clientId: string; from: 'client' | 'provider'; text: string; viaAdmin?: boolean }
   | { type: 'waitlist'; entry: AppState['waitlist'][number] }
   | { type: 'setToday'; date: string }
@@ -383,6 +385,31 @@ export function reducer(state: AppState, action: Action): AppState {
       if (action.sessions !== null && !isCourseSessions(action.sessions)) return state
       s = { ...s, subjects: s.subjects.map((row) => row.id === action.subjectId
         ? { ...row, courseSessions: action.sessions ?? undefined } : row) }
+      break
+    }
+    /**
+     * ต่อคอร์ส — เริ่มนับ "สอนไปแล้ว" ใหม่ที่ 0 โดยไม่ลบอะไรเลย
+     * เก็บจำนวนครั้งที่เช็คชื่อไปแล้ว ณ ตอนนี้ไว้เป็นจุดเริ่ม แล้วล้างครั้งที่แถมของรอบเก่าทิ้ง
+     * แพ็กมีตัวนับของตัวเองอยู่แล้ว จึงต่อคอร์สแบบนี้ไม่ได้
+     */
+    case 'renewCourse': {
+      const subject = s.subjects.find((row) => row.id === action.subjectId)
+      if (!subject || subject.billing.mode === 'package') return state
+      const taught = completionsOfSubject(s, action.subjectId).length
+      if (!isCourseCount(taught)) return state
+      s = { ...s, subjects: s.subjects.map((row) => row.id === action.subjectId
+        ? { ...row, courseBaseline: taught, courseBonus: undefined } : row) }
+      break
+    }
+    /** แถมครั้งให้ในคอร์สรอบนี้ — บวกเพิ่มจากของเดิม ไม่ใช่เขียนทับ ครูกดแถมสองรอบต้องได้สองรอบ */
+    case 'bonusCourse': {
+      const subject = s.subjects.find((row) => row.id === action.subjectId)
+      if (!subject || subject.billing.mode === 'package') return state
+      if (!isCourseSessions(action.sessions)) return state
+      const next = (subject.courseBonus ?? 0) + action.sessions
+      if (!isCourseCount(next)) return state
+      s = { ...s, subjects: s.subjects.map((row) => row.id === action.subjectId
+        ? { ...row, courseBonus: next } : row) }
       break
     }
     case 'chat':

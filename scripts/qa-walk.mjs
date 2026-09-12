@@ -72,15 +72,22 @@ const run = async () => {
   await page.waitForSelector('.cal__grid')
   await page.waitForSelector('.skel', { state: 'detached' }).catch(() => {})
 
-  // 2 ปฏิทิน: เดือนนี้ เลือกวันอื่น เลื่อนเดือน
-  const dayCount = await page.locator('.cal__day').count()
-  if (dayCount < 28) note('ปฏิทิน', `ช่องวันมีแค่ ${dayCount}`)
+  // 2 ปฏิทิน: ย่อเหลือสัปดาห์เดียว กางเป็นเดือน เลือกวันอื่น เลื่อนเดือน
+  const weekCount = await page.locator('.cal__day').count()
+  if (weekCount !== 7) note('ปฏิทิน', `ย่ออยู่ควรเห็น 7 วัน แต่เห็น ${weekCount}`)
+  // งานของวันนี้ต้องอยู่ในจอแรกโดยไม่ต้องเลื่อน ไม่งั้นปฏิทินแย่งที่ของสิ่งที่ครูเปิดแอปมาดู
+  const firstRow = await page.locator('.urow').first().boundingBox()
+  if (firstRow && firstRow.y > 844) note('วันนี้', `รายการแรกอยู่ที่ ${Math.round(firstRow.y)}px ต้องเลื่อนจอถึงจะเห็น`)
   await auditButtons(page, 'วันนี้')
   await auditOverflow(page, 'วันนี้')
   await shot(page, '02-today-calendar')
 
+  await page.getByRole('button', { name: 'ดูทั้งเดือน' }).click()
+  const dayCount = await page.locator('.cal__day').count()
+  if (dayCount < 28) note('ปฏิทิน', `กางแล้วช่องวันมีแค่ ${dayCount}`)
   const marked = page.locator('.cal__day', { has: page.locator('.cal__dot') })
   if (await marked.count() === 0) note('ปฏิทิน', 'ไม่มีวันไหนแสดงจำนวนคาบเลย')
+  await auditOverflow(page, 'วันนี้/กางปฏิทิน')
   await page.getByRole('button', { name: /ดูวันที่/ }).last().click()
   await shot(page, '03-today-other-day')
   if (await page.getByRole('button', { name: 'กลับมาวันนี้' }).count() === 0) {
@@ -91,6 +98,8 @@ const run = async () => {
   await page.getByRole('button', { name: 'เดือนถัดไป' }).click()
   await shot(page, '04-next-month')
   await page.getByRole('button', { name: 'เดือนก่อนหน้า' }).click()
+  await page.getByRole('button', { name: 'ย่อปฏิทิน' }).click()
+  if (await page.locator('.cal__day').count() !== 7) note('ปฏิทิน', 'กดย่อแล้วไม่กลับมาเป็นสัปดาห์เดียว')
 
   // 3 จองล่วงหน้าเป็นชุด
   await page.getByRole('button', { name: /^\+ (เพิ่มวันนี้|จองล่วงหน้า)$/ }).first().click()

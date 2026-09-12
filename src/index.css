@@ -188,14 +188,16 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 /* ปฏิทินหน้าแรก — ตารางเดือนที่กดเลือกวันได้ ครูวางแผนล่วงหน้าได้จากจอเดียว
    ช่องวันเป็นปุ่มจริง (ไม่ใช่ div ที่ผูก onClick) คีย์บอร์ดและ screen reader จึงใช้ได้ */
 .cal{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-lg);
-  box-shadow:var(--shadow);padding:var(--space-3);margin-bottom:var(--space-4)}
+  box-shadow:var(--shadow);padding:var(--space-3);margin-bottom:var(--space-4);max-width:460px}
 .cal__hd{display:flex;align-items:center;justify-content:space-between;gap:var(--space-2)}
 .cal__title{font-size:var(--fs-h2);font-weight:700}
 .cal__nav{min-width:var(--tap-sm);font-size:18px;line-height:1}
+/* ช่องวันสูงคงที่ ไม่ใช่สี่เหลี่ยมจัตุรัสตามความกว้าง — บนจอโน้ตบุ๊กช่องจะสูงเป็นร้อย px
+   แล้วตารางเดือนดันงานของวันนี้ตกจอ (เจ้าของ 12 ก.ย.) · จำกัดความกว้างตารางไว้ให้ยังดูเป็นปฏิทิน */
 .cal__wk,.cal__grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
 .cal__wk{margin-top:var(--space-2);font-size:var(--fs-micro);color:var(--muted);text-align:center}
-.cal__pad{aspect-ratio:1}
-.cal__day{position:relative;aspect-ratio:1;min-width:0;display:flex;flex-direction:column;
+.cal__pad{min-height:var(--tap)}
+.cal__day{position:relative;min-height:var(--tap);min-width:0;display:flex;flex-direction:column;
   align-items:center;justify-content:center;gap:1px;padding:0;border:1px solid transparent;
   border-radius:var(--radius-sm);background:transparent;color:var(--ink);font:inherit;font-size:var(--fs-small)}
 .cal__day--today{border-color:var(--brand);font-weight:700}
@@ -206,6 +208,8 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
   padding:1px 5px;border-radius:999px;background:var(--brand-soft);color:var(--brand-ink)}
 .cal__dot--ok{background:var(--ok-soft);color:var(--ok)}
 .cal__sum{margin:var(--space-2) 0 0;font-size:var(--fs-small);text-align:center}
+.cal__toggle{min-width:var(--tap-sm);display:inline-flex;align-items:center;justify-content:center;color:var(--muted)}
+.cal__toggle--on{background:var(--brand-soft);color:var(--brand-ink)}
 
 .srow{display:flex;align-items:center;gap:var(--space-3);width:100%;text-align:left;padding:var(--space-3) var(--space-4);
   background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-lg);min-height:var(--tap);box-shadow:var(--shadow)}
@@ -217,6 +221,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 .badge{display:inline-block;margin-left:var(--space-2);padding:1px 8px;border-radius:999px;
   font-style:normal;font-size:var(--fs-micro);font-weight:600}
 .badge--danger{background:var(--danger-soft);color:var(--danger)}
+.badge--warn{background:var(--warn-soft);color:var(--warn)}
 
 .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--space-2);margin-bottom:var(--space-4)}
 .stat{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-lg);padding:var(--space-3) var(--space-3) var(--space-3)}

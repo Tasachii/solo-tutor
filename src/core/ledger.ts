@@ -90,9 +90,13 @@ export const COURSE_SESSIONS_FALLBACK = 10
 
 export function courseProgress(s: AppState, subject: Subject): CourseProgress | null {
   if (subject.billing.mode === 'package') return null
-  const total = subject.courseSessions ?? s.courseSessionsDefault ?? COURSE_SESSIONS_FALLBACK
-  if (!Number.isSafeInteger(total) || total <= 0) return null
-  const done = completionsOfSubject(s, subject.id).length
+  const base = subject.courseSessions ?? s.courseSessionsDefault ?? COURSE_SESSIONS_FALLBACK
+  if (!Number.isSafeInteger(base) || base <= 0) return null
+  const bonus = Number.isSafeInteger(subject.courseBonus) && subject.courseBonus! > 0 ? subject.courseBonus! : 0
+  const total = base + bonus
+  // ต่อคอร์สแล้วนับใหม่จาก 0 — ถ้ายกเลิกเช็คชื่อเก่าจนต่ำกว่าจุดเริ่ม ให้เป็น 0 ไม่ใช่ติดลบ
+  const baseline = Number.isSafeInteger(subject.courseBaseline) && subject.courseBaseline! > 0 ? subject.courseBaseline! : 0
+  const done = Math.max(0, completionsOfSubject(s, subject.id).length - baseline)
   return { done, total, state: done >= total ? 'done' : total - done <= 2 ? 'near' : 'ok' }
 }
 

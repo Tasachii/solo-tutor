@@ -157,6 +157,69 @@ describe('จำนวนครั้งต่อคอร์สในสมุ�
   })
 })
 
+/**
+ * ต่อคอร์สและแถมครั้ง (เจ้าของ 12 ก.ย.: "เขียนว่าครบแล้ว แล้วมีปุ่มต่อคอร์สเพิ่ม หรือแถมคอร์สให้เพิ่ม")
+ *
+ * ต่อคอร์ส = เริ่มนับใหม่ที่ 0 โดยไม่ลบประวัติ · แถม = เพิ่มเพดานของคอร์สรอบนี้
+ * ทั้งสองอย่างห้ามแตะบิล ใบเสร็จ หรือจำนวนครั้งที่เช็คชื่อไปแล้ว
+ */
+describe('ต่อคอร์สและแถมครั้ง', () => {
+  const finished = reducer(base, { type: 'setCourseSessions', subjectId: 's1', sessions: 9 }) // สอนไปแล้ว 9/9
+
+  it('ต่อคอร์สแล้วเริ่มนับใหม่ที่ 0 โดยการเช็คชื่อเดิมยังอยู่ครบ', () => {
+    expect(courseProgress(finished, subjectById(finished, 's1')!)).toMatchObject({ done: 9, total: 9, state: 'done' })
+    const renewed = reducer(finished, { type: 'renewCourse', subjectId: 's1' })
+    expect(courseProgress(renewed, subjectById(renewed, 's1')!)).toMatchObject({ done: 0, total: 9, state: 'ok' })
+    expect(renewed.completions).toHaveLength(finished.completions.length)
+    expect(renewed.invoices).toEqual(finished.invoices)
+  })
+
+  it('ต่อคอร์สแล้วเช็คชื่อครั้งถัดไปนับเป็น 1', () => {
+    const renewed = reducer(finished, { type: 'renewCourse', subjectId: 's1' })
+    const open = renewed.units.find((row) => row.subjectId === 's1' && !row.cancelled
+      && !renewed.completions.some((done) => done.unitId === row.id))
+    const checked = open
+      ? reducer(renewed, { type: 'complete', unitId: open.id })
+      : (() => {
+        const added = reducer(renewed, { type: 'addUnit', subjectId: 's1', time: '09:00' })
+        const unit = added.units.find((row) => !added.completions.some((done) => done.unitId === row.id) && row.subjectId === 's1')!
+        return reducer(added, { type: 'complete', unitId: unit.id })
+      })()
+    expect(courseProgress(checked, subjectById(checked, 's1')!)!.done).toBe(1)
+  })
+
+  it('ยกเลิกเช็คชื่อเก่าจนต่ำกว่าจุดเริ่มใหม่ ตัวนับเป็น 0 ไม่ใช่ติดลบ', () => {
+    const renewed = reducer(finished, { type: 'renewCourse', subjectId: 's1' })
+    const old = renewed.completions.find((row) => subjectById(renewed, 's1')
+      && renewed.units.some((unit) => unit.id === row.unitId && unit.subjectId === 's1'))!
+    const undone = reducer(renewed, { type: 'uncomplete', unitId: old.unitId })
+    expect(courseProgress(undone, subjectById(undone, 's1')!)!.done).toBe(0)
+  })
+
+  it('แถมครั้งเพิ่มเพดานของคอร์สรอบนี้ และกดซ้ำบวกทบ', () => {
+    const once = reducer(finished, { type: 'bonusCourse', subjectId: 's1', sessions: 2 })
+    expect(courseProgress(once, subjectById(once, 's1')!)).toMatchObject({ done: 9, total: 11 })
+    const twice = reducer(once, { type: 'bonusCourse', subjectId: 's1', sessions: 3 })
+    expect(courseProgress(twice, subjectById(twice, 's1')!)!.total).toBe(14)
+  })
+
+  it('ต่อคอร์สล้างครั้งที่แถมของรอบเก่าทิ้ง', () => {
+    const withBonus = reducer(finished, { type: 'bonusCourse', subjectId: 's1', sessions: 5 })
+    const renewed = reducer(withBonus, { type: 'renewCourse', subjectId: 's1' })
+    expect(subjectById(renewed, 's1')!.courseBonus).toBeUndefined()
+    expect(courseProgress(renewed, subjectById(renewed, 's1')!)).toMatchObject({ done: 0, total: 9 })
+  })
+
+  it('ค่าที่ใช้ไม่ได้และแพ็กถูกปฏิเสธ ไม่ใช่บันทึกเงียบ ๆ', () => {
+    for (const sessions of [0, -1, 1.5, 501, Number.NaN]) {
+      expect(reducer(finished, { type: 'bonusCourse', subjectId: 's1', sessions })).toBe(finished)
+    }
+    expect(reducer(base, { type: 'renewCourse', subjectId: 's6' })).toBe(base)      // แพ็ก
+    expect(reducer(base, { type: 'bonusCourse', subjectId: 's6', sessions: 5 })).toBe(base)
+    expect(reducer(base, { type: 'renewCourse', subjectId: 'ไม่มีคนนี้' })).toBe(base)
+  })
+})
+
 describe('ล็อกคิวในปฏิทิน', () => {
   const nextMonth = shiftPeriod(period, 1)
   const monday = (() => {

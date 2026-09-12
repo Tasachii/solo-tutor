@@ -31,6 +31,10 @@ export const COURSE_SESSIONS_MAX = 500
 export const isCourseSessions = (value: unknown): value is number =>
   Number.isSafeInteger(value) && Number(value) > 0 && Number(value) <= COURSE_SESSIONS_MAX
 
+/** จุดเริ่มนับของคอร์สรอบนี้ และครั้งที่แถมเพิ่ม — 0 ได้ (ยังไม่เคยต่อ/ยังไม่เคยแถม) */
+export const isCourseCount = (value: unknown): value is number =>
+  Number.isSafeInteger(value) && Number(value) >= 0 && Number(value) <= COURSE_SESSIONS_MAX
+
 export function isBillingMode(value: unknown): value is BillingMode {
   if (!value || typeof value !== 'object') return false
   const billing = value as Record<string, unknown>
@@ -172,6 +176,8 @@ export function validateState(value: unknown): StateValidation {
     }
     if (row.label !== undefined && !isString(row.label)) errors.push(`subjects[${index}].label: ไม่ถูกต้อง`)
     if (row.courseSessions !== undefined && !isCourseSessions(row.courseSessions)) errors.push(`subjects[${index}].courseSessions: ไม่ถูกต้อง`)
+    if (row.courseBaseline !== undefined && !isCourseCount(row.courseBaseline)) errors.push(`subjects[${index}].courseBaseline: ไม่ถูกต้อง`)
+    if (row.courseBonus !== undefined && !isCourseCount(row.courseBonus)) errors.push(`subjects[${index}].courseBonus: ไม่ถูกต้อง`)
   })
   state.units.forEach((row, index) => {
     if (!isRecord(row)) { errors.push(`units[${index}]: ต้องเป็น object`); return }
