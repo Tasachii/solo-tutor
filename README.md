@@ -224,7 +224,7 @@ npm run e2e:mock    # เส้นทาง LINE OA 38 ข้อ กับเซ
 
 | ไฟล์ | คืออะไร |
 | --- | --- |
-| [`docs/pitch/Solo Tutor Endgame.pdf`](docs/pitch/Solo%20Tutor%20Endgame.pdf) | เดค 18 หน้าตามที่นำเสนอ (1280×720) |
+| [`docs/pitch/Solo Tutor Endgame.pdf`](docs/pitch/Solo%20Tutor%20Endgame.pdf) | เดค 19 หน้าตามที่นำเสนอ (1280×720) |
 | [`docs/pitch/Solo Tutor Endgame.pptx`](docs/pitch/Solo%20Tutor%20Endgame.pptx) · [`.html`](docs/pitch/Solo%20Tutor%20Endgame.html) | เดคเดียวกันแบบ PowerPoint (หนึ่งหน้าเป็นรูปเต็มหน้า) และไฟล์ HTML ต้นฉบับที่ฝังฟอนต์และรูปไว้ในไฟล์เดียว |
 | [`docs/pitch/สคริป for pitching.pdf`](docs/pitch/%E0%B8%AA%E0%B8%84%E0%B8%A3%E0%B8%B4%E0%B8%9B%20for%20pitching.pdf) | บทพูดทีละหน้า — เวลา คนพูด คำแนะนำบนเวที และฉบับ 7 นาที |
 | [`docs/pitch/สคริปเดโม.pdf`](docs/pitch/%E0%B8%AA%E0%B8%84%E0%B8%A3%E0%B8%B4%E0%B8%9B%E0%B9%80%E0%B8%94%E0%B9%82%E0%B8%A1.pdf) | เดโมสด 90 วินาที ทีละแตะบนข้อมูลตัวอย่างชุดผสม พร้อมเช็กลิสต์เช้าวันงานและแผนสำรอง |
