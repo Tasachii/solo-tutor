@@ -131,7 +131,7 @@ export default function SubjectSheet({ subject, onClose }: { subject?: Subject; 
       <label className="fld">
         <span className="fld__l">{copy.subjects.fieldName}</span>
         <input className="inp" aria-label={copy.subjects.fieldName} aria-invalid={!!err.name || undefined}
-          aria-describedby={err.name ? 'subject-name-error' : undefined} value={name} onChange={(e) => setName(e.target.value)} />
+          aria-describedby={err.name ? 'subject-name-error' : undefined} value={name} maxLength={80} onChange={(e) => setName(e.target.value)} />
         {err.name && <span id="subject-name-error" className="fld__err">{err.name}</span>}
       </label>
       <label className="fld">

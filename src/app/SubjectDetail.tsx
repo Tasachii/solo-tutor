@@ -111,6 +111,7 @@ export default function SubjectDetail() {
             label={fill(copy.course.progress, { done: course.done, total: course.total })}
             tone={course.state === 'ok' ? 'ok' : 'warn'} />
           {(s.courseBonus ?? 0) > 0 && <div className="kv"><span>{fill(copy.course.bonusNow, { n: s.courseBonus ?? 0 })}</span></div>}
+          {course.over > 0 && <p className="hint hint--warn" role="status">{fill(copy.course.over, { n: course.over })}</p>}
           <div className="btnrow">
             <button className="btn btn--secondary btn--sm" onClick={() => setRenewing(true)}>{copy.course.renew}</button>
             <button className="btn btn--ghost btn--sm" onClick={() => { setBonusValue('1'); setBonusError(''); setBonusing(true) }}>{copy.course.bonus}</button>

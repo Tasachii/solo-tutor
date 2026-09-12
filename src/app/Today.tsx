@@ -416,7 +416,8 @@ export default function Today() {
             <span className="fld__l">{copy.today.fieldTime}</span>
             <input className="inp" type="time" value={newUnit.time} onChange={(e) => setNewUnit({ ...newUnit, time: e.target.value })} />
           </label>
-          {newUnit.subjectId && slotTaken(state, newUnit.date, newUnit.time, newUnit.subjectId) && (
+          {/* จองซ้ำมี preview "ข้ามที่ชนคิว n วัน" ของตัวเองแล้ว แถบคาบเดี่ยวซ้อนอีกชั้นทำให้อ่านเป็นสองเรื่อง */}
+          {!repeat && newUnit.subjectId && slotTaken(state, newUnit.date, newUnit.time, newUnit.subjectId) && (
             <div className="fld">
               <p className="hint hint--warn" role="status">{fill(cal.slotTaken, { name: holders(state, newUnit.date, newUnit.time, newUnit.subjectId) })}</p>
               <div className="chips">
@@ -460,7 +461,8 @@ export default function Today() {
                 {series?.dates.length
                   ? `${fill(cal.bookPreview, { n: series.dates.length, date: dateThai(series.dates[series.dates.length - 1]) })}${series.clashes.length ? ` · ${fill(cal.bookClash, { n: series.clashes.length })}` : ''}`
                   : days.length === 0 ? cal.bookPickDay
-                    : !Number(weeks) || Number(weeks) > BOOK_SERIES_MAX_WEEKS ? fill(cal.bookWeeksMax, { n: BOOK_SERIES_MAX_WEEKS })
+                    : !Number(weeks) ? cal.bookWeeksMin
+                      : Number(weeks) > BOOK_SERIES_MAX_WEEKS ? fill(cal.bookWeeksMax, { n: BOOK_SERIES_MAX_WEEKS })
                       : series?.clashes.length ? fill(cal.bookClash, { n: series.clashes.length })
                         : cal.bookNothing}
               </p>

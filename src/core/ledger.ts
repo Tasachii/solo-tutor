@@ -83,7 +83,11 @@ export function snapshotLegacyPrices(s: AppState, onlySubjectId?: string): AppSt
  * คาบที่งดไปแล้วไม่ถูกนับ (completionsOfSubject กรองให้) — ครูจึงเชื่อตัวเลขนี้ได้เท่าที่เช็คชื่อจริง
  * แพ็กคืน null เพราะมีตัวนับของตัวเองอยู่แล้ว สองตัวนับบนการ์ดเดียวกันทำให้ครูอ่านผิด
  */
-export interface CourseProgress { done: number; total: number; state: 'ok' | 'near' | 'done' }
+export interface CourseProgress {
+  done: number; total: number; state: 'ok' | 'near' | 'done'
+  /** เช็คชื่อเกินจำนวนครั้งของคอร์สไปกี่ครั้ง — ครูจริงที่มีประวัติหลายเดือนเจอทันทีที่เปิด ต้องไม่โชว์ "21/10" */
+  over: number
+}
 
 /** ไม่ตั้งทั้งรายคนและค่าเริ่มต้นของครู = ใช้ค่านี้ (เจ้าของ 12 ก.ย.: "default เปน 0/10 ก็ได้") */
 export const COURSE_SESSIONS_FALLBACK = 10
@@ -96,8 +100,9 @@ export function courseProgress(s: AppState, subject: Subject): CourseProgress | 
   const total = base + bonus
   // ต่อคอร์สแล้วนับใหม่จาก 0 — ถ้ายกเลิกเช็คชื่อเก่าจนต่ำกว่าจุดเริ่ม ให้เป็น 0 ไม่ใช่ติดลบ
   const baseline = Number.isSafeInteger(subject.courseBaseline) && subject.courseBaseline! > 0 ? subject.courseBaseline! : 0
-  const done = Math.max(0, completionsOfSubject(s, subject.id).length - baseline)
-  return { done, total, state: done >= total ? 'done' : total - done <= 2 ? 'near' : 'ok' }
+  const taught = Math.max(0, completionsOfSubject(s, subject.id).length - baseline)
+  const done = Math.min(taught, total)
+  return { done, total, over: taught - done, state: done >= total ? 'done' : total - done <= 2 ? 'near' : 'ok' }
 }
 
 export interface PackageStatus {

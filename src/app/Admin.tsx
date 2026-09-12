@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { LINE_TEXT_MAX } from '../core/lineProtocol'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useStore } from '../core/store'
 import { copy } from '../copy'
@@ -59,7 +60,7 @@ function MessageCard({ m, awaiting, queueActive, left, linkOnly, onSend, onSent,
         <>
           <label className="fld">
             <span className="fld__l">แก้ข้อความถึง {client?.name ?? 'ผู้จ่าย'}</span>
-            <textarea className="inp inp--area" value={text} rows={5} aria-invalid={!!editError || undefined}
+            <textarea className="inp inp--area" value={text} rows={5} maxLength={LINE_TEXT_MAX} aria-invalid={!!editError || undefined}
               aria-describedby={editError ? `message-${m.id}-error` : undefined}
               onChange={(e) => { setText(e.target.value); setEditError(e.target.value.trim() ? '' : 'ข้อความต้องไม่ว่าง') }} />
           </label>

@@ -52,6 +52,34 @@ test.describe('ปฏิทินหน้าแรก', () => {
   })
 })
 
+test.describe('จองล่วงหน้า — ขอบที่ต้องบอกให้ถูกเรื่อง', () => {
+  test('ไม่เลือกวัน / 0 สัปดาห์ / เกิน 26 สัปดาห์ บอกคนละข้อความและกดบันทึกไม่ได้', async ({ page }) => {
+    await page.goto('?scenario=default#/app/today')
+    await expect(page.locator('.skel')).toHaveCount(0)
+    await page.getByRole('button', { name: /^\+ (เพิ่มวันนี้|จองล่วงหน้า)$/ }).first().click()
+    const sheet = page.getByRole('dialog')
+    await sheet.getByRole('combobox').selectOption({ index: 1 })
+    await sheet.getByRole('button', { name: cal.bookRepeat }).click()
+    const save = sheet.locator('.sheet__foot button').first()
+    const status = sheet.locator('p[role=status]').last()
+
+    // ปิดชิปวันที่ติดมาให้ (วันของวันที่เลือก) → ไม่มีวันเลย
+    const dayChips = sheet.locator('.fld').filter({ hasText: cal.bookDays }).locator('.chip[aria-pressed="true"]')
+    while (await dayChips.count()) await dayChips.first().click()
+    await expect(status).toHaveText(cal.bookPickDay)
+    await expect(save).toBeDisabled()
+
+    await sheet.locator('.fld').filter({ hasText: cal.bookDays }).locator('.chip').first().click()
+    const weeks = sheet.locator('input[inputmode="numeric"]').last()
+    await weeks.fill('0')
+    await expect(status).toHaveText(cal.bookWeeksMin)
+    await expect(save).toBeDisabled()
+    await weeks.fill('99')
+    await expect(status).toContainText('26')
+    await expect(save).toBeDisabled()
+  })
+})
+
 test.describe('ตัวนับคอร์ส', () => {
   const openCourseStudent = async (page: import('@playwright/test').Page) => {
     await page.goto('?scenario=default#/app/subjects')

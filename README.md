@@ -191,7 +191,7 @@ A failing scheduled job opens one GitHub Issue labelled `ops-alert` and comments
 ## Testing
 
 ```bash
-npm test            # 752 unit tests in 96 files (vitest, jsdom, clock frozen at 2025-09-02)
+npm test            # 864 unit tests in 104 files (vitest, jsdom, clock frozen at 2025-09-02)
 npm run test:db     # 18 SQL contract files against every migration on postgres:16 and postgres:17 (Docker)
 npm run test:edge   # 48 Edge Function tests (Deno)
 npm run e2e         # 161 browser tests on the real build, Pixel 7 and desktop (Playwright)

@@ -210,6 +210,18 @@ describe('ต่อคอร์สและแถมครั้ง', () => {
     expect(courseProgress(renewed, subjectById(renewed, 's1')!)).toMatchObject({ done: 0, total: 9 })
   })
 
+  it('เช็คชื่อเกินคอร์สไม่โชว์ "21/10" — แสดงเต็ม 10/10 และบอกส่วนเกินแยก จนกว่าจะต่อคอร์ส', () => {
+    let s = reducer(base, { type: 'setCourseSessions', subjectId: 's1', sessions: 10 }) // สอนไปแล้ว 9
+    for (let i = 0; i < 4; i++) {
+      const added = reducer(s, { type: 'addUnit', subjectId: 's1', time: `0${i}:30` })
+      const unit = added.units.find((row) => row.subjectId === 's1' && !added.completions.some((c) => c.unitId === row.id))!
+      s = reducer(added, { type: 'complete', unitId: unit.id })
+    }
+    expect(courseProgress(s, subjectById(s, 's1')!)).toMatchObject({ done: 10, total: 10, over: 3, state: 'done' })
+    const renewed = reducer(s, { type: 'renewCourse', subjectId: 's1' })
+    expect(courseProgress(renewed, subjectById(renewed, 's1')!)).toMatchObject({ done: 0, over: 0 })
+  })
+
   it('ค่าที่ใช้ไม่ได้และแพ็กถูกปฏิเสธ ไม่ใช่บันทึกเงียบ ๆ', () => {
     for (const sessions of [0, -1, 1.5, 501, Number.NaN]) {
       expect(reducer(finished, { type: 'bonusCourse', subjectId: 's1', sessions })).toBe(finished)
