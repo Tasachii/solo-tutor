@@ -1,135 +1,137 @@
 # Solo Tutor — แอดมินส่วนตัวของติวเตอร์
 
-Back-office for a tutor who teaches alone. Tap once to mark a session taught; at month end the app totals every student, drafts the bill and the LINE message in the teacher's own voice, and the teacher reads it and presses **ส่งใน LINE**. The parent needs nothing but LINE: a message, a link with the exact-amount PromptPay QR, and a receipt when the slip arrives. The ledger lives in the teacher's browser; signing in adds an encrypted cloud copy the server cannot read. Solo Tutor never holds money.
+แอปช่วยงานหลังบ้านให้ครูสอนพิเศษที่ทำงานคนเดียว แตะครั้งเดียวเมื่อสอนเสร็จ พอสิ้นเดือนแอปรวมยอดให้ทุกคน ร่างบิลและข้อความในน้ำเสียงของครูเอง ครูอ่านแล้วกด **ส่งใน LINE** ฝั่งผู้ปกครองไม่ต้องติดตั้งอะไร มีแค่ LINE ก็พอ — ได้ข้อความ ลิงก์บิลพร้อม QR พร้อมเพย์ที่ใส่ยอดไว้แล้ว และใบเสร็จเมื่อส่งสลิปมา ข้อมูลทั้งหมดอยู่ในเครื่องของครู ถ้าเข้าสู่ระบบจะมีสำเนาบนคลาวด์ที่เข้ารหัสไว้จนเซิร์ฟเวอร์เองก็อ่านไม่ได้ Solo Tutor ไม่ถือเงินของใคร
 
-**Try it now:** https://tasachii.github.io/solo-tutor/ — the demo opens with sample data and no sign-up; it installs as an app and works offline.
+**ลองเล่นได้เลย:** https://tasachii.github.io/solo-tutor/ — เปิดมาเป็นข้อมูลตัวอย่าง ไม่ต้องสมัคร ติดตั้งเป็นแอปได้ และใช้ได้ตอนไม่มีเน็ต
 
-<p align="center"><img src="docs/brand/solo-tutor-square.jpg" width="320" alt="Solo Tutor — the tutor penguin at the easel" /></p>
+<p align="center"><img src="docs/brand/solo-tutor-square.jpg" width="320" alt="Solo Tutor — เพนกวินติวเตอร์หน้ากระดาน" /></p>
 
-| หน้าแรก — one button into the demo | วันนี้ — the week strip, then one tap per session |
+| หน้าแรก — ปุ่มเดียวเข้าเดโม | วันนี้ — ปฏิทินสัปดาห์ แล้วแตะเช็คชื่อทีละคน |
 |---|---|
-| ![Landing page on a phone](docs/images/landing.jpg) | ![Today view with the เช็คชื่อ button](docs/images/today.jpg) |
+| ![หน้าแรกบนมือถือ](docs/images/landing.jpg) | ![หน้าวันนี้พร้อมปุ่มเช็คชื่อ](docs/images/today.jpg) |
 
-| นักเรียน — billing mode and **สอนไปแล้ว x/N** per student | แอดมิน — drafts waiting for the teacher to read and send |
+| นักเรียน — วิธีเก็บเงินและ "สอนไปแล้ว x/N" ของแต่ละคน | แอดมิน — ข้อความที่ร่างไว้ รอครูอ่านแล้วกดส่ง |
 |---|---|
-| ![Students list](docs/images/students.jpg) | ![Admin drafts tab](docs/images/admin-drafts.jpg) |
+| ![รายชื่อนักเรียน](docs/images/students.jpg) | ![แท็บรอส่งในแอดมิน](docs/images/admin-drafts.jpg) |
 
-| บิล — the month at a glance | The same page with the network off |
+| บิล — ทั้งเดือนในหน้าเดียว | หน้าเดิมตอนปิดเน็ต |
 |---|---|
-| ![Billing view](docs/images/billing.jpg) | ![Offline view served by the service worker](docs/images/offline.jpg) |
+| ![หน้าบิล](docs/images/billing.jpg) | ![หน้าออฟไลน์ที่ service worker เปิดให้](docs/images/offline.jpg) |
 
-## Contents
+## สารบัญ
 
-- [Why this exists](#why-this-exists)
-- [Features](#features)
-- [Architecture](#architecture)
-- [Requirements](#requirements)
-- [Installation](#installation)
-- [Usage](#usage)
-- [Testing](#testing)
-- [Project documentation](#project-documentation)
-- [Pitch materials](#pitch-materials)
-- [Roadmap](#roadmap)
-- [License](#license)
+- [ทำไมถึงทำ](#ทำไมถึงทำ)
+- [ทำอะไรได้บ้าง](#ทำอะไรได้บ้าง)
+- [โครงสร้างระบบ](#โครงสร้างระบบ)
+- [สิ่งที่ต้องมี](#สิ่งที่ต้องมี)
+- [ติดตั้ง](#ติดตั้ง)
+- [วิธีใช้](#วิธีใช้)
+- [ทดสอบ](#ทดสอบ)
+- [เอกสารประกอบ](#เอกสารประกอบ)
+- [เอกสารพิทช์](#เอกสารพิทช์)
+- [ที่ทำไปแล้วและที่จะทำต่อ](#ที่ทำไปแล้วและที่จะทำต่อ)
+- [สัญญาอนุญาต](#สัญญาอนุญาต)
 
-## Why this exists
+## ทำไมถึงทำ
 
-A solo tutor with 11–50 students keeps attendance in a notebook, a phone note and a LINE thread, then spends the last evening of the month counting sessions, typing amounts into chats one by one, and hesitating to remind the parents who have not paid. Existing tools fail on the parent side: parents refuse to install another app. Solo Tutor keeps the parent inside LINE and keeps the teacher in charge of every word — the app drafts, the teacher sends. Four rules are enforced in code, not policy: the app holds no money (tuition goes straight to the teacher's PromptPay), every number comes from the ledger, no message leaves without the teacher pressing a button, and messages to parents carry the teacher's voice and particle (ครับ/ค่ะ) — never the words "ระบบ", "อัตโนมัติ" or the app's name.
+ครูสอนพิเศษที่มีนักเรียน 11–50 คน มักจดการเข้าเรียนไว้ในสมุดบ้าง โน้ตในมือถือบ้าง แชท LINE บ้าง พอถึงคืนสุดท้ายของเดือนต้องมานั่งนับว่าใครเรียนกี่ครั้ง พิมพ์ยอดส่งทีละคน แล้วลังเลว่าจะทวงคนที่ยังไม่โอนยังไงดี เครื่องมือที่มีอยู่ตกม้าตายฝั่งผู้ปกครอง เพราะผู้ปกครองไม่ยอมโหลดแอปเพิ่ม Solo Tutor จึงให้ผู้ปกครองอยู่ใน LINE ตามเดิม และให้ครูเป็นคนคุมทุกคำ — แอปร่างให้ ครูเป็นคนส่ง
 
-## Features
+กติกา 4 ข้อถูกบังคับด้วยโค้ด ไม่ใช่แค่นโยบาย: แอปไม่ถือเงิน (ค่าเรียนเข้าพร้อมเพย์ของครูโดยตรง) · ตัวเลขทุกตัวมาจากบันทึกการเช็คชื่อและการรับเงิน · ไม่มีข้อความไหนออกไปโดยครูไม่ได้กดเอง · ข้อความถึงผู้ปกครองพูดด้วยน้ำเสียงและคำลงท้ายของครู (ครับ/ค่ะ) ไม่มีคำว่า "ระบบ" "อัตโนมัติ" หรือชื่อแอปโผล่ให้ผู้ปกครองเห็น
 
-### Daily teaching
-- **วันนี้** opens on a one-week calendar strip with a session count per day; the calendar button expands it to the month and back without leaving the page. Tap any day to see who is scheduled; future days show **เลื่อน** only, since a session that has not happened cannot be marked
-- **เช็คชื่อ** marks one taught, a repeat tap does not double-count, and a toast undoes it; each row shows **สอนไปแล้ว 8/16** for the student's course, turning **ครบแล้ว 8/8** when the course is complete
-- **+ เพิ่มวันนี้** adds one session; **+ จองล่วงหน้า** on any other day books one or a weekly series (**จองซ้ำทุกสัปดาห์** — pick weekdays and a number of weeks, up to 26; the button says how many sessions it will create before you press it)
-- **Slot locking** — a time that already belongs to another active student is refused and the holder is named; a **สอนกลุ่ม** chip overrides it on purpose, when booking and when moving
-- **เลื่อน** and **งดคาบนี้** move or cancel a session and draft the parent message on the spot — the bill is computed from attendance, not the timetable
-- Packages that are down to 1–2 sessions raise a renewal draft; an exhausted package still allows attendance but says the session is not yet paid
+## ทำอะไรได้บ้าง
 
-### Students and pricing
-- Add one at a time (name, payer — siblings can share one — LINE ID, and a billing mode: รายครั้ง · เหมาเดือน · แพ็ก of 10 or 20 or a custom count) or **เพิ่มหลายคน** by pasting from Excel, Google Sheets or LINE, or uploading CSV/XLSX; headers are guessed, duplicates dropped
-- **Course counter** — every non-package student has a course length (the teacher's own default from `⋯` → **จำนวนครั้งต่อคอร์ส**, overridable per student); attendance drives **สอนไปแล้ว x/N**, the list shows **ครบคอร์สแล้ว** when it is reached, and the student page offers **ต่อคอร์ส** (start counting again from 0, history and bills untouched) and **แถมครั้งให้** (extra sessions on this round)
-- Filters: ทั้งหมด · รายครั้ง · เหมาเดือน · แพ็ก · ใกล้หมดแพ็ก · ค้างจ่าย
-- Price changes mid-month apply to new sessions only; the billing mode cannot change while unbilled work exists, and the app says why
-- Pause a student (history kept, not counted toward the free cap), resume, or delete — a deleted student stays deleted across backups, devices and the cloud, and the server forgets the payer too
+### สอนวันต่อวัน
+- หน้า **วันนี้** เปิดมาเป็นปฏิทินสัปดาห์เดียว แต่ละวันมีตัวเลขบอกว่ามีกี่คาบ กดปุ่มปฏิทินเพื่อกางเป็นทั้งเดือนและย่อกลับได้โดยไม่ต้องเปลี่ยนหน้า แตะวันไหนก็เห็นว่าใครเรียนวันนั้น วันข้างหน้าจะมีแค่ปุ่ม **เลื่อน** เพราะคาบที่ยังไม่เกิดเช็คชื่อไม่ได้
+- **เช็คชื่อ** แตะครั้งเดียวคือสอนแล้ว แตะซ้ำไม่นับซ้อน และกดยกเลิกจากแถบแจ้งเตือนได้ แต่ละแถวบอก **สอนไปแล้ว 8/16** ของคอร์สนั้น พอครบจะขึ้น **ครบแล้ว 8/8**
+- **+ เพิ่มวันนี้** เพิ่มคาบเดียว ส่วนวันอื่นใช้ **+ จองล่วงหน้า** ได้ทั้งครั้งเดียวหรือ **จองซ้ำทุกสัปดาห์** — เลือกวันในสัปดาห์กับจำนวนสัปดาห์ (ไม่เกิน 26) ปุ่มบอกก่อนกดว่าจะได้กี่คาบ
+- **ล็อกคิว** — เวลาที่เป็นของนักเรียนอีกคนอยู่แล้วจะจองทับไม่ได้ และบอกชื่อว่าเป็นคิวของใคร ถ้าตั้งใจสอนพร้อมกันให้กดชิป **สอนกลุ่ม** ทั้งตอนจองและตอนเลื่อน
+- **เลื่อน** และ **งดคาบนี้** ย้ายหรือยกเลิกคาบแล้วร่างข้อความถึงผู้ปกครองให้ทันที — บิลคิดจากที่สอนจริง ไม่ใช่จากตารางที่วางไว้
+- แพ็กที่เหลือ 1–2 ครั้งจะร่างข้อความชวนต่อแพ็กให้ แพ็กที่หมดแล้วยังเช็คชื่อได้ แต่แอปจะบอกว่าครั้งนี้ยังไม่ได้จ่าย
 
-### Month end and money
-- **ปิดยอดเดือนนี้** creates one bill per student with attendance (per-session × rate, or the flat amount); pressing it twice does not duplicate
-- The bill message carries the amount, a **โอนได้ที่พร้อมเพย์ 08x-xxx-xxxx (ชื่อครู)** line when the teacher's PromptPay is a phone number (a national-ID PromptPay is never printed), and a link to the bill page with an EMVCo PromptPay QR that already contains the amount
-- **รับยอดจากสลิป** records a payment: exact, partial (balance falls accordingly), over-paid (recorded at the bill, slip amount noted) or unreadable (confirmed by hand); confirming twice never issues two receipts
-- Receipts issue themselves when a bill is fully paid, numbered `SL-YYYYMM-NNN`, printable, and sent as a link
-- Dashboard per billing round: ยอดควรได้ · เข้าแล้ว · ค้างสะสม · เกือบหลุดมือ (money the app caught), each with a note on where the figure comes from
-- CSV exports for attendance and bills/payments, with a BOM so Thai Excel opens them cleanly
+### นักเรียนและราคา
+- เพิ่มทีละคน (ชื่อ ผู้จ่าย — พี่น้องใช้ผู้จ่ายคนเดียวกันได้ — LINE ID และวิธีเก็บเงิน: รายครั้ง · เหมาเดือน · แพ็ก 10 หรือ 20 หรือกำหนดเอง) หรือ **เพิ่มหลายคน** ด้วยการวางจาก Excel, Google Sheets, LINE หรืออัปโหลดไฟล์ CSV/XLSX แอปเดาหัวคอลัมน์ให้และตัดชื่อซ้ำ
+- **ตัวนับคอร์ส** — นักเรียนที่ไม่ใช่แพ็กทุกคนมีจำนวนครั้งต่อคอร์ส (ค่าเริ่มต้นของครูตั้งได้ที่ `⋯` → **จำนวนครั้งต่อคอร์ส** และตั้งรายคนทับได้) การเช็คชื่อขยับ **สอนไปแล้ว x/N** ให้เอง รายชื่อขึ้นป้าย **ครบคอร์สแล้ว** เมื่อถึง และหน้านักเรียนมีปุ่ม **ต่อคอร์ส** (เริ่มนับใหม่ที่ 0 ประวัติและบิลเดิมไม่หาย) กับ **แถมครั้งให้** (เพิ่มครั้งในรอบนี้)
+- ตัวกรอง: ทั้งหมด · รายครั้ง · เหมาเดือน · แพ็ก · ใกล้หมดแพ็ก · ค้างจ่าย
+- เปลี่ยนราคากลางเดือนมีผลกับคาบใหม่เท่านั้น เปลี่ยนวิธีเก็บเงินไม่ได้ถ้ายังมีคาบที่ยังไม่ออกบิล และแอปบอกเหตุผล
+- หยุดเรียนชั่วคราว (ประวัติยังอยู่ ไม่นับในโควตาฟรี) กลับมาเรียน หรือลบ — นักเรียนที่ลบแล้วจะหายไปทุกที่ ทั้งไฟล์สำรอง เครื่องอื่น และคลาวด์ และเซิร์ฟเวอร์ลืมผู้จ่ายคนนั้นด้วย
 
-### Messages to parents
-- Every message is drafted from the ledger: new bill · three-step balance notices (สุภาพ → ชัดเจน → รอบสุดท้าย by days overdue) · a short nudge · package renewal · receipt · moved/cancelled session · mid-month summary · homework and homework reminders · answers to parent questions
-- **ส่งใน LINE** is one button: if the parent is paired with the teacher's LINE OA the message goes out through the OA; if not, the LINE app opens with the message for the teacher to send. A message whose numbers changed after drafting cannot be sent
-- **ค้างจ่าย** tab: every unpaid bill in one place, sorted by days overdue, with the notice step due, the last notice sent and how many; **สร้างข้อความเตือนยอด** drafts a short reminder when none is waiting. **การบ้าน** tab: assign to several students at once, track received/overdue, reminders draft themselves
-- **แชท**: type the question a parent asked (how much, is there class, sessions left, paid yet) and the answer is drafted from real data for the teacher to approve and send. Replies parents type in LINE are stored on the server but not yet shown in the app
-- While a message opened in the LINE app is still waiting for **ส่งแล้ว / ยังไม่ได้ส่ง**, every other send button is locked; a banner on each admin tab says so and offers **ยกเลิกการส่งที่ค้าง**
+### สิ้นเดือนและเรื่องเงิน
+- **ปิดยอดเดือนนี้** ออกบิลให้นักเรียนทีละคนจากการเช็คชื่อ (จำนวนครั้ง × ราคา หรือยอดเหมา) กดสองครั้งไม่ออกบิลซ้ำ
+- ข้อความบิลมียอด บรรทัด **โอนได้ที่พร้อมเพย์ 08x-xxx-xxxx (ชื่อครู)** เมื่อพร้อมเพย์ของครูเป็นเบอร์โทร (ถ้าเป็นเลขบัตรประชาชนจะไม่พิมพ์ลงข้อความ) และลิงก์หน้าบิลที่มี QR พร้อมเพย์มาตรฐาน EMVCo ใส่ยอดไว้แล้ว
+- **รับยอดจากสลิป** บันทึกการจ่าย: จ่ายพอดี จ่ายบางส่วน (ยอดค้างลดตาม) จ่ายเกิน (บันทึกตามบิล จดยอดในสลิปไว้) หรืออ่านสลิปไม่ออก (ยืนยันด้วยมือ) ยืนยันสองครั้งไม่ออกใบเสร็จสองใบ
+- ใบเสร็จออกให้เองเมื่อบิลจ่ายครบ เลขที่ `SL-YYYYMM-NNN` พิมพ์ได้ และส่งเป็นลิงก์ได้
+- หน้าสรุปแต่ละรอบบิล: ยอดควรได้ · เข้าแล้ว · ค้างสะสม · เกือบหลุดมือ (เงินที่แอปช่วยเก็บได้) พร้อมคำอธิบายว่าตัวเลขมาจากไหน
+- ส่งออกไฟล์ CSV ของการเช็คชื่อและบิล/การจ่าย ใส่ BOM ไว้ให้ Excel ภาษาไทยเปิดแล้วอ่านออก
+
+### ข้อความถึงผู้ปกครอง
+- ข้อความทุกใบร่างจากข้อมูลจริง: บิลใหม่ · ใบเตือนยอดค้าง 3 ระดับ (สุภาพ → ชัดเจน → รอบสุดท้าย ตามจำนวนวันที่เลย) · เตือนสั้น ๆ · ชวนต่อแพ็ก · ใบเสร็จ · เลื่อน/งดคาบ · สรุปกลางเดือน · การบ้านและเตือนการบ้าน · คำตอบคำถามผู้ปกครอง
+- **ส่งใน LINE** เป็นปุ่มเดียว: ถ้าผู้ปกครองผูกกับ LINE OA ของครูแล้ว ข้อความออกทาง OA ถ้ายังไม่ผูก แอป LINE จะเปิดขึ้นพร้อมข้อความให้ครูส่งเอง ข้อความที่ตัวเลขเปลี่ยนไปหลังร่างจะส่งไม่ได้
+- แท็บ **ค้างจ่าย**: บิลค้างทุกใบในหน้าเดียว เรียงตามวันที่เลย บอกว่าถึงขั้นเตือนไหน เตือนล่าสุดเมื่อไหร่ กี่ครั้ง กด **สร้างข้อความเตือนยอด** ได้เมื่อยังไม่มีข้อความรอ · แท็บ **การบ้าน**: มอบหมายให้หลายคนพร้อมกัน ติดตามว่าใครส่งแล้วใครเลยกำหนด ข้อความเตือนร่างให้เอง
+- แท็บ **แชท**: พิมพ์คำถามที่ผู้ปกครองถามมา (ค่าเรียนเท่าไหร่ มีเรียนไหม เหลือกี่ครั้ง จ่ายแล้วยัง) แอปร่างคำตอบจากข้อมูลจริงให้ครูตรวจแล้วส่ง — ข้อความที่ผู้ปกครองพิมพ์ตอบใน LINE ถูกเก็บไว้บนเซิร์ฟเวอร์ แต่ยังไม่แสดงในแอป
+- ระหว่างที่ข้อความใบหนึ่งเปิดแอป LINE ไปแล้วและยังไม่ได้ตอบว่า **ส่งแล้ว / ยังไม่ได้ส่ง** ปุ่มส่งใบอื่นจะถูกล็อก ทุกแท็บของแอดมินมีแถบบอกเหตุผลและปุ่ม **ยกเลิกการส่งที่ค้าง**
 
 ### LINE OA
-- A teacher connects their own OA once (Channel secret + long-lived token, encrypted at rest); the app sets the webhook URL and runs LINE's endpoint test itself
-- A parent pairs with a six-digit code, single-use, valid 24 hours; **คัดลอกข้อความเชิญผู้ปกครอง** copies a complete invitation — add-friend link plus code — in the teacher's voice to paste into the existing chat. Typing **หยุด** unsubscribes
-- Sends go through an outbox with de-duplication keys, survive a dropped connection, can be cancelled before delivery, and count against LINE's free 300 messages/month
+- ครูเชื่อม OA ของตัวเองครั้งเดียว (Channel secret และ token แบบไม่หมดอายุ เก็บแบบเข้ารหัส) แอปตั้ง webhook และทดสอบ endpoint กับ LINE ให้เอง
+- ผู้ปกครองผูกด้วยรหัส 6 หลัก ใช้ครั้งเดียว หมดอายุใน 24 ชั่วโมง **คัดลอกข้อความเชิญผู้ปกครอง** จะได้ข้อความเชิญที่มีลิงก์เพิ่มเพื่อนและรหัสในน้ำเสียงของครู ไปวางในแชทที่มีอยู่แล้ว พิมพ์ **หยุด** เพื่อเลิกรับ
+- การส่งผ่านคิวที่มีคีย์กันซ้ำ เน็ตหลุดกลางทางก็ไม่ส่งซ้อน ยกเลิกก่อนถึงได้ และนับกับโควตาฟรี 300 ข้อความต่อเดือนของ LINE
 
-### Parent side
-- No app, no account: a LINE message, and a link that opens the bill in LINE's browser with the QR, balance, bill history and the next session
-- Links are encrypted in the teacher's browser; only ciphertext reaches the server and the key travels after `#` so no server ever sees it. Links expire after 90 days and the teacher can revoke one from the account screen (revocation stops future opens; a copy already saved cannot be recalled)
+### ฝั่งผู้ปกครอง
+- ไม่ต้องมีแอป ไม่ต้องมีบัญชี: ได้ข้อความ LINE และลิงก์ที่เปิดบิลในเบราว์เซอร์ของ LINE พร้อม QR ยอดค้าง ประวัติบิล และคาบถัดไป
+- ลิงก์ถูกเข้ารหัสในเบราว์เซอร์ของครู เซิร์ฟเวอร์ได้รับแต่ข้อมูลที่อ่านไม่ออก ส่วนกุญแจอยู่หลังเครื่องหมาย `#` ของลิงก์จึงไม่ถูกส่งไปที่เซิร์ฟเวอร์ ลิงก์หมดอายุใน 90 วัน และครูเพิกถอนได้จากหน้าบัญชี (เพิกถอนแล้วเปิดใหม่ไม่ได้ แต่สำเนาที่บันทึกไว้ก่อนแล้วเรียกคืนไม่ได้)
 
-### Data and platform
-- Local-first: the ledger is in `localStorage`, attendance works offline; a second tab of the same book is read-only so tabs never overwrite each other
-- Backup to a JSON file and restore (the file is validated first; a copy of the current book is parked before restore); optional write-only mirror to a Google Sheet in the teacher's own Drive
-- Teacher account: the whole ledger is encrypted with a key derived from the teacher's password before it is uploaded; a recovery-key file is offered because the server cannot decrypt it. Two devices editing at once are asked which copy to keep — nothing is overwritten silently
-- Installable PWA; when a new release is waiting, a toast **มี Solo Tutor เวอร์ชันใหม่แล้ว · โหลดใหม่** appears and every open tab reloads together on tap
-- Five themes, six accent colours, three display sizes including a projection size for presenting
-- Free for up to 5 active students; Pro at 299 ฿/month, 799 ฿/3 months or 2,490 ฿/12 months by bank transfer, approved by a person — no card on file
+### ข้อมูลและตัวแอป
+- ข้อมูลอยู่ในเครื่องเป็นหลัก (`localStorage`) เช็คชื่อได้ตอนไม่มีเน็ต แท็บที่สองของสมุดเดียวกันเป็นแบบอ่านอย่างเดียว จึงไม่มีทางเขียนทับกัน
+- สำรองเป็นไฟล์ JSON และกู้คืนได้ (ตรวจไฟล์ก่อน และเก็บสำเนาสมุดปัจจุบันไว้ก่อนกู้) เลือกสำรองแบบเขียนอย่างเดียวลง Google Sheet ใน Drive ของครูเองได้
+- บัญชีครู: สมุดทั้งเล่มถูกเข้ารหัสด้วยกุญแจที่สร้างจากรหัสผ่านของครูก่อนอัปโหลด และมีไฟล์กุญแจกู้คืนให้ดาวน์โหลดเพราะเซิร์ฟเวอร์ถอดรหัสให้ไม่ได้ สองเครื่องแก้พร้อมกันจะถูกถามว่าจะเก็บชุดไหน ไม่มีการเขียนทับเงียบ ๆ
+- ติดตั้งเป็นแอปได้ เมื่อมีเวอร์ชันใหม่จะขึ้นแถบ **มี Solo Tutor เวอร์ชันใหม่แล้ว · โหลดใหม่** และทุกแท็บโหลดใหม่พร้อมกันเมื่อกด
+- ธีม 5 แบบ สีเน้น 6 สี ขนาดตัวอักษร 3 ระดับ รวมขนาดสำหรับฉายขึ้นจอ
+- ฟรีสำหรับนักเรียนไม่เกิน 5 คน Pro 299 บาท/เดือน 799 บาท/3 เดือน หรือ 2,490 บาท/12 เดือน โอนผ่านธนาคารและมีคนตรวจอนุมัติ ไม่ผูกบัตร
 
-## Architecture
+## โครงสร้างระบบ
 
 ```
-Teacher's browser (React SPA on GitHub Pages, installable PWA)
-  ledger in localStorage  ─── AES-GCM ───▶  ledger_snapshots (ciphertext only)
-  documents encrypted here ─ key stays in the URL fragment ─▶ shared_documents (ciphertext only)
+เบราว์เซอร์ของครู (React SPA บน GitHub Pages ติดตั้งเป็นแอปได้)
+  สมุดใน localStorage  ─── AES-GCM ───▶  ledger_snapshots (เก็บเฉพาะข้อมูลที่เข้ารหัสแล้ว)
+  เอกสารเข้ารหัสที่นี่ ─ กุญแจอยู่หลัง # ของลิงก์ ─▶ shared_documents (เก็บเฉพาะข้อมูลที่เข้ารหัสแล้ว)
         │
         ▼
-Supabase (Singapore · PostgreSQL 17 · Auth · RLS on every table)
+Supabase (สิงคโปร์ · PostgreSQL 17 · Auth · RLS ทุกตาราง)
   Edge Functions: line-connect · line-webhook · line-send · usage · waitlist · report-error · delete-account
-  Tables: providers · line_channels (sealed secret/token) · line_recipients · line_link_codes
-          message_outbox · chats · shared_documents · usage_events · plan_requests · plan_financial_evidence
+  ตาราง: providers · line_channels (secret/token ถูกผนึก) · line_recipients · line_link_codes
+         message_outbox · chats · shared_documents · usage_events · plan_requests · plan_financial_evidence
         │
         ▼
-LINE Messaging API  ◀──▶  the teacher's LINE OA  ◀──▶  the parent's LINE
+LINE Messaging API  ◀──▶  LINE OA ของครู  ◀──▶  LINE ของผู้ปกครอง
 ```
 
-| Layer | Role | Key technology |
+| ส่วน | หน้าที่ | เทคโนโลยี |
 |---|---|---|
-| `src/core/` | Ledger, billing, message drafting, FAQ answers, selectors, tombstones, document crypto | TypeScript, no framework code |
-| `src/app/` | Teacher screens and the parent-facing bill/receipt pages | React 18, react-router-dom (HashRouter), plain CSS |
-| `src/platform/` | Landing, pricing, login, legal pages | React |
-| `src/professions/` · `src/copy/` | Vocabulary, billing rules and message templates per profession; all UI strings | TypeScript |
-| `supabase/migrations/` | 19 migrations, all applied to the live project | PostgreSQL 17, PL/pgSQL, pgcrypto |
-| `supabase/functions/` | 7 Edge Functions | Deno |
-| `.github/workflows/` | Verify and deploy on push, hourly health check, 6-hourly uptime probe, daily encrypted backup, weekly quality run, and three hand-pressed jobs (apply migrations, ops report, release a LINE channel) | GitHub Actions |
+| `src/core/` | สมุดบัญชี การคิดเงิน การร่างข้อความ คำตอบคำถาม ตัวเลือกข้อมูล การลบถาวร การเข้ารหัสเอกสาร | TypeScript ล้วน ไม่มีโค้ดของเฟรมเวิร์ก |
+| `src/app/` | หน้าจอของครู และหน้าบิล/ใบเสร็จฝั่งผู้ปกครอง | React 18, react-router-dom (HashRouter), CSS ธรรมดา |
+| `src/platform/` | หน้าแรก ราคา เข้าสู่ระบบ หน้ากฎหมาย | React |
+| `src/professions/` · `src/copy/` | คำศัพท์ กติกาการคิดเงิน และแม่แบบข้อความตามอาชีพ · ข้อความบนหน้าจอทั้งหมด | TypeScript |
+| `supabase/migrations/` | ไมเกรชัน 19 ไฟล์ ใช้กับโปรเจกต์จริงครบแล้ว | PostgreSQL 17, PL/pgSQL, pgcrypto |
+| `supabase/functions/` | Edge Functions 7 ตัว | Deno |
+| `.github/workflows/` | ตรวจและ deploy ทุกครั้งที่ push, ตรวจสุขภาพรายชั่วโมง, ปลุกทุก 6 ชั่วโมง, สำรองฐานข้อมูลรายวัน, ตรวจคุณภาพรายสัปดาห์ และงานกดเองอีก 3 อย่าง (ใช้ไมเกรชัน, รายงานปฏิบัติการ, ปลดช่อง LINE) | GitHub Actions |
 
-Design decisions worth noting:
+การตัดสินใจที่ควรรู้:
 
-- **The ledger is the only source of numbers.** Bills, balances, package counts and every message are derived from attendance and payments the teacher confirmed; nothing is stored twice and no template carries a figure.
-- **Drafts are the product, sending is the teacher's act.** Every outbound message is shown before it goes; one button, **ส่งใน LINE**, picks the OA when the parent is paired and the LINE app when not. A failed link publish sends nothing anywhere.
-- **The server cannot read what matters.** The cloud ledger is encrypted with a password-derived key in the browser; parent links are AES-GCM with the key in the URL fragment; LINE credentials are sealed with a server-side key and never returned. A forgotten password locks that account's cloud copy — which is why the recovery-key download exists.
-- **One LINE OA belongs to one teacher account.** The webhook verifies signatures against the secret stored for that channel, so credentials must be saved in the app before LINE's Verify button is pressed.
-- **The service worker keeps the waiting lifecycle.** A new release activates only after every tab has closed, so old tabs never mix chunks from two builds; the reload toast lets the teacher end the wait on purpose and reloads all tabs together.
-- **Demo and real books are separate slots.** Trying the demo, resetting it, or opening two tabs in different modes never touches a teacher's real ledger.
-- **HashRouter** because GitHub Pages has no SPA fallback; dates are stored as ISO (CE) and displayed in BE, computed with `Date.UTC` so no timezone leaks in.
+- **สมุดบัญชีเป็นแหล่งตัวเลขเพียงแหล่งเดียว** บิล ยอดค้าง จำนวนครั้งในแพ็ก และข้อความทุกใบคำนวณจากการเช็คชื่อและการรับเงินที่ครูยืนยัน ไม่มีตัวเลขไหนเก็บซ้ำสองที่ และแม่แบบไม่มีตัวเลขฝังไว้
+- **ร่างคือสินค้า การส่งคือการกระทำของครู** ข้อความทุกใบแสดงให้เห็นก่อนออกไป ปุ่มเดียวคือ **ส่งใน LINE** — ผูก OA แล้วไปทาง OA ไม่ผูกไปทางแอป LINE ถ้าสร้างลิงก์ไม่สำเร็จจะไม่มีอะไรถูกส่งเลย
+- **เซิร์ฟเวอร์อ่านสิ่งสำคัญไม่ได้** สมุดบนคลาวด์เข้ารหัสด้วยกุญแจจากรหัสผ่านในเบราว์เซอร์ ลิงก์ผู้ปกครองเข้ารหัส AES-GCM โดยกุญแจอยู่ในส่วน `#` ของลิงก์ ข้อมูล LINE ถูกผนึกด้วยกุญแจฝั่งเซิร์ฟเวอร์และไม่ถูกส่งกลับมา ลืมรหัสผ่านคือสำเนาคลาวด์ของบัญชีนั้นเปิดไม่ได้ — จึงมีไฟล์กุญแจกู้คืนให้ดาวน์โหลด
+- **LINE OA หนึ่งช่องเป็นของบัญชีครูหนึ่งบัญชี** webhook ตรวจลายเซ็นกับ secret ที่เก็บไว้ของช่องนั้น ครูจึงต้องบันทึกข้อมูลในแอปก่อนค่อยกด Verify ใน LINE
+- **service worker ใช้วงจร "รอ" ตามมาตรฐาน** เวอร์ชันใหม่จะเริ่มทำงานเมื่อทุกแท็บปิดแล้วเท่านั้น แท็บเก่าจึงไม่ปนไฟล์สองรุ่น แถบโหลดใหม่ให้ครูจบการรอเองได้และโหลดทุกแท็บพร้อมกัน
+- **สมุดเดโมกับสมุดจริงแยกช่องกัน** ลองเดโม รีเซ็ตเดโม หรือเปิดสองแท็บคนละโหมด ไม่มีทางแตะสมุดจริงของครู
+- **ใช้ HashRouter** เพราะ GitHub Pages ไม่มีทางเลือกสำหรับแอปหน้าเดียว วันที่เก็บเป็น ค.ศ. แบบ ISO แสดงเป็น พ.ศ. และคำนวณด้วย `Date.UTC` เพื่อไม่ให้เขตเวลารั่วเข้ามา
 
-## Requirements
+## สิ่งที่ต้องมี
 
-- Node.js 22 (`engines`: `>=22 <25`; `.nvmrc` pins 22)
-- Docker, only for the PostgreSQL suite (`npm run test:db` runs the migrations and contract tests on postgres:16 and postgres:17)
-- Deno, only for the Edge Function tests (`npm run test:edge`)
-- A Supabase project and a LINE Messaging API channel are needed for real mode; the demo needs neither
+- Node.js 22 (`engines`: `>=22 <25` และ `.nvmrc` ระบุ 22)
+- Docker เฉพาะชุดทดสอบฐานข้อมูล (`npm run test:db` รันไมเกรชันและเทสสัญญาข้อมูลบน postgres:16 และ postgres:17)
+- Deno เฉพาะชุดทดสอบ Edge Functions (`npm run test:edge`)
+- โหมดใช้จริงต้องมีโปรเจกต์ Supabase และช่อง LINE Messaging API ส่วนเดโมไม่ต้องมีอะไรเลย
 
-## Installation
+## ติดตั้ง
 
 ```bash
 git clone https://github.com/Tasachii/solo-tutor.git
@@ -137,105 +139,105 @@ cd solo-tutor
 npm install
 ```
 
-Real mode reads its project from build-time variables; without them the app runs demo-only and says so on the account screen:
+โหมดใช้จริงอ่านค่าโปรเจกต์จากตัวแปรตอนสร้างไฟล์ ถ้าไม่ตั้ง แอปจะเป็นเดโมอย่างเดียวและบอกไว้ในหน้าบัญชี:
 
-| Variable | Purpose |
+| ตัวแปร | ใช้ทำอะไร |
 |---|---|
-| `VITE_SUPABASE_URL` | Supabase project URL |
-| `VITE_SUPABASE_PUBLISHABLE_KEY` | Supabase publishable key |
-| `VITE_SUPPORT_CONTACT` | `https://` link, email or `@handle` shown as the team contact; a `line.me` link also becomes the **เพิ่มเพื่อน LINE** footer link |
-| `VITE_PROVIDER_LEGAL_NAME` | Payee name on Pro receipts; optional |
-| `VITE_SOLO_PROMPTPAY` | The team's PromptPay for Pro payments — 10-digit phone or 13-digit ID; optional, only enables the **ขอเปิด Pro** QR |
+| `VITE_SUPABASE_URL` | URL ของโปรเจกต์ Supabase |
+| `VITE_SUPABASE_PUBLISHABLE_KEY` | กุญแจสาธารณะของ Supabase |
+| `VITE_SUPPORT_CONTACT` | ลิงก์ `https://` อีเมล หรือ `@handle` ที่แสดงเป็นช่องทางติดต่อทีม ถ้าเป็นลิงก์ `line.me` จะกลายเป็นลิงก์ **เพิ่มเพื่อน LINE** ท้ายหน้า |
+| `VITE_PROVIDER_LEGAL_NAME` | ชื่อผู้รับเงินบนใบเสร็จ Pro (ไม่บังคับ) |
+| `VITE_SOLO_PROMPTPAY` | พร้อมเพย์ของทีมสำหรับรับค่า Pro — เบอร์ 10 หลักหรือเลขบัตร 13 หลัก (ไม่บังคับ มีแล้วถึงจะเปิดปุ่ม **ขอเปิด Pro** พร้อม QR) |
 
-On GitHub Pages these are repository **Variables** (not secrets — they ship in the bundle).
+บน GitHub Pages ค่าพวกนี้เป็น **Variables** ของ repository ไม่ใช่ secrets เพราะถูกรวมเข้าไปในไฟล์ที่ส่งถึงเบราว์เซอร์
 
-## Usage
+## วิธีใช้
 
-### Development
+### พัฒนา
 
 ```bash
 npm run dev
 ```
 
-The demo needs no backend. Useful URL parameters, in the query or after the hash:
+เดโมไม่ต้องมีเซิร์ฟเวอร์ ตัวเลือกใน URL ที่ใช้บ่อย ใส่ได้ทั้งใน query และหลังเครื่องหมาย `#`:
 
-| Parameter | Effect |
+| ตัวเลือก | ผล |
 |---|---|
-| `?scenario=default` | Pick the demo data set: `default` · `per-unit` · `flat-heavy` · `package-heavy` · `monthly-heavy` · `empty` |
-| `?stay=1` | Show the landing page even when a real-mode teacher would normally land on วันนี้ |
-| `?c=line` | Attribute the visit to a campaign; allowed values are `line` · `facebook` · `qr` · `pitch` · `friend`. Sharing the site with `?c=…` also gives LINE a fresh link preview |
+| `?scenario=default` | เลือกชุดข้อมูลเดโม: `default` · `per-unit` · `flat-heavy` · `package-heavy` · `monthly-heavy` · `empty` — ทุกครั้งที่โหลดจะรีเซ็ตเดโมเป็นชุดนั้น |
+| `?stay=1` | แสดงหน้าแรกแม้ครูโหมดจริงจะถูกพาไปหน้าวันนี้ตามปกติ |
+| `?c=line` | บันทึกว่ามาจากแคมเปญไหน ค่าที่รับ: `line` · `facebook` · `qr` · `pitch` · `friend` การแชร์ลิงก์พร้อม `?c=…` ยังทำให้ LINE ดึงตัวอย่างลิงก์ใหม่ด้วย |
 
-### Deploy
+### นำขึ้นใช้งาน
 
-Every push to `main` runs the **Verify and deploy** workflow — typecheck, unit, SQL, edge and browser suites — and publishes `dist/` to GitHub Pages. Database changes are applied by hand: **Actions → Apply database migrations → Run workflow** and type `APPLY`; the job takes a backup first and refuses to continue past a failing file.
+ทุกครั้งที่ push ขึ้น `main` งาน **Verify and deploy** จะตรวจชนิดข้อมูล รันชุดทดสอบ unit, SQL, edge และเบราว์เซอร์ แล้วเผยแพร่ `dist/` ขึ้น GitHub Pages ส่วนการเปลี่ยนฐานข้อมูลทำด้วยมือ: **Actions → Apply database migrations → Run workflow** แล้วพิมพ์ `APPLY` งานจะสำรองข้อมูลก่อนและหยุดทันทีเมื่อไฟล์ไหนล้มเหลว
 
-### A teacher's first month
+### เดือนแรกของครู
 
-1. **Start real mode.** `⋯` → **เริ่มใช้จริง** → enter the name parents use, the particle (ครับ/ค่ะ) and a PromptPay number → paste the class list or add students one by one.
-2. **Teach.** On **วันนี้**, tap **เช็คชื่อ** after each session; use **+ เพิ่มวันนี้** for an unscheduled one.
-3. **Connect LINE OA (optional).** `⋯` → **เชื่อม LINE OA** → sign in → paste the channel secret and token once. Next to each payer press **สร้างรหัสเชื่อม**, then **คัดลอกข้อความเชิญผู้ปกครอง** and paste it into the chat you already have with that parent; the parent adds the OA and types the code.
-4. **Close the month.** **บิล** → **ปิดยอดเดือนนี้**.
-5. **Send.** **แอดมิน** → **รอส่ง** → read each draft → **ส่งใน LINE**.
-6. **Record the slip.** **บิล** → **รับยอดจากสลิป** → the receipt drafts itself → **ส่งใน LINE** again.
-7. **Back up.** `⋯` → **สำรองข้อมูล** for a JSON file; sign in for the encrypted cloud copy and download the recovery key.
+1. **เริ่มใช้จริง** `⋯` → **เริ่มใช้จริง** → ใส่ชื่อที่ผู้ปกครองเรียก คำลงท้าย (ครับ/ค่ะ) และเบอร์พร้อมเพย์ → วางรายชื่อนักเรียนหรือเพิ่มทีละคน
+2. **สอน** ที่หน้า **วันนี้** แตะ **เช็คชื่อ** หลังสอนเสร็จแต่ละคาบ ใช้ **+ เพิ่มวันนี้** ถ้ามีคาบนอกตาราง
+3. **เชื่อม LINE OA (ไม่บังคับ)** `⋯` → **เชื่อม LINE OA** → เข้าสู่ระบบ → วาง channel secret และ token ครั้งเดียว ถัดจากผู้จ่ายแต่ละคนกด **สร้างรหัสเชื่อม** แล้ว **คัดลอกข้อความเชิญผู้ปกครอง** ไปวางในแชทที่มีอยู่แล้ว ผู้ปกครองเพิ่มเพื่อน OA แล้วพิมพ์รหัส
+4. **ปิดเดือน** **บิล** → **ปิดยอดเดือนนี้**
+5. **ส่ง** **แอดมิน** → **รอส่ง** → อ่านร่างแต่ละใบ → **ส่งใน LINE**
+6. **บันทึกสลิป** **บิล** → **รับยอดจากสลิป** → ใบเสร็จร่างให้เอง → **ส่งใน LINE** อีกครั้ง
+7. **สำรองข้อมูล** `⋯` → **สำรองข้อมูล** ได้ไฟล์ JSON หรือเข้าสู่ระบบเพื่อมีสำเนาเข้ารหัสบนคลาวด์ แล้วดาวน์โหลดกุญแจกู้คืนเก็บไว้
 
-### Operations
+### งานประจำของระบบ
 
-| Workflow | Runs | Purpose |
+| งาน | รันเมื่อ | ทำอะไร |
 |---|---|---|
-| Verify and deploy | on push | Full test run, build, publish |
-| Uptime and keep-alive | every 6 h | Site 200, database pong, Edge Functions answering; keeps the free project awake |
-| Hourly operations check | hourly | Client errors, stale Pro requests, stuck outbox rows |
-| Daily database backup | 03:35 Bangkok | Encrypted dump kept 90 days |
-| Scheduled quality checks | weekly | The suites again, on a schedule |
-| Apply database migrations | by hand, type `APPLY` | Backup, `supabase db push`, verify objects exist |
-| Ops and usage report | by hand | Counts only: LINE pairing state, outbox, real-mode usage, verified money — no names, no secrets |
-| Release LINE channel from its teacher account | by hand, type `RELEASE` | Detach the OA when its owner can no longer sign in |
+| Verify and deploy | ทุกครั้งที่ push | รันชุดทดสอบทั้งหมด สร้างไฟล์ เผยแพร่ |
+| Uptime and keep-alive | ทุก 6 ชั่วโมง | เว็บตอบ 200 ฐานข้อมูลตอบ Edge Functions ตอบ และปลุกโปรเจกต์ฟรีไม่ให้หลับ |
+| Hourly operations check | รายชั่วโมง | ข้อผิดพลาดฝั่งผู้ใช้ คำขอ Pro ที่ค้างนาน คิวข้อความที่ติด |
+| Daily database backup | 03:35 เวลาไทย | ไฟล์สำรองเข้ารหัส เก็บ 90 วัน |
+| Scheduled quality checks | รายสัปดาห์ | รันชุดทดสอบซ้ำตามกำหนด |
+| Apply database migrations | กดเอง พิมพ์ `APPLY` | สำรอง, `supabase db push`, ตรวจว่าของที่ควรมีมีจริง |
+| Ops and usage report | กดเอง | ตัวเลขรวมเท่านั้น: สถานะการผูก LINE คิวข้อความ การใช้งานโหมดจริง เงินที่ตรวจแล้ว — ไม่มีชื่อ ไม่มีความลับ |
+| Release LINE channel from its teacher account | กดเอง พิมพ์ `RELEASE` | ปลดช่อง OA ออกจากบัญชีที่เจ้าของเข้าสู่ระบบไม่ได้แล้ว |
 
-A failing scheduled job opens one GitHub Issue labelled `ops-alert` and comments on it at most every six hours.
+งานตามกำหนดที่ล้มจะเปิด GitHub Issue หนึ่งใบติดป้าย `ops-alert` และเขียนเพิ่มในใบเดิมไม่ถี่กว่าทุก 6 ชั่วโมง
 
-## Testing
+## ทดสอบ
 
 ```bash
-npm test            # 865 unit tests in 104 files (vitest, jsdom, clock frozen at 2025-09-02)
-npm run test:db     # 18 SQL contract files against every migration on postgres:16 and postgres:17 (Docker)
-npm run test:edge   # 48 Edge Function tests (Deno)
-npm run e2e         # 177 browser tests on the real build, Pixel 7 and desktop (Playwright)
-npm run e2e:mock    # 38 LINE OA flows against a mocked backend
+npm test            # unit 865 ข้อใน 104 ไฟล์ (vitest, jsdom, ตรึงวันที่ไว้ที่ 2025-09-02)
+npm run test:db     # เทสสัญญาข้อมูล SQL 18 ไฟล์ กับไมเกรชันทุกไฟล์ บน postgres:16 และ postgres:17 (Docker)
+npm run test:edge   # เทส Edge Functions 48 ข้อ (Deno)
+npm run e2e         # เทสเบราว์เซอร์ 177 ข้อบนไฟล์ที่สร้างจริง ทั้ง Pixel 7 และเดสก์ท็อป (Playwright)
+npm run e2e:mock    # เส้นทาง LINE OA 38 ข้อ กับเซิร์ฟเวอร์จำลอง
 ```
 
-The browser suites share `./dist` and port 4173, so run them one at a time. A live-site pass at phone size — manifest, offline, long Thai names, backup file, check-in — is `node scripts/mobile-check.mjs`; it is deliberately not part of CI because it reaches the deployed site.
+ชุดเบราว์เซอร์ใช้ `./dist` และพอร์ต 4173 ร่วมกัน จึงต้องรันทีละชุด การตรวจเว็บจริงที่ขนาดมือถือ — manifest, ออฟไลน์, ชื่อไทยยาว, ไฟล์สำรอง, เช็คชื่อ — คือ `node scripts/mobile-check.mjs` ตั้งใจไม่ใส่ใน CI เพราะยิงไปที่เว็บที่เผยแพร่แล้ว
 
-## Project documentation
+## เอกสารประกอบ
 
-- [`docs/features.md`](docs/features.md) — every capability, screen by screen, in Thai
-- [`docs/owner-setup.md`](docs/owner-setup.md) — the steps only the owner can do, with the real values and the exact buttons
-- [`docs/production-ledger.md`](docs/production-ledger.md) — every production task with its evidence, pass criterion and what is still open; the running record for whoever picks the project up next
-- [`docs/data-inventory.md`](docs/data-inventory.md) — what data lives where, for how long, and the erasure gaps that code cannot close
-- [`docs/incident-runbook.md`](docs/incident-runbook.md) · [`docs/backup-restore.md`](docs/backup-restore.md) — when something breaks, and how to restore from an encrypted dump
-- [`docs/line-oa-setup.md`](docs/line-oa-setup.md) — connecting a LINE OA end to end
-- [`docs/google-sheets/README.md`](docs/google-sheets/README.md) — the optional Sheets mirror
+- [`docs/features.md`](docs/features.md) — ทุกความสามารถ ไล่ทีละหน้าจอ
+- [`docs/owner-setup.md`](docs/owner-setup.md) — ขั้นตอนที่มีแต่เจ้าของทำได้ พร้อมค่าจริงและชื่อปุ่มที่ต้องกด
+- [`docs/production-ledger.md`](docs/production-ledger.md) — งานระบบจริงทุกรายการ พร้อมหลักฐาน เกณฑ์ผ่าน และสิ่งที่ยังค้าง — เป็นบันทึกต่อเนื่องสำหรับคนที่รับช่วงต่อ
+- [`docs/data-inventory.md`](docs/data-inventory.md) — ข้อมูลอะไรอยู่ที่ไหน นานแค่ไหน และช่องว่างการลบที่โค้ดปิดให้ไม่ได้
+- [`docs/incident-runbook.md`](docs/incident-runbook.md) · [`docs/backup-restore.md`](docs/backup-restore.md) — เมื่อมีอะไรพัง และวิธีกู้จากไฟล์สำรองที่เข้ารหัส
+- [`docs/line-oa-setup.md`](docs/line-oa-setup.md) — เชื่อม LINE OA ตั้งแต่ต้นจนจบ
+- [`docs/google-sheets/README.md`](docs/google-sheets/README.md) — การสำรองลง Google Sheets แบบเลือกได้
 
-## Pitch materials
+## เอกสารพิทช์
 
-The deck and scripts used at the KU Startup 101 final pitch on 13 September 2026, kept in the repository so the team can rebuild or edit them.
+เดคและสคริปต์ที่ใช้ในการนำเสนอรอบสุดท้ายของ KU Startup 101 วันที่ 13 กันยายน 2569 เก็บไว้ในโปรเจกต์เพื่อให้ทีมแก้หรือสร้างใหม่ได้จากที่เดียว
 
-| File | What it is |
+| ไฟล์ | คืออะไร |
 | --- | --- |
-| [`docs/pitch/Solo Tutor Endgame.pdf`](docs/pitch/Solo%20Tutor%20Endgame.pdf) | The 19-page deck as presented (1280×720) |
-| [`docs/pitch/Solo Tutor Endgame.pptx`](docs/pitch/Solo%20Tutor%20Endgame.pptx) · [`.html`](docs/pitch/Solo%20Tutor%20Endgame.html) | The same deck as PowerPoint (one full-page image per slide) and as the single-file HTML source with fonts and images embedded |
-| [`docs/pitch/สคริป for pitching.pdf`](docs/pitch/%E0%B8%AA%E0%B8%84%E0%B8%A3%E0%B8%B4%E0%B8%9B%20for%20pitching.pdf) | Speaker script, slide by slide — timing, who speaks, stage cues, and the 7-minute cut |
-| [`docs/pitch/สคริปเดโม.pdf`](docs/pitch/%E0%B8%AA%E0%B8%84%E0%B8%A3%E0%B8%B4%E0%B8%9B%E0%B9%80%E0%B8%94%E0%B9%82%E0%B8%A1.pdf) | The 90-second live demo, tap by tap on the ผสม sample data, with the morning-of checklist and fallbacks |
-| [`docs/pitch/Q&A Tutor.pdf`](docs/pitch/Q%26A%20Tutor.pdf) | Judges' questions with short answers, numbers first |
+| [`docs/pitch/Solo Tutor Endgame.pdf`](docs/pitch/Solo%20Tutor%20Endgame.pdf) | เดค 19 หน้าตามที่นำเสนอ (1280×720) |
+| [`docs/pitch/Solo Tutor Endgame.pptx`](docs/pitch/Solo%20Tutor%20Endgame.pptx) · [`.html`](docs/pitch/Solo%20Tutor%20Endgame.html) | เดคเดียวกันแบบ PowerPoint (หนึ่งหน้าเป็นรูปเต็มหน้า) และไฟล์ HTML ต้นฉบับที่ฝังฟอนต์และรูปไว้ในไฟล์เดียว |
+| [`docs/pitch/สคริป for pitching.pdf`](docs/pitch/%E0%B8%AA%E0%B8%84%E0%B8%A3%E0%B8%B4%E0%B8%9B%20for%20pitching.pdf) | บทพูดทีละหน้า — เวลา คนพูด คำแนะนำบนเวที และฉบับ 7 นาที |
+| [`docs/pitch/สคริปเดโม.pdf`](docs/pitch/%E0%B8%AA%E0%B8%84%E0%B8%A3%E0%B8%B4%E0%B8%9B%E0%B9%80%E0%B8%94%E0%B9%82%E0%B8%A1.pdf) | เดโมสด 90 วินาที ทีละแตะบนข้อมูลตัวอย่างชุดผสม พร้อมเช็กลิสต์เช้าวันงานและแผนสำรอง |
+| [`docs/pitch/Q&A Tutor.pdf`](docs/pitch/Q%26A%20Tutor.pdf) | คำถามกรรมการพร้อมคำตอบสั้น ตัวเลขก่อน |
 
-The demo runs on the deployed app in demo mode with a real LINE OA behind it — the steps that need a phone and the owner's account are in [`docs/owner-setup.md`](docs/owner-setup.md) ข้อ 3a.
+เดโมรันบนแอปที่เผยแพร่แล้วในโหมดเดโม โดยมี LINE OA จริงอยู่เบื้องหลัง ขั้นตอนที่ต้องใช้มือถือและบัญชีของเจ้าของอยู่ใน [`docs/owner-setup.md`](docs/owner-setup.md) ข้อ 3a
 
-## Roadmap
+## ที่ทำไปแล้วและที่จะทำต่อ
 
-Shipped on 12 September 2026: a week-strip calendar on the home screen that expands to the month, advance booking of weekly series, slot locking with a **สอนกลุ่ม** override, a per-student course counter (**สอนไปแล้ว 8/10**) with ต่อคอร์ส and แถมครั้งให้, and the first demo-mode messages delivered through the LINE OA to a real phone. Shipped in the two days before that: separate demo and real ledgers, encrypted revocable parent links, tombstones so deleted students stay deleted everywhere, the owner analytics view, refunds visible to the teacher, the single **ส่งใน LINE** button, and the first real bill delivered through a LINE OA on 9 September 2026. Still open, in the order the ledger lists them: a "use this tab instead" takeover for the single-writer lock, a restore rehearsal against a real dump, and a per-student erasure policy for students who already have bills — that one needs a legal answer before code.
+ทำเสร็จ 12 กันยายน 2569: ปฏิทินแถบสัปดาห์บนหน้าแรกที่กางเป็นทั้งเดือนได้ การจองล่วงหน้าแบบซ้ำทุกสัปดาห์ การล็อกคิวพร้อมปุ่ม **สอนกลุ่ม** ตัวนับคอร์สรายคน (**สอนไปแล้ว 8/10**) พร้อมต่อคอร์สและแถมครั้งให้ และข้อความจากโหมดเดโมใบแรกที่ส่งผ่าน LINE OA ถึงมือถือจริง ก่อนหน้านั้นสองวัน: แยกสมุดเดโมกับสมุดจริง ลิงก์ผู้ปกครองที่เข้ารหัสและเพิกถอนได้ การลบนักเรียนที่ลบแล้วลบเลยทุกที่ หน้าสถิติของเจ้าของ การคืนเงินที่ครูมองเห็น ปุ่ม **ส่งใน LINE** ปุ่มเดียว และบิลจริงใบแรกที่ส่งผ่าน LINE OA เมื่อ 9 กันยายน 2569 ที่ยังค้างตามลำดับในบันทึก: ปุ่ม "ใช้แท็บนี้แทน" สำหรับล็อกแท็บเดียวเขียน การซ้อมกู้คืนจากไฟล์สำรองจริง และนโยบายลบข้อมูลรายคนสำหรับนักเรียนที่มีบิลแล้ว — ข้อสุดท้ายต้องได้คำตอบทางกฎหมายก่อนเขียนโค้ด
 
-## License
+## สัญญาอนุญาต
 
 MIT © Tasachii
 
-Solo Tutor is a tool, not an intermediary: the teacher issues the bill, sends the message and receives the money directly. Nothing here is accounting or legal advice.
+Solo Tutor เป็นเครื่องมือ ไม่ใช่ตัวกลาง: ครูเป็นคนออกบิล ส่งข้อความ และรับเงินโดยตรง เนื้อหาในนี้ไม่ใช่คำแนะนำทางบัญชีหรือกฎหมาย
