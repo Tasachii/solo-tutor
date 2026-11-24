@@ -38,13 +38,13 @@ describe('pitch contract', () => {
 })
 
 describe('isStandalone', () => {
-  afterEach(() => vi.restoreAllMocks())
+  afterEach(() => vi.unstubAllGlobals())
   it('จริงเมื่อ display-mode: standalone ตรง', () => {
-    vi.spyOn(window, 'matchMedia').mockImplementation((q) => ({ matches: q.includes('standalone') } as MediaQueryList))
+    vi.stubGlobal('matchMedia', (query: string) => ({ matches: query === '(display-mode: standalone)' }))
     expect(isStandalone()).toBe(true)
   })
   it('เท็จในแท็บเบราว์เซอร์ธรรมดา', () => {
-    vi.spyOn(window, 'matchMedia').mockImplementation(() => ({ matches: false } as MediaQueryList))
+    vi.stubGlobal('matchMedia', () => ({ matches: false }))
     expect(isStandalone()).toBe(false)
   })
 })
