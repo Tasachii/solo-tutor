@@ -199,7 +199,7 @@ npm run dev
 ## ทดสอบ
 
 ```bash
-npm test            # unit 865 ข้อใน 104 ไฟล์ (vitest, jsdom, ตรึงวันที่ไว้ที่ 2025-09-02)
+npm test            # unit 870 ข้อใน 104 ไฟล์ (vitest, jsdom, ตรึงวันที่ไว้ที่ 2025-09-02)
 npm run test:db     # เทสสัญญาข้อมูล SQL 18 ไฟล์ กับไมเกรชันทุกไฟล์ บน postgres:16 และ postgres:17 (Docker)
 npm run test:edge   # เทส Edge Functions 48 ข้อ (Deno)
 npm run e2e         # เทสเบราว์เซอร์ 177 ข้อบนไฟล์ที่สร้างจริง ทั้ง Pixel 7 และเดสก์ท็อป (Playwright)
