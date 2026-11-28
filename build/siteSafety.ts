@@ -4,7 +4,7 @@ import { resolve, relative, sep } from 'node:path'
 import type { Plugin } from 'vite'
 
 export function basePath(raw = ''): string {
-  if (!raw) return '/solo-tutor/'
+  if (!raw) return '/Solo-Tutor/'
   if (!/^\/(?:[A-Za-z0-9_-]+\/)*$/.test(raw)) throw new Error('VITE_BASE_PATH must be a local absolute directory path')
   return raw
 }

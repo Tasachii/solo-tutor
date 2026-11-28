@@ -12,7 +12,7 @@ jobs:
   probe:
     runs-on: ubuntu-latest
     env:
-      SITE: https://tasachii.github.io/solo-tutor/
+      SITE: https://tasachii.github.io/Solo-Tutor/
       SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
       PUBLISHABLE_KEY: ${{ vars.VITE_SUPABASE_PUBLISHABLE_KEY }}
     steps:

@@ -13,8 +13,8 @@ verify_jwt = false
 
 # Auth ที่ push ขึ้นโปรเจกต์จริงด้วย `supabase config push` — ประกาศเฉพาะที่ตั้งใจ ค่าที่ไม่ประกาศจะไม่ถูกแตะ
 [auth]
-site_url = "https://tasachii.github.io/solo-tutor/"
-additional_redirect_urls = ["https://tasachii.github.io/solo-tutor/*"]
+site_url = "https://tasachii.github.io/Solo-Tutor/"
+additional_redirect_urls = ["https://tasachii.github.io/Solo-Tutor/*"]
 
 [auth.email]
 enable_signup = true

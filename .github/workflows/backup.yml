@@ -32,7 +32,7 @@ jobs:
           SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
           BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
         run: |
-          test -n "$SUPABASE_DB_PASSWORD" || { echo "::error::ยังไม่ได้ตั้ง secret SUPABASE_DB_PASSWORD — gh secret set SUPABASE_DB_PASSWORD -R Tasachii/solo-tutor"; exit 1; }
+          test -n "$SUPABASE_DB_PASSWORD" || { echo "::error::ยังไม่ได้ตั้ง secret SUPABASE_DB_PASSWORD — gh secret set SUPABASE_DB_PASSWORD -R Tasachii/Solo-Tutor"; exit 1; }
           test "${#BACKUP_PASSPHRASE}" -ge 24 || { echo "::error::BACKUP_PASSPHRASE ต้องยาวอย่างน้อย 24 ตัว — gh secret set BACKUP_PASSPHRASE"; exit 1; }
           ENC=$(python3 -c 'import os,urllib.parse; print(urllib.parse.quote(os.environ["SUPABASE_DB_PASSWORD"], safe=""))')
           echo "::add-mask::$ENC"

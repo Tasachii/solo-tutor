@@ -8,7 +8,7 @@
 ## 0 · บริบทและกติกา
 
 Solo Tutor = แอดมิน AI สำหรับติวเตอร์ · ไม่มีชื่อย่อยรายอาชีพ อาชีพเป็นแค่ vocab ใน `src/professions/` (มติ 6 ก.ย.)
-Stack: Vite + React 18 + TypeScript + react-router (HashRouter) · static deploy บน GitHub Pages · repo `solo-tutor` (base `/solo-tutor/` — ห้ามเปลี่ยน ลิงก์ถูกแชร์แล้ว)
+Stack: Vite + React 18 + TypeScript + react-router (HashRouter) · static deploy บน GitHub Pages · repo `Solo-Tutor` (base `/Solo-Tutor/` — ห้ามเปลี่ยน ลิงก์ถูกแชร์แล้ว)
 
 **หลักการที่ห้ามละเมิด (เดิม — ยังใช้ทั้งหมด)**
 1. Solo Tutor ไม่ถือเงินของใคร — QR เป็นของผู้ให้บริการ เงินเข้าบัญชีเขาตรง

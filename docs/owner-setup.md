@@ -22,8 +22,8 @@
 
 | ของ | ค่า |
 |---|---|
-| Repo | `Tasachii/solo-tutor` |
-| เว็บจริง | https://tasachii.github.io/solo-tutor/ |
+| Repo | `Tasachii/Solo-Tutor` |
+| เว็บจริง | https://tasachii.github.io/Solo-Tutor/ |
 | Supabase project ref | `qbuafdbmpkffzbkqoysb` (ภูมิภาคสิงคโปร์) |
 | Supabase URL | `https://qbuafdbmpkffzbkqoysb.supabase.co` |
 | LINE channel | Channel ID `2011503954` · https://developers.line.biz/console/channel/2011503954 |
@@ -82,7 +82,7 @@ curl -s -X POST https://qbuafdbmpkffzbkqoysb.supabase.co/functions/v1/usage \
 3. Ing ส่งเลข + ชื่อผู้รับให้เต้ (เลข PromptPay เป็นข้อมูลที่ตั้งใจเผยแพร่ ส่งในแชทได้ ไม่ใช่ secret)
 
 ### 1.2 ตั้ง Variables ใน GitHub
-1. https://github.com/Tasachii/solo-tutor → **Settings** → **Secrets and variables** → **Actions**
+1. https://github.com/Tasachii/Solo-Tutor → **Settings** → **Secrets and variables** → **Actions**
 2. กดแท็บ **Variables** (ไม่ใช่ Secrets — สองค่านี้แสดงบนเว็บให้ครูเห็น ไม่ใช่ความลับ)
 3. **New repository variable** ทีละตัว
 
@@ -181,7 +181,7 @@ Greeting ปิด · Auto-response ปิด (Response hours ปิด, Manual 
 
 | # | ทำ | ต้องเห็น |
 |---|---|---|
-| 0 | เปิด `https://tasachii.github.io/solo-tutor/#/app/today` (**ห้ามมี `?scenario=`** ใน URL) · ปิดแท็บ Solo Tutor อื่นทั้งหมด | หน้าวันนี้ |
+| 0 | เปิด `https://tasachii.github.io/Solo-Tutor/#/app/today` (**ห้ามมี `?scenario=`** ใน URL) · ปิดแท็บ Solo Tutor อื่นทั้งหมด | หน้าวันนี้ |
 | 1 | `⋯` → แท็บ **เดโม** → เลือกชุด **ผสม** (นี่คือการรีเซ็ต) | วันนี้ 4 ครั้ง: แพรว 16:00 (เช็คแล้ว) · ภูมิ 17:00 · เนย 18:00 · กัน 19:00 · หัวปฏิทินเป็นวันอาทิตย์ที่ 13 |
 | 2 | `⋯` → **เชื่อม LINE OA** | ยังเป็น `phasathat.j@ku.th` และ "เชื่อมต่อแล้ว" (ล็อกอินค้างข้ามคืนได้ ไม่ต้องทำใหม่) |
 | 3 | แอดมิน → **รอส่ง** → การ์ด **คุณพ่อภูมิ** → **เชิญผู้ปกครองเข้า LINE** → จดรหัส 6 หลัก | ได้รหัส |
@@ -276,7 +276,7 @@ Greeting ปิด · Auto-response ปิด (Response hours ปิด, Manual 
 ## ข้อ 5 — ยืนยันว่า alert ถึงคนจริง (5 นาที)
 
 > **แก้จากคู่มือเดิม** ที่เขียนว่า workflow นี้ยังไม่เคยรัน — ไม่จริง มันรันตามเวลาและผ่านมาแล้ว
-> [Uptime run 34219854721](https://github.com/Tasachii/solo-tutor/actions/runs/34219854721) · [ops run 34224331395](https://github.com/Tasachii/solo-tutor/actions/runs/34224331395)
+> [Uptime run 34219854721](https://github.com/Tasachii/Solo-Tutor/actions/runs/34219854721) · [ops run 34224331395](https://github.com/Tasachii/Solo-Tutor/actions/runs/34224331395)
 
 สิ่งที่ **ยังไม่เคยพิสูจน์** คือเมื่อมันล้ม แล้วมีคนได้รับแจ้งจริงหรือเปล่า workflow เขียวไม่ได้แปลว่าเส้นทางแจ้งเตือนทำงาน
 

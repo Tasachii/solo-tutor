@@ -20,7 +20,7 @@ describe('release build safety', () => {
     expect(makeRelease(files, 'new worker').version).not.toBe(first.version)
   })
   it('supports a dedicated site root while rejecting unsafe base paths', () => {
-    expect(basePath('')).toBe('/solo-tutor/')
+    expect(basePath('')).toBe('/Solo-Tutor/')
     expect(basePath('/')).toBe('/')
     for (const path of ['https://foreign.test/', '//foreign/', '/a/../', '/x?bad/', '/x%2f/']) expect(() => basePath(path)).toThrow()
   })

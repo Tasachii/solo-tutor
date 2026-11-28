@@ -4,7 +4,7 @@
 
 ## A. เดโมปลอดภัยสำหรับ pitching
 
-1. เปิด [Solo Tutor](https://tasachii.github.io/solo-tutor/) แล้วเปิดเมนู **กู้คืนจากไฟล์**
+1. เปิด [Solo Tutor](https://tasachii.github.io/Solo-Tutor/) แล้วเปิดเมนู **กู้คืนจากไฟล์**
 2. เลือกไฟล์ `solo-demo-kru-ploy-5.json` จากโฟลเดอร์ `Downloads/Solo-Pitch-Kit-20260908` และกดยืนยันกู้คืน ระบบจะแสดงครูพลอยกับนักเรียน 5 คน
 3. ตรวจว่าหน้ายังมีป้าย **ข้อมูลจำลอง** อย่ากดเริ่มใช้จริงระหว่างการนำเสนอ
 4. เปิดเมนู **เชื่อม LINE OA** หน้าเดโมจะแสดงกรอบ “ตัวอย่างการเชื่อม LINE OA” และข้อความว่าการจับคู่เป็นข้อมูลจำลองและไม่ส่ง LINE จริง
@@ -31,7 +31,7 @@
 6. เปิด **Use webhook** ให้เป็น Enabled/On
 7. เปิด [LINE OA Manager `@458gfbxa`](https://manager.line.biz/account/@458gfbxa/) → **Settings → Response settings**
 8. เปิด Webhook และปิด Greeting message กับ Auto-response ระหว่างทดสอบ เพื่อไม่ให้ข้อความจาก LINE OA Manager ซ้อนกับ webhook
-9. กลับ [หน้าตั้งค่า LINE OA ใน Solo Tutor](https://tasachii.github.io/solo-tutor/#/app/settings/line) เข้าบัญชีครูเดิมในโหมดข้อมูลจริง แล้วกด **ตรวจสถานะอีกครั้ง**
+9. กลับ [หน้าตั้งค่า LINE OA ใน Solo Tutor](https://tasachii.github.io/Solo-Tutor/#/app/settings/line) เข้าบัญชีครูเดิมในโหมดข้อมูลจริง แล้วกด **ตรวจสถานะอีกครั้ง**
 10. ตรวจชื่อ OA ว่าเป็น **Solo Tutor** และสถานะไม่เป็น invalid/setup failed หาก active อยู่แล้วไม่ต้องวาง credential ซ้ำ
 
 ## C. ทดสอบ LINE จริงกับทีมหลังเปิด webhook

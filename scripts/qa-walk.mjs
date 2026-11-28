@@ -4,12 +4,12 @@
  * ต่างจาก e2e: ชุดนี้ไม่ได้ยืนยันพฤติกรรมรายข้อ แต่ "ใช้งานจริง" ทีละหน้าจอ
  * เก็บ error ของคอนโซล, ปุ่มที่ไม่มีชื่อให้กดด้วยเสียง, ปุ่มที่กดแล้วเงียบ และภาพหน้าจอไว้ตรวจด้วยตา
  *
- * ใช้: node scripts/qa-walk.mjs [baseURL]   (ค่าเริ่มต้น http://localhost:4173/solo-tutor/)
+ * ใช้: node scripts/qa-walk.mjs [baseURL]   (ค่าเริ่มต้น http://localhost:4173/Solo-Tutor/)
  */
 import { chromium, devices } from '@playwright/test'
 import { mkdir } from 'node:fs/promises'
 
-const base = process.argv[2] ?? 'http://localhost:4173/solo-tutor/'
+const base = process.argv[2] ?? 'http://localhost:4173/Solo-Tutor/'
 const outDir = process.argv[3] ?? 'qa-walk'
 const problems = []
 const shots = []

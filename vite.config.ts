@@ -3,7 +3,7 @@ import react from '@vitejs/plugin-react'
 import { loadEnv } from 'vite'
 import { basePath, siteSafety } from './build/siteSafety'
 
-// base ต้องตรงชื่อ repo บน GitHub Pages (repo: solo-tutor)
+// base ต้องตรงชื่อ repo บน GitHub Pages (repo: Solo-Tutor)
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), 'VITE_')
   return {

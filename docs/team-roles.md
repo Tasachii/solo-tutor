@@ -70,7 +70,7 @@ Team10_Startup_Sleepless · 6 ฝ่าย ทุกฝ่ายมี Head ห�
 
 ## 2 · Tae — Dev Head + Slide & Deck Head
 
-**ถือ**: repo `solo-tutor`, demo บน GitHub Pages, สไลด์ทั้งเล่ม, การเปิดของโชว์บนเวที
+**ถือ**: repo `Solo-Tutor`, demo บน GitHub Pages, สไลด์ทั้งเล่ม, การเปิดของโชว์บนเวที
 
 | # | ต้องส่ง | เสร็จเมื่อ |
 |---|---|---|

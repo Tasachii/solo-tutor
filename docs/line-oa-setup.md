@@ -13,7 +13,7 @@
 3. กด **Verify** ที่ Webhook URL ต้องเห็นผล **Success** หากไม่สำเร็จ อย่าเริ่มจับคู่ผู้ปกครอง ให้ตรวจ URL แล้วลองอีกครั้ง
 4. เปิดสวิตช์ **Use webhook** ให้แสดง Enabled/On สวิตช์นี้แยกจากผล Verify และแยกจากสถานะ `active` ใน Solo Tutor
 5. เปิด [LINE OA Manager ของ `@458gfbxa`](https://manager.line.biz/account/@458gfbxa/) ไปที่ **Settings → Response settings** เปิด Webhook และปิด Greeting message/Auto-response ระหว่างทดสอบ เพื่อไม่ให้ผู้ปกครองได้รับข้อความซ้ำ
-6. กลับ [หน้าตั้งค่า LINE OA ใน Solo Tutor](https://tasachii.github.io/solo-tutor/#/app/settings/line) ในโหมดข้อมูลจริงและบัญชีครูเดิม กด **ตรวจสถานะอีกครั้ง** ชื่อที่แสดงต้องเป็น Solo Tutor ไม่ต้องกรอก token ซ้ำหากสถานะยัง active
+6. กลับ [หน้าตั้งค่า LINE OA ใน Solo Tutor](https://tasachii.github.io/Solo-Tutor/#/app/settings/line) ในโหมดข้อมูลจริงและบัญชีครูเดิม กด **ตรวจสถานะอีกครั้ง** ชื่อที่แสดงต้องเป็น Solo Tutor ไม่ต้องกรอก token ซ้ำหากสถานะยัง active
 
 Webhook ของโปรเจกต์นี้:
 

@@ -18,7 +18,7 @@
 
 ## 1. Triage ใน 10 นาที
 
-1. เปิด https://tasachii.github.io/solo-tutor/ — โหลดได้ไหม เดโมเช็คชื่อได้ไหม (ถ้าได้ = หน้าเว็บโอเค ปัญหาอยู่หลังบ้าน)
+1. เปิด https://tasachii.github.io/Solo-Tutor/ — โหลดได้ไหม เดโมเช็คชื่อได้ไหม (ถ้าได้ = หน้าเว็บโอเค ปัญหาอยู่หลังบ้าน)
 2. Supabase Dashboard → Project → **Project Status / Edge Functions → Logs** ดู 5xx/timeout 15 นาทีล่าสุด
 3. https://status.supabase.com — ถ้าผู้ให้บริการล่ม เราแก้อะไรไม่ได้ แจ้งครูว่า "ยังใช้ในเครื่องได้ ซิงก์/LINE OA จะกลับมาเอง"
 4. จัดระดับ:

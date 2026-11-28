@@ -14,7 +14,7 @@ import { mkdirSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 
-const SITE = 'https://tasachii.github.io/solo-tutor/'
+const SITE = 'https://tasachii.github.io/Solo-Tutor/'
 const OUT = join(homedir(), 'Downloads', 'solo-screens-20260909')
 mkdirSync(OUT, { recursive: true })
 

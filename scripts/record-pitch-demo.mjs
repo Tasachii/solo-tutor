@@ -4,7 +4,7 @@ import { resolve } from 'node:path'
 import { seedOf } from '../src/core/share.ts'
 
 const destination = resolve(process.env.SOLO_PITCH_DIR ?? '.omx/pitch-kit')
-const base = process.env.SOLO_DEMO_URL ?? 'http://localhost:4297/solo-tutor/'
+const base = process.env.SOLO_DEMO_URL ?? 'http://localhost:4297/Solo-Tutor/'
 const fast = process.env.SOLO_DEMO_FAST === '1'
 if (!['localhost', '127.0.0.1'].includes(new URL(base).hostname)) throw new Error('Recording requires a local QA build')
 const fixture = JSON.parse(await readFile(resolve(destination, 'solo-demo-kru-ploy-5.json'), 'utf8'))
