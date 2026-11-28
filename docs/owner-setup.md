@@ -42,27 +42,24 @@
 
 ---
 
-## ข้อ 0 — deploy ฟังก์ชัน `usage` (2 นาที) · **ทำก่อนพิทช์ถ้าจะพูดถึงตัวเลขผู้ใช้**
+## ข้อ 0 — ฟังก์ชัน `usage` บน Production · แก้แล้ว
 
-พบ 12 ก.ย. จากการยิงเว็บจริง: ฟังก์ชัน `usage` บนโปรดักชันเป็นรุ่นก่อน 8 ก.ย. จึง **ปฏิเสธ** เหตุการณ์ต้นทางทั้งหมด
-(`landing_view` `pricing_view` `demo_started` `demo_completed` `signup_started` `onboarding_completed` ตอบ 400 `invalid-event`)
-ส่วน `app_open` `students_changed` `invoice_issued` `payment_recorded` ยังบันทึกปกติ
+ก่อนหน้านี้ฟังก์ชัน `usage` เป็นรุ่นเก่า จึงปฏิเสธเหตุการณ์ต้นทางของ funnel ด้วย HTTP 400 `invalid-event`
+ตอนนี้อัปเดตเป็น Edge Function รุ่น 7 แล้ว และ Migration 0001–0019 ตรงกับ Production ทั้งหมด
+
+ตรวจผ่านเว็บจริงด้วย `?qa=1` เพื่อแยกข้อมูลทดสอบของทีมออกจากสถิติผู้ใช้:
+- เปิดหน้าแรก: `landing_view` ตอบ HTTP 200
+- เริ่มเดโม: `demo_started` ตอบ HTTP 200
+- เปิดหน้าแอปเดโมได้ตามปกติ
+
+หากต้องอัปเดตฟังก์ชันนี้ในอนาคต ให้ตรวจ Migration ก่อนแล้ว deploy เฉพาะ `usage`:
 
 ```bash
-supabase login                       # บัญชีเจ้าของโปรเจกต์
-supabase functions deploy usage --project-ref qbuafdbmpkffzbkqoysb
+supabase migration list --linked
+supabase functions deploy usage
 ```
 
-ตรวจว่าผ่าน:
-
-```bash
-curl -s -X POST https://qbuafdbmpkffzbkqoysb.supabase.co/functions/v1/usage \
-  -H 'Origin: https://tasachii.github.io' -H 'Content-Type: application/json' \
-  -d '{"v":2,"event_id":"11111111-1111-4111-8111-111111111111","teacher_id":"22222222-2222-4222-8222-222222222222","session_id":"33333333-3333-4333-8333-333333333333","event":"landing_view","count":1,"route":"landing","audience":"team","mode":null,"campaign":null}'
-# ต้องได้ {"ok":true}
-```
-
-**ถ้ายังไม่ deploy: ห้ามพูดตัวเลขผู้เข้าชม ผู้เริ่มเดโม หรือผู้สมัครบนเวที** — ตัวเลขเหล่านั้นไม่เคยถูกบันทึก ไม่ใช่ว่าไม่มีคนทำ
+**ตัวเลข funnel ย้อนหลังก่อนแก้ยังไม่ครบ** เพราะเหตุการณ์ที่ถูกปฏิเสธในอดีตไม่ได้ถูกบันทึก อย่านำไปตีความว่าไม่มีผู้ใช้งาน
 
 ---
 
