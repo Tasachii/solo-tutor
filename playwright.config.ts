@@ -1,7 +1,7 @@
 import { defineConfig, devices } from '@playwright/test'
 
 const port = Number(process.env.SOLO_QA_PORT ?? 4173)
-const baseURL = `http://localhost:${port}/solo-tutor/`
+const baseURL = `http://localhost:${port}/Solo-Tutor/`
 
 /** เทสวิ่งกับ build จริงเสมอ ไม่ใช่ dev server — เพราะสิ่งที่คนเห็นคือ dist */
 export default defineConfig({
@@ -28,10 +28,12 @@ export default defineConfig({
     // Neither invocation may inherit a real project from .env.local.
     // Direct Playwright commands get the same synthetic settings as e2e:mock.
     env: process.env.SOLO_LINE_QA === '1' ? {
+      VITE_BASE_PATH: '/Solo-Tutor/',
       VITE_SUPABASE_URL: 'https://line-qa.supabase.co', VITE_SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_qa',
       VITE_SUPABASE_ANON_KEY: '', VITE_SUPPORT_CONTACT: 'https://support.solo-tutor.test',
       VITE_PROVIDER_LEGAL_NAME: 'Solo Tutor QA (ข้อมูลสมมติ)', VITE_SOLO_PROMPTPAY: '0812345678',
     } : {
+      VITE_BASE_PATH: '/Solo-Tutor/',
       VITE_SUPABASE_URL: '', VITE_SUPABASE_PUBLISHABLE_KEY: '', VITE_SUPABASE_ANON_KEY: '',
       VITE_SUPPORT_CONTACT: '', VITE_PROVIDER_LEGAL_NAME: '', VITE_SOLO_PROMPTPAY: '',
     },
